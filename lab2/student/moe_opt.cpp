@@ -1,45 +1,125 @@
-// Main task: optimize the MoE forward pass.
+// Optimized W8A8 MoE forward pass for Intel Sapphire Rapids.
 
 #include "moe.h"
-#include <smmintrin.h>
-#include <emmintrin.h>
-#include <immintrin.h>
-#include <cstddef>
-#include <cstdlib>
-#include <cmath>
 
-// Keep the portable fallback runnable on AVX2-only development machines.
-// Dedicated VNNI/AMX kernels will opt back into their ISA with per-function
-// target attributes, so this does not constrain the grading-platform path.
-#pragma GCC target("arch=x86-64-v3,no-avx512f,no-avx512vl,no-avx512bw,no-avx512dq,no-avx512vnni,no-amx-tile,no-amx-int8")
+#include <algorithm>
+#include <atomic>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <immintrin.h>
+#include <linux/futex.h>
+#include <limits>
+#include <omp.h>
+#include <pthread.h>
+#include <sched.h>
+#include <sys/syscall.h>
+#include <thread>
+#include <unistd.h>
+#include <vector>
+
+#ifndef ARCH_REQ_XCOMP_PERM
+#define ARCH_REQ_XCOMP_PERM 0x1023
+#endif
+#ifndef XFEATURE_XTILEDATA
+#define XFEATURE_XTILEDATA 18
+#endif
 
 namespace {
 
-// AMX TDPBSSD consumes 16 groups of four K-elements and produces 16 int32
-// output columns per full tile.  We therefore store every [N, K] weight
-// matrix as [N/16][K/64][16][64] bytes.  In the innermost 64-byte row,
-// weights are ordered as:
-//
-//   W[n+0][k+0..3], W[n+1][k+0..3], ... W[n+15][k+0..3]
-//
-// This is both the native AMX B-tile layout and a useful AVX-512 VNNI layout:
-// a 4-byte activation group can be broadcast and dotted with all 16 output
-// rows at once.
-constexpr int AMX_N_BLOCK = 16;
-constexpr int AMX_K_BLOCK = 64;
-constexpr size_t AMX_TILE_BYTES = 1024;
+constexpr int N_BLOCK = 16;
+constexpr int K_BLOCK = 64;
+constexpr int ROUTER_BATCH = 16;
+constexpr size_t TILE_BYTES = 1024;
+
+struct alignas(64) TileConfig {
+    uint8_t palette_id;
+    uint8_t start_row;
+    uint8_t reserved[14];
+    uint16_t colsb[8];
+    uint8_t reserved2[16];
+    uint8_t rows[8];
+    uint8_t reserved3[8];
+};
+static_assert(sizeof(TileConfig) == 64);
+
+static thread_local bool amx_permission_checked = false;
+static thread_local bool amx_permission_ok = false;
+
+static bool ensure_amx_permission() {
+    if (!amx_permission_checked) {
+        amx_permission_ok =
+            syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA) == 0;
+        amx_permission_checked = true;
+    }
+    return amx_permission_ok;
+}
+
+static inline void load_tile_config(int rows) {
+    TileConfig cfg{};
+    cfg.palette_id = 1;
+    // tmm0..tmm5: independent INT32 accumulators, tmm6: activation A,
+    // tmm7: the currently streamed packed B tile.  Multiple accumulator
+    // chains hide TDPBSSD latency and reuse each A load across output blocks.
+    for (int t = 0; t < 6; ++t) {
+        cfg.colsb[t] = 64;
+        cfg.rows[t] = static_cast<uint8_t>(rows);
+    }
+    cfg.colsb[6] = 64;
+    cfg.rows[6] = static_cast<uint8_t>(rows);
+    cfg.colsb[7] = 64;
+    cfg.rows[7] = 16;
+    _tile_loadconfig(&cfg);
+}
 
 struct PackedWeights {
+    // Every 1 KiB unit is a native VNNI/AMX-B tile.  Tiles are additionally
+    // ordered in the exact sequence consumed by the 3-output-block Gate/Up
+    // and 6-output-block Down microkernels, so the hot loop is one stream.
     int8_t* routed_gu = nullptr;
     int8_t* routed_down = nullptr;
     int8_t* shared_gu = nullptr;
     int8_t* shared_down = nullptr;
+
+    // AVX-512 VNNI provides u8*s8 (VPDPBUSD), while the model is s8*s8.
+    // We xor the activation sign bit (x -> x+128 in unsigned notation) and
+    // seed each accumulator with -128*sum(weights), precomputed here.
+    int32_t* routed_gu_comp = nullptr;
+    int32_t* routed_down_comp = nullptr;
+    int32_t* shared_gu_comp = nullptr;
+    int32_t* shared_down_comp = nullptr;
+
+    // Router is transposed and padded in groups of 16 experts:
+    // [expert_block][D][16].  One load therefore supplies the weights for
+    // 16 experts, with no horizontal reduction in the timed path.
+    float* router = nullptr;
+
+    // Forward workspaces are allocated in preprocess (outside timing).
+    int8_t* xq = nullptr;            // [MAX_NUM_TOKENS][D]
+    float* x_scale = nullptr;        // [MAX_NUM_TOKENS]
+    int* route_idx = nullptr;        // [MAX_NUM_TOKENS][K]
+    float* route_gate = nullptr;     // [MAX_NUM_TOKENS][K]
+    float* routed_output = nullptr;  // [MAX_NUM_TOKENS*K][D]
+    int* expert_counts = nullptr;    // [E+1]
+    int* expert_offsets = nullptr;   // [E+1]
+    int* bucket_entries = nullptr;   // [MAX_NUM_TOKENS*K]
+    int32_t* single_gate_acc = nullptr;  // [K+1][H]
+    int32_t* single_up_acc = nullptr;
+    float* single_hidden = nullptr;
+    int8_t* single_hq = nullptr;
+    float* single_hscale = nullptr;
+    float* single_chunk_max = nullptr;
+    int32_t* single_down_acc = nullptr;
+    bool amx_ready = false;
 
     size_t gu_expert_stride = 0;
     size_t down_expert_stride = 0;
     int d_model = 0;
     int d_ff = 0;
     int num_experts = 0;
+    int padded_experts = 0;
     bool ready = false;
 
     void clear() {
@@ -47,236 +127,1922 @@ struct PackedWeights {
         std::free(routed_down);
         std::free(shared_gu);
         std::free(shared_down);
+        std::free(routed_gu_comp);
+        std::free(routed_down_comp);
+        std::free(shared_gu_comp);
+        std::free(shared_down_comp);
+        std::free(router);
+        std::free(xq);
+        std::free(x_scale);
+        std::free(route_idx);
+        std::free(route_gate);
+        std::free(routed_output);
+        std::free(expert_counts);
+        std::free(expert_offsets);
+        std::free(bucket_entries);
+        std::free(single_gate_acc);
+        std::free(single_up_acc);
+        std::free(single_hidden);
+        std::free(single_hq);
+        std::free(single_hscale);
+        std::free(single_chunk_max);
+        std::free(single_down_acc);
         routed_gu = routed_down = shared_gu = shared_down = nullptr;
+        routed_gu_comp = routed_down_comp = nullptr;
+        shared_gu_comp = shared_down_comp = nullptr;
+        router = nullptr;
+        xq = nullptr;
+        x_scale = nullptr;
+        route_idx = nullptr;
+        route_gate = nullptr;
+        routed_output = nullptr;
+        expert_counts = expert_offsets = bucket_entries = nullptr;
+        single_gate_acc = single_up_acc = nullptr;
+        single_hidden = nullptr;
+        single_hq = nullptr;
+        single_hscale = single_chunk_max = nullptr;
+        single_down_acc = nullptr;
+        amx_ready = false;
         gu_expert_stride = down_expert_stride = 0;
-        d_model = d_ff = num_experts = 0;
+        d_model = d_ff = num_experts = padded_experts = 0;
         ready = false;
     }
 
     ~PackedWeights() { clear(); }
 };
 
-PackedWeights packed_w;
+PackedWeights pw;
 
-static int8_t* alloc_aligned_bytes(size_t bytes) {
-    // Every packed matrix consists of whole 1 KiB tiles, hence bytes is
-    // already a multiple of the required alignment.
-    return static_cast<int8_t*>(std::aligned_alloc(64, bytes));
+class PersistentPool {
+public:
+    using Task = void (*)(int, void*);
+
+    struct alignas(64) WorkerSignal {
+        std::atomic<uint64_t> generation{0};
+    };
+
+    void start(int requested_threads) {
+        stop();
+        cpu_set_t allowed;
+        CPU_ZERO(&allowed);
+        sched_getaffinity(0, sizeof(allowed), &allowed);
+        cpus_.clear();
+        for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu)
+            if (CPU_ISSET(cpu, &allowed)) cpus_.push_back(cpu);
+        team_size_ = std::max(1, std::min(requested_threads,
+                                         static_cast<int>(cpus_.size())));
+        enabled_size_.store(team_size_, std::memory_order_relaxed);
+
+        // Keep all optimized workers on distinct CPUs from the allocation.
+        if (!cpus_.empty()) pin_current_thread(cpus_[0]);
+        stop_.store(false, std::memory_order_relaxed);
+        ready_.store(0, std::memory_order_relaxed);
+        permission_failures_.store(0, std::memory_order_relaxed);
+        generation_.store(0, std::memory_order_relaxed);
+        for (WorkerSignal& signal : worker_done_)
+            signal.generation.store(0, std::memory_order_relaxed);
+        workers_.reserve(team_size_ - 1);
+        for (int id = 1; id < team_size_; ++id)
+            workers_.emplace_back([this, id] { worker_loop(id); });
+        while (ready_.load(std::memory_order_acquire) != team_size_ - 1)
+            _mm_pause();
+
+        main_amx_ok_ = ensure_amx_permission();
+        amx_ok_ = main_amx_ok_ &&
+                  permission_failures_.load(std::memory_order_relaxed) == 0;
+    }
+
+    void stop() {
+        if (!workers_.empty()) {
+            enabled_size_.store(team_size_, std::memory_order_release);
+            syscall(SYS_futex, reinterpret_cast<int*>(&enabled_size_),
+                    FUTEX_WAKE_PRIVATE, std::numeric_limits<int>::max(),
+                    nullptr, nullptr, 0);
+            stop_.store(true, std::memory_order_relaxed);
+            generation_.store(
+                generation_.load(std::memory_order_relaxed) + 1,
+                std::memory_order_release);
+            for (std::thread& worker : workers_) worker.join();
+            workers_.clear();
+        }
+        if (main_tile_rows_ != 0) {
+            _tile_release();
+            main_tile_rows_ = 0;
+        }
+        team_size_ = 1;
+        amx_ok_ = false;
+    }
+
+    ~PersistentPool() { stop(); }
+
+    int size() const { return team_size_; }
+    bool amx_ok() const { return amx_ok_; }
+
+    // Workers above this limit sleep in the kernel instead of consuming
+    // package power while a latency-oriented call only has a few experts.
+    // They are woken only when a later call actually needs the full team.
+    void set_enabled(int requested_threads) {
+        const int enabled =
+            std::max(1, std::min(requested_threads, team_size_));
+        if (enabled_size_.load(std::memory_order_relaxed) == enabled) return;
+        const int previous =
+            enabled_size_.exchange(enabled, std::memory_order_release);
+        if (enabled > previous) {
+            syscall(SYS_futex, reinterpret_cast<int*>(&enabled_size_),
+                    FUTEX_WAKE_PRIVATE, std::numeric_limits<int>::max(),
+                    nullptr, nullptr, 0);
+        }
+    }
+
+    void dispatch(int count, int tile_rows, Task task, void* context) {
+        const int active = std::max(1, std::min(count, team_size_));
+        task_ = task;
+        context_ = context;
+        task_count_ = count;
+        active_size_ = active;
+        tile_rows_ = tile_rows;
+        if (tile_rows != 0 && main_tile_rows_ != tile_rows) {
+            load_tile_config(tile_rows);
+            main_tile_rows_ = tile_rows;
+        }
+        const uint64_t generation =
+            generation_.load(std::memory_order_relaxed) + 1;
+        generation_.store(generation, std::memory_order_release);
+
+        for (int i = 0; i < count; i += active) task(i, context);
+        for (int id = 1; id < active; ++id) {
+            while (worker_done_[id].generation.load(
+                       std::memory_order_acquire) != generation)
+                _mm_pause();
+        }
+    }
+
+private:
+    static void pin_current_thread(int cpu) {
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        CPU_SET(cpu, &set);
+        pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
+    }
+
+    void worker_loop(int id) {
+        pin_current_thread(cpus_[id]);
+        if (!ensure_amx_permission())
+            permission_failures_.fetch_add(1, std::memory_order_relaxed);
+        ready_.fetch_add(1, std::memory_order_release);
+        uint64_t seen = 0;
+        int tile_rows = 0;
+        for (;;) {
+            uint64_t current;
+            while ((current = generation_.load(std::memory_order_acquire)) ==
+                   seen) {
+                const int enabled =
+                    enabled_size_.load(std::memory_order_acquire);
+                if (id >= enabled) {
+                    syscall(SYS_futex,
+                            reinterpret_cast<int*>(&enabled_size_),
+                            FUTEX_WAIT_PRIVATE, enabled, nullptr, nullptr, 0);
+                } else {
+                    _mm_pause();
+                }
+            }
+            seen = current;
+            if (stop_.load(std::memory_order_relaxed)) break;
+            const int requested_rows = tile_rows_;
+            if (requested_rows != 0 && requested_rows != tile_rows) {
+                load_tile_config(requested_rows);
+                tile_rows = requested_rows;
+            }
+            Task task = task_;
+            void* context = context_;
+            const int count = task_count_;
+            const int active = active_size_;
+            if (id >= active) continue;
+            for (int i = id; i < count; i += active) task(i, context);
+            worker_done_[id].generation.store(seen,
+                                              std::memory_order_release);
+        }
+        if (tile_rows != 0) _tile_release();
+    }
+
+    std::vector<int> cpus_;
+    std::vector<std::thread> workers_;
+    int team_size_ = 1;
+    int main_tile_rows_ = 0;
+    bool main_amx_ok_ = false;
+    bool amx_ok_ = false;
+
+    alignas(64) std::atomic<uint64_t> generation_{0};
+    alignas(64) std::atomic<int> enabled_size_{1};
+    WorkerSignal worker_done_[8];
+    alignas(64) std::atomic<int> ready_{0};
+    std::atomic<int> permission_failures_{0};
+    std::atomic<bool> stop_{false};
+
+    // Published before generation_ with release ordering, then read by
+    // workers after the matching acquire load.
+    Task task_ = nullptr;
+    void* context_ = nullptr;
+    int task_count_ = 0;
+    int active_size_ = 1;
+    int tile_rows_ = 0;
+
+};
+
+PersistentPool pool;
+
+template <typename T>
+static T* alloc_aligned(size_t count) {
+    void* p = nullptr;
+    if (posix_memalign(&p, 64, count * sizeof(T)) != 0) return nullptr;
+    return static_cast<T*>(p);
 }
 
-// Pack W[out_dim][k_dim] into AMX's B operand layout.
-static void pack_matrix(const int8_t* src, int out_dim, int k_dim,
-                        int8_t* dst) {
-    const int out_blocks = out_dim / AMX_N_BLOCK;
-    const int k_blocks = k_dim / AMX_K_BLOCK;
+static void pack_one_tile(const int8_t* src, int k_dim, int ob, int kb,
+                          int8_t* tile) {
+    for (int kg = 0; kg < K_BLOCK / 4; ++kg) {
+        int8_t* row = tile + (size_t)kg * 64;
+        const int src_k = kb * K_BLOCK + kg * 4;
+        for (int n = 0; n < N_BLOCK; ++n) {
+            const int8_t* s = src +
+                (size_t)(ob * N_BLOCK + n) * k_dim + src_k;
+            std::memcpy(row + n * 4, s, 4);
+        }
+    }
+}
 
-    for (int ob = 0; ob < out_blocks; ++ob) {
+static void pack_matrix_grouped(const int8_t* src, int out_dim, int k_dim,
+                                int group_size, int8_t* dst) {
+    const int out_blocks = out_dim / N_BLOCK;
+    const int k_blocks = k_dim / K_BLOCK;
+    size_t tile_index = 0;
+    for (int ob = 0; ob < out_blocks; ob += group_size) {
+        const int group = std::min(group_size, out_blocks - ob);
+        for (int kb = 0; kb < k_blocks; ++kb)
+            for (int j = 0; j < group; ++j)
+                pack_one_tile(src, k_dim, ob + j, kb,
+                              dst + tile_index++ * TILE_BYTES);
+    }
+}
+
+static void pack_gate_up(const int8_t* gate, const int8_t* up,
+                         int d_model, int d_ff, int8_t* dst) {
+    const int out_blocks = d_ff / N_BLOCK;
+    const int k_blocks = d_model / K_BLOCK;
+    size_t tile_index = 0;
+    for (int ob = 0; ob < out_blocks; ob += 3) {
+        const int group = std::min(3, out_blocks - ob);
         for (int kb = 0; kb < k_blocks; ++kb) {
-            int8_t* tile = dst +
-                ((size_t)ob * k_blocks + kb) * AMX_TILE_BYTES;
-            for (int kg = 0; kg < AMX_K_BLOCK / 4; ++kg) {
-                int8_t* tile_row = tile + (size_t)kg * 64;
-                const int src_k = kb * AMX_K_BLOCK + kg * 4;
-                for (int n = 0; n < AMX_N_BLOCK; ++n) {
-                    const int8_t* p = src +
-                        (size_t)(ob * AMX_N_BLOCK + n) * k_dim + src_k;
-                    tile_row[n * 4 + 0] = p[0];
-                    tile_row[n * 4 + 1] = p[1];
-                    tile_row[n * 4 + 2] = p[2];
-                    tile_row[n * 4 + 3] = p[3];
-                }
+            for (int j = 0; j < group; ++j) {
+                pack_one_tile(gate, d_model, ob + j, kb,
+                              dst + tile_index++ * TILE_BYTES);
+                pack_one_tile(up, d_model, ob + j, kb,
+                              dst + tile_index++ * TILE_BYTES);
             }
         }
     }
 }
 
-// Gate and Up are concatenated along the output dimension.  H is guaranteed
-// to be a multiple of 64, so no 16-row tile crosses the Gate/Up boundary.
-static void pack_gate_up(const int8_t* gate, const int8_t* up,
-                         int d_model, int d_ff, int8_t* dst) {
-    const size_t one_matrix_bytes = (size_t)d_ff * d_model;
-    pack_matrix(gate, d_ff, d_model, dst);
-    pack_matrix(up, d_ff, d_model, dst + one_matrix_bytes);
+static void make_compensation(const int8_t* src, int rows, int cols,
+                              int32_t* dst) {
+    for (int r = 0; r < rows; ++r) {
+        int32_t sum = 0;
+        for (int c = 0; c < cols; ++c) sum += src[(size_t)r * cols + c];
+        dst[r] = -128 * sum;
+    }
+}
+
+// A compact AVX-512 exp approximation (Cephes range reduction/polynomial).
+// Its relative error is much smaller than the lab's output tolerance, while
+// avoiding one scalar libm call per hidden channel.
+static inline __m512 exp512_ps(__m512 x) {
+    const __m512 hi = _mm512_set1_ps(88.3762626647949f);
+    const __m512 lo = _mm512_set1_ps(-88.3762626647949f);
+    x = _mm512_min_ps(x, hi);
+    x = _mm512_max_ps(x, lo);
+
+    __m512 fx = _mm512_fmadd_ps(
+        x, _mm512_set1_ps(1.44269504088896341f), _mm512_set1_ps(0.5f));
+    fx = _mm512_floor_ps(fx);
+
+    x = _mm512_fnmadd_ps(fx, _mm512_set1_ps(0.693359375f), x);
+    x = _mm512_fnmadd_ps(fx, _mm512_set1_ps(-2.12194440e-4f), x);
+    const __m512 z = _mm512_mul_ps(x, x);
+
+    __m512 y = _mm512_set1_ps(1.9875691500E-4f);
+    y = _mm512_fmadd_ps(y, x, _mm512_set1_ps(1.3981999507E-3f));
+    y = _mm512_fmadd_ps(y, x, _mm512_set1_ps(8.3334519073E-3f));
+    y = _mm512_fmadd_ps(y, x, _mm512_set1_ps(4.1665795894E-2f));
+    y = _mm512_fmadd_ps(y, x, _mm512_set1_ps(1.6666665459E-1f));
+    y = _mm512_fmadd_ps(y, x, _mm512_set1_ps(5.0000001201E-1f));
+    y = _mm512_fmadd_ps(y, z, x);
+    y = _mm512_add_ps(y, _mm512_set1_ps(1.0f));
+
+    __m512i emm = _mm512_cvttps_epi32(fx);
+    emm = _mm512_add_epi32(emm, _mm512_set1_epi32(127));
+    emm = _mm512_slli_epi32(emm, 23);
+    return _mm512_mul_ps(y, _mm512_castsi512_ps(emm));
+}
+
+static inline __m512 sigmoid512_ps(__m512 x) {
+    const __m512 one = _mm512_set1_ps(1.0f);
+    return _mm512_div_ps(one,
+                         _mm512_add_ps(one, exp512_ps(_mm512_sub_ps(
+                             _mm512_setzero_ps(), x))));
+}
+
+static inline __m512 expert_sigmoid512_ps(__m512 x) {
+    const __m512 one = _mm512_set1_ps(1.0f);
+    const __m512 denominator = _mm512_add_ps(
+        one, exp512_ps(_mm512_sub_ps(_mm512_setzero_ps(), x)));
+    // VRCP14 plus one Newton step is essentially FP32-accurate and has much
+    // higher throughput than a vector divide on Sapphire Rapids.
+    __m512 reciprocal = _mm512_rcp14_ps(denominator);
+    reciprocal = _mm512_mul_ps(
+        reciprocal,
+        _mm512_fnmadd_ps(denominator, reciprocal, _mm512_set1_ps(2.0f)));
+    return reciprocal;
+}
+
+static inline __m512 abs512_ps(__m512 x) {
+    return _mm512_castsi512_ps(_mm512_and_epi32(
+        _mm512_castps_si512(x), _mm512_set1_epi32(0x7fffffff)));
+}
+
+static inline void quantize_row(const float* x, int length, int8_t* q,
+                                float& scale) {
+    __m512 vmax = _mm512_setzero_ps();
+    for (int i = 0; i < length; i += 16) {
+        vmax = _mm512_max_ps(vmax, abs512_ps(_mm512_loadu_ps(x + i)));
+    }
+    const float amax = _mm512_reduce_max_ps(vmax);
+    scale = amax > 0.0f ? amax / 127.0f : 1.0f;
+    const __m512 vinv_scale = _mm512_set1_ps(1.0f / scale);
+    for (int i = 0; i < length; i += 16) {
+        const __m512 v = _mm512_mul_ps(_mm512_loadu_ps(x + i), vinv_scale);
+        const __m512i qi = _mm512_cvtps_epi32(v);
+        const __m128i q8 = _mm512_cvtsepi32_epi8(qi);
+        _mm_store_si128(reinterpret_cast<__m128i*>(q + i), q8);
+    }
+}
+
+// AMX expert kernel.  The tile configuration is loaded by the surrounding
+// parallel region: one-row tiles for latency-sensitive N=1 and full 16-row
+// tiles for the grouped large-batch path.  `rows` is the number of real rows;
+// padded activation rows are zero and are ignored on output.
+static __attribute__((noinline)) void expert_amx(
+    const int8_t* gu, const int8_t* down, float s_gate, float s_up,
+    float s_down, const int8_t* aq, const float* sx, float* const* destination,
+    int rows, float coeff, bool accumulate, int d_model, int d_ff) {
+    alignas(64) int32_t gate_acc[ROUTER_BATCH * MAX_D_FF];
+    alignas(64) int32_t up_acc[ROUTER_BATCH * MAX_D_FF];
+    alignas(64) float hidden[ROUTER_BATCH * MAX_D_FF];
+    alignas(64) int8_t hq[ROUTER_BATCH * MAX_D_FF];
+    alignas(64) int32_t down_acc[ROUTER_BATCH * N_BLOCK];
+
+    const int d_kblocks = d_model / K_BLOCK;
+    const int h_oblocks = d_ff / N_BLOCK;
+
+    for (int ob = 0; ob < h_oblocks; ob += 3) {
+        const int group = std::min(3, h_oblocks - ob);
+        const int8_t* group_base = gu +
+            (size_t)ob * 2 * d_kblocks * TILE_BYTES;
+        _tile_zero(0);  // gate 0
+        _tile_zero(1);  // up 0
+        if (group > 1) {
+            _tile_zero(2);  // gate 1
+            _tile_zero(3);  // up 1
+        }
+        if (group > 2) {
+            _tile_zero(4);  // gate 2
+            _tile_zero(5);  // up 2
+        }
+        for (int kb = 0; kb < d_kblocks; ++kb) {
+            _tile_loadd(6, aq + kb * K_BLOCK, d_model);
+            const int8_t* bg0 = group_base +
+                (size_t)kb * group * 2 * TILE_BYTES;
+            const int8_t* bu0 = bg0 + TILE_BYTES;
+            _tile_loadd(7, bg0, 64);
+            _tile_dpbssd(0, 6, 7);
+            _tile_loadd(7, bu0, 64);
+            _tile_dpbssd(1, 6, 7);
+            if (group > 1) {
+                const int8_t* bg1 = bg0 + 2 * TILE_BYTES;
+                const int8_t* bu1 = bg1 + TILE_BYTES;
+                _tile_loadd(7, bg1, 64);
+                _tile_dpbssd(2, 6, 7);
+                _tile_loadd(7, bu1, 64);
+                _tile_dpbssd(3, 6, 7);
+            }
+            if (group > 2) {
+                const int8_t* bg2 = bg0 + 4 * TILE_BYTES;
+                const int8_t* bu2 = bg2 + TILE_BYTES;
+                _tile_loadd(7, bg2, 64);
+                _tile_dpbssd(4, 6, 7);
+                _tile_loadd(7, bu2, 64);
+                _tile_dpbssd(5, 6, 7);
+            }
+        }
+        _tile_stored(0, gate_acc + ob * N_BLOCK, d_ff * sizeof(int32_t));
+        _tile_stored(1, up_acc + ob * N_BLOCK, d_ff * sizeof(int32_t));
+        if (group > 1) {
+            _tile_stored(2, gate_acc + (ob + 1) * N_BLOCK,
+                         d_ff * sizeof(int32_t));
+            _tile_stored(3, up_acc + (ob + 1) * N_BLOCK,
+                         d_ff * sizeof(int32_t));
+        }
+        if (group > 2) {
+            _tile_stored(4, gate_acc + (ob + 2) * N_BLOCK,
+                         d_ff * sizeof(int32_t));
+            _tile_stored(5, up_acc + (ob + 2) * N_BLOCK,
+                         d_ff * sizeof(int32_t));
+        }
+    }
+
+    std::memset(hq, 0, (size_t)ROUTER_BATCH * d_ff);
+    float hidden_scale[ROUTER_BATCH];
+    for (int r = 0; r < rows; ++r) {
+        __m512 vmax = _mm512_setzero_ps();
+        const __m512 gs = _mm512_set1_ps(sx[r] * s_gate);
+        const __m512 us = _mm512_set1_ps(sx[r] * s_up);
+        for (int f = 0; f < d_ff; f += N_BLOCK) {
+            const __m512 vg = _mm512_mul_ps(
+                _mm512_cvtepi32_ps(_mm512_load_si512(
+                    gate_acc + (size_t)r * d_ff + f)), gs);
+            const __m512 vu = _mm512_mul_ps(
+                _mm512_cvtepi32_ps(_mm512_load_si512(
+                    up_acc + (size_t)r * d_ff + f)), us);
+            const __m512 hv = _mm512_mul_ps(
+                _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
+            _mm512_store_ps(hidden + (size_t)r * d_ff + f, hv);
+            vmax = _mm512_max_ps(vmax, abs512_ps(hv));
+        }
+        const float amax = _mm512_reduce_max_ps(vmax);
+        hidden_scale[r] = amax > 0.0f ? amax / 127.0f : 1.0f;
+        const __m512 hs = _mm512_set1_ps(1.0f / hidden_scale[r]);
+        for (int f = 0; f < d_ff; f += N_BLOCK) {
+            const __m512 v = _mm512_mul_ps(
+                _mm512_load_ps(hidden + (size_t)r * d_ff + f), hs);
+            const __m128i q8 =
+                _mm512_cvtsepi32_epi8(_mm512_cvtps_epi32(v));
+            _mm_store_si128(reinterpret_cast<__m128i*>(
+                                hq + (size_t)r * d_ff + f),
+                            q8);
+        }
+    }
+
+    const int h_kblocks = d_ff / K_BLOCK;
+    const int d_oblocks = d_model / N_BLOCK;
+    const __m512 vc = _mm512_set1_ps(coeff);
+    for (int ob = 0; ob < d_oblocks; ob += 6) {
+        const int group = std::min(6, d_oblocks - ob);
+        const int8_t* group_base = down +
+            (size_t)ob * h_kblocks * TILE_BYTES;
+        _tile_zero(0);
+        if (group > 1) _tile_zero(1);
+        if (group > 2) _tile_zero(2);
+        if (group > 3) _tile_zero(3);
+        if (group > 4) _tile_zero(4);
+        if (group > 5) _tile_zero(5);
+        for (int kb = 0; kb < h_kblocks; ++kb) {
+            _tile_loadd(6, hq + kb * K_BLOCK, d_ff);
+            const int8_t* b0 = group_base +
+                (size_t)kb * group * TILE_BYTES;
+            _tile_loadd(7, b0, 64);
+            _tile_dpbssd(0, 6, 7);
+            if (group > 1) {
+                _tile_loadd(7, b0 + TILE_BYTES, 64);
+                _tile_dpbssd(1, 6, 7);
+            }
+            if (group > 2) {
+                _tile_loadd(7, b0 + 2 * TILE_BYTES, 64);
+                _tile_dpbssd(2, 6, 7);
+            }
+            if (group > 3) {
+                _tile_loadd(7, b0 + 3 * TILE_BYTES, 64);
+                _tile_dpbssd(3, 6, 7);
+            }
+            if (group > 4) {
+                _tile_loadd(7, b0 + 4 * TILE_BYTES, 64);
+                _tile_dpbssd(4, 6, 7);
+            }
+            if (group > 5) {
+                _tile_loadd(7, b0 + 5 * TILE_BYTES, 64);
+                _tile_dpbssd(5, 6, 7);
+            }
+        }
+        auto emit = [&](int output_block) {
+            for (int r = 0; r < rows; ++r) {
+                __m512 out = _mm512_mul_ps(
+                    _mm512_cvtepi32_ps(_mm512_load_si512(
+                        down_acc + r * N_BLOCK)),
+                    _mm512_set1_ps(hidden_scale[r] * s_down));
+                out = _mm512_mul_ps(out, vc);
+                float* dst = destination[r] + output_block * N_BLOCK;
+                if (accumulate)
+                    out = _mm512_add_ps(_mm512_loadu_ps(dst), out);
+                _mm512_storeu_ps(dst, out);
+            }
+        };
+        _tile_stored(0, down_acc, N_BLOCK * sizeof(int32_t));
+        emit(ob);
+        if (group > 1) {
+            _tile_stored(1, down_acc, N_BLOCK * sizeof(int32_t));
+            emit(ob + 1);
+        }
+        if (group > 2) {
+            _tile_stored(2, down_acc, N_BLOCK * sizeof(int32_t));
+            emit(ob + 2);
+        }
+        if (group > 3) {
+            _tile_stored(3, down_acc, N_BLOCK * sizeof(int32_t));
+            emit(ob + 3);
+        }
+        if (group > 4) {
+            _tile_stored(4, down_acc, N_BLOCK * sizeof(int32_t));
+            emit(ob + 4);
+        }
+        if (group > 5) {
+            _tile_stored(5, down_acc, N_BLOCK * sizeof(int32_t));
+            emit(ob + 5);
+        }
+    }
+}
+
+// Process one expert with VNNI.  The output is accumulated directly into y;
+// this removes the reference implementation's D-float temporary and a full
+// extra traversal for every expert.
+static inline void expert_vnni(const int8_t* gu, const int8_t* down,
+                               const int32_t* gu_comp,
+                               const int32_t* down_comp,
+                               float s_gate, float s_up, float s_down,
+                               const int8_t* xq, float s_x, float coeff,
+                               float* y, int d_model, int d_ff) {
+    alignas(64) float h[MAX_D_FF];
+    alignas(64) int8_t hq[MAX_D_FF];
+
+    const int d_kblocks = d_model / K_BLOCK;
+    const int h_oblocks = d_ff / N_BLOCK;
+    const __m512 gate_scale = _mm512_set1_ps(s_x * s_gate);
+    const __m512 up_scale = _mm512_set1_ps(s_x * s_up);
+    __m512 hmax = _mm512_setzero_ps();
+
+    for (int ob = 0; ob < h_oblocks; ob += 3) {
+        const int group = std::min(3, h_oblocks - ob);
+        const int8_t* group_base = gu +
+            (size_t)ob * 2 * d_kblocks * TILE_BYTES;
+        __m512i ag0 = _mm512_load_si512(gu_comp + ob * N_BLOCK);
+        __m512i au0 = _mm512_load_si512(gu_comp + d_ff + ob * N_BLOCK);
+        __m512i ag1 = _mm512_setzero_si512(), au1 = ag1;
+        __m512i ag2 = ag1, au2 = ag1;
+        if (group > 1) {
+            ag1 = _mm512_load_si512(gu_comp + (ob + 1) * N_BLOCK);
+            au1 = _mm512_load_si512(gu_comp + d_ff + (ob + 1) * N_BLOCK);
+        }
+        if (group > 2) {
+            ag2 = _mm512_load_si512(gu_comp + (ob + 2) * N_BLOCK);
+            au2 = _mm512_load_si512(gu_comp + d_ff + (ob + 2) * N_BLOCK);
+        }
+        for (int kb = 0; kb < d_kblocks; ++kb) {
+            const int8_t* b = group_base +
+                (size_t)kb * group * 2 * TILE_BYTES;
+            const int8_t* a = xq + kb * K_BLOCK;
+            for (int kg = 0; kg < K_BLOCK / 4; ++kg) {
+                int32_t x4;
+                std::memcpy(&x4, a + kg * 4, sizeof(x4));
+                const __m512i av = _mm512_set1_epi32(
+                    x4 ^ static_cast<int32_t>(0x80808080u));
+                const size_t row = (size_t)kg * 64;
+                ag0 = _mm512_dpbusd_epi32(
+                    ag0, av, _mm512_load_si512(b + row));
+                au0 = _mm512_dpbusd_epi32(
+                    au0, av, _mm512_load_si512(b + TILE_BYTES + row));
+                if (group > 1) {
+                    ag1 = _mm512_dpbusd_epi32(
+                        ag1, av, _mm512_load_si512(b + 2 * TILE_BYTES + row));
+                    au1 = _mm512_dpbusd_epi32(
+                        au1, av, _mm512_load_si512(b + 3 * TILE_BYTES + row));
+                }
+                if (group > 2) {
+                    ag2 = _mm512_dpbusd_epi32(
+                        ag2, av, _mm512_load_si512(b + 4 * TILE_BYTES + row));
+                    au2 = _mm512_dpbusd_epi32(
+                        au2, av, _mm512_load_si512(b + 5 * TILE_BYTES + row));
+                }
+            }
+        }
+        auto emit_hidden = [&](int block, __m512i ag, __m512i au) {
+            const __m512 vg =
+                _mm512_mul_ps(_mm512_cvtepi32_ps(ag), gate_scale);
+            const __m512 vu =
+                _mm512_mul_ps(_mm512_cvtepi32_ps(au), up_scale);
+            const __m512 hv = _mm512_mul_ps(
+                _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
+            _mm512_store_ps(h + block * N_BLOCK, hv);
+            hmax = _mm512_max_ps(hmax, abs512_ps(hv));
+        };
+        emit_hidden(ob, ag0, au0);
+        if (group > 1) emit_hidden(ob + 1, ag1, au1);
+        if (group > 2) emit_hidden(ob + 2, ag2, au2);
+    }
+
+    const float h_amax = _mm512_reduce_max_ps(hmax);
+    const float s_h = h_amax > 0.0f ? h_amax / 127.0f : 1.0f;
+    const __m512 vhscale = _mm512_set1_ps(1.0f / s_h);
+    for (int f = 0; f < d_ff; f += 16) {
+        const __m512 v = _mm512_mul_ps(_mm512_load_ps(h + f), vhscale);
+        const __m128i q8 = _mm512_cvtsepi32_epi8(_mm512_cvtps_epi32(v));
+        _mm_store_si128(reinterpret_cast<__m128i*>(hq + f), q8);
+    }
+
+    const int h_kblocks = d_ff / K_BLOCK;
+    const int d_oblocks = d_model / N_BLOCK;
+    const __m512 out_scale = _mm512_set1_ps(s_h * s_down);
+    const __m512 vcoeff = _mm512_set1_ps(coeff);
+    for (int ob = 0; ob < d_oblocks; ob += 6) {
+        const int group = std::min(6, d_oblocks - ob);
+        const int8_t* group_base = down +
+            (size_t)ob * h_kblocks * TILE_BYTES;
+        __m512i a0 = _mm512_load_si512(down_comp + ob * N_BLOCK);
+        __m512i a1 = _mm512_setzero_si512(), a2 = a1, a3 = a1;
+        __m512i a4 = a1, a5 = a1;
+        if (group > 1) a1 = _mm512_load_si512(down_comp + (ob + 1) * N_BLOCK);
+        if (group > 2) a2 = _mm512_load_si512(down_comp + (ob + 2) * N_BLOCK);
+        if (group > 3) a3 = _mm512_load_si512(down_comp + (ob + 3) * N_BLOCK);
+        if (group > 4) a4 = _mm512_load_si512(down_comp + (ob + 4) * N_BLOCK);
+        if (group > 5) a5 = _mm512_load_si512(down_comp + (ob + 5) * N_BLOCK);
+        for (int kb = 0; kb < h_kblocks; ++kb) {
+            const int8_t* b = group_base + (size_t)kb * group * TILE_BYTES;
+            const int8_t* a = hq + kb * K_BLOCK;
+            for (int kg = 0; kg < K_BLOCK / 4; ++kg) {
+                int32_t x4;
+                std::memcpy(&x4, a + kg * 4, sizeof(x4));
+                const __m512i av = _mm512_set1_epi32(
+                    x4 ^ static_cast<int32_t>(0x80808080u));
+                const size_t row = (size_t)kg * 64;
+                a0 = _mm512_dpbusd_epi32(a0, av, _mm512_load_si512(b + row));
+                if (group > 1)
+                    a1 = _mm512_dpbusd_epi32(
+                        a1, av, _mm512_load_si512(b + TILE_BYTES + row));
+                if (group > 2)
+                    a2 = _mm512_dpbusd_epi32(
+                        a2, av, _mm512_load_si512(b + 2 * TILE_BYTES + row));
+                if (group > 3)
+                    a3 = _mm512_dpbusd_epi32(
+                        a3, av, _mm512_load_si512(b + 3 * TILE_BYTES + row));
+                if (group > 4)
+                    a4 = _mm512_dpbusd_epi32(
+                        a4, av, _mm512_load_si512(b + 4 * TILE_BYTES + row));
+                if (group > 5)
+                    a5 = _mm512_dpbusd_epi32(
+                        a5, av, _mm512_load_si512(b + 5 * TILE_BYTES + row));
+            }
+        }
+        auto emit_output = [&](int block, __m512i acc) {
+            __m512 out = _mm512_mul_ps(_mm512_cvtepi32_ps(acc), out_scale);
+            out = _mm512_mul_ps(out, vcoeff);
+            float* yd = y + block * N_BLOCK;
+            _mm512_storeu_ps(yd, _mm512_add_ps(_mm512_loadu_ps(yd), out));
+        };
+        emit_output(ob, a0);
+        if (group > 1) emit_output(ob + 1, a1);
+        if (group > 2) emit_output(ob + 2, a2);
+        if (group > 3) emit_output(ob + 3, a3);
+        if (group > 4) emit_output(ob + 4, a4);
+        if (group > 5) emit_output(ob + 5, a5);
+    }
+}
+
+template <int GROUP>
+static inline void vnni_s1_gu_group(const int8_t* gu, const int32_t* comp,
+                                    const int8_t* xq, int ob,
+                                    int32_t* gate_acc, int32_t* up_acc) {
+    __m512i gate[GROUP];
+    __m512i up[GROUP];
+#pragma GCC unroll 3
+    for (int j = 0; j < GROUP; ++j) {
+        gate[j] = _mm512_load_si512(comp + (ob + j) * N_BLOCK);
+        up[j] = _mm512_load_si512(comp + 128 + (ob + j) * N_BLOCK);
+    }
+    const int8_t* base = gu + (size_t)ob * 2 * 4 * TILE_BYTES;
+    for (int kb = 0; kb < 4; ++kb) {
+        const int8_t* stream = base + (size_t)kb * GROUP * 2 * TILE_BYTES;
+        for (int kg = 0; kg < 16; ++kg) {
+            int32_t x4;
+            std::memcpy(&x4, xq + kb * 64 + kg * 4, sizeof(x4));
+            const __m512i av = _mm512_set1_epi32(
+                x4 ^ static_cast<int32_t>(0x80808080u));
+            const size_t row = (size_t)kg * 64;
+#pragma GCC unroll 3
+            for (int j = 0; j < GROUP; ++j) {
+                gate[j] = _mm512_dpbusd_epi32(
+                    gate[j], av,
+                    _mm512_load_si512(stream + (size_t)j * 2 * TILE_BYTES + row));
+                up[j] = _mm512_dpbusd_epi32(
+                    up[j], av,
+                    _mm512_load_si512(stream + ((size_t)j * 2 + 1) * TILE_BYTES + row));
+            }
+        }
+    }
+#pragma GCC unroll 3
+    for (int j = 0; j < GROUP; ++j) {
+        _mm512_store_si512(gate_acc + (ob + j) * N_BLOCK, gate[j]);
+        _mm512_store_si512(up_acc + (ob + j) * N_BLOCK, up[j]);
+    }
+}
+
+static __attribute__((noinline)) void vnni_s1_gu_dot(
+    const int8_t* gu, const int32_t* comp, const int8_t* xq,
+    int32_t* gate_acc, int32_t* up_acc) {
+    vnni_s1_gu_group<3>(gu, comp, xq, 0, gate_acc, up_acc);
+    vnni_s1_gu_group<3>(gu, comp, xq, 3, gate_acc, up_acc);
+    vnni_s1_gu_group<2>(gu, comp, xq, 6, gate_acc, up_acc);
+}
+
+template <int GROUP>
+static inline void vnni_s1_down_group(const int8_t* down,
+                                      const int32_t* comp, const int8_t* hq,
+                                      int ob, int32_t* output_acc) {
+    __m512i acc[GROUP];
+#pragma GCC unroll 6
+    for (int j = 0; j < GROUP; ++j)
+        acc[j] = _mm512_load_si512(comp + (ob + j) * N_BLOCK);
+    const int8_t* base = down + (size_t)ob * 2 * TILE_BYTES;
+    for (int kb = 0; kb < 2; ++kb) {
+        const int8_t* stream = base + (size_t)kb * GROUP * TILE_BYTES;
+        for (int kg = 0; kg < 16; ++kg) {
+            int32_t x4;
+            std::memcpy(&x4, hq + kb * 64 + kg * 4, sizeof(x4));
+            const __m512i av = _mm512_set1_epi32(
+                x4 ^ static_cast<int32_t>(0x80808080u));
+            const size_t row = (size_t)kg * 64;
+#pragma GCC unroll 6
+            for (int j = 0; j < GROUP; ++j)
+                acc[j] = _mm512_dpbusd_epi32(
+                    acc[j], av,
+                    _mm512_load_si512(stream + (size_t)j * TILE_BYTES + row));
+        }
+    }
+#pragma GCC unroll 6
+    for (int j = 0; j < GROUP; ++j)
+        _mm512_store_si512(output_acc + (ob + j) * N_BLOCK, acc[j]);
+}
+
+static __attribute__((noinline)) void vnni_s1_down_dot(
+    const int8_t* down, const int32_t* comp, const int8_t* hq,
+    int32_t* output_acc) {
+    vnni_s1_down_group<6>(down, comp, hq, 0, output_acc);
+    vnni_s1_down_group<6>(down, comp, hq, 6, output_acc);
+    vnni_s1_down_group<4>(down, comp, hq, 12, output_acc);
+}
+
+static inline void expert_vnni_s1(
+    const int8_t* gu, const int8_t* down, const int32_t* gu_comp,
+    const int32_t* down_comp, float s_gate, float s_up, float s_down,
+    const int8_t* xq, float s_x, float* output) {
+    alignas(64) int32_t gate_acc[128];
+    alignas(64) int32_t up_acc[128];
+    alignas(64) float hidden[128];
+    alignas(64) int8_t hq[128];
+    alignas(64) int32_t output_acc[256];
+    vnni_s1_gu_dot(gu, gu_comp, xq, gate_acc, up_acc);
+
+    const __m512 gs = _mm512_set1_ps(s_x * s_gate);
+    const __m512 us = _mm512_set1_ps(s_x * s_up);
+    __m512 vmax = _mm512_setzero_ps();
+    for (int f = 0; f < 128; f += N_BLOCK) {
+        const __m512 vg = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(_mm512_load_si512(gate_acc + f)), gs);
+        const __m512 vu = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(_mm512_load_si512(up_acc + f)), us);
+        const __m512 h = _mm512_mul_ps(
+            _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
+        _mm512_store_ps(hidden + f, h);
+        vmax = _mm512_max_ps(vmax, abs512_ps(h));
+    }
+    const float amax = _mm512_reduce_max_ps(vmax);
+    const float sh = amax > 0.0f ? amax / 127.0f : 1.0f;
+    const __m512 inverse = _mm512_set1_ps(1.0f / sh);
+    for (int f = 0; f < 128; f += N_BLOCK) {
+        const __m512 q = _mm512_mul_ps(_mm512_load_ps(hidden + f), inverse);
+        _mm_store_si128(reinterpret_cast<__m128i*>(hq + f),
+                        _mm512_cvtsepi32_epi8(_mm512_cvtps_epi32(q)));
+    }
+
+    vnni_s1_down_dot(down, down_comp, hq, output_acc);
+    const __m512 scale = _mm512_set1_ps(sh * s_down);
+    for (int d = 0; d < 256; d += N_BLOCK)
+        _mm512_store_ps(output + d,
+                        _mm512_mul_ps(_mm512_cvtepi32_ps(
+                            _mm512_load_si512(output_acc + d)), scale));
+}
+
+static inline void select_topk(const float* affinity, const MoEWeights& w,
+                               int* indices, float* gates) {
+    float best_score[MAX_TOP_K] = {
+        -std::numeric_limits<float>::infinity(),
+        -std::numeric_limits<float>::infinity(),
+        -std::numeric_limits<float>::infinity(),
+        -std::numeric_limits<float>::infinity()};
+    int best_idx[MAX_TOP_K] = {-1, -1, -1, -1};
+
+    // Experts are visited in increasing order and insertion is strict, so
+    // equal scores retain the reference implementation's smaller-index tie
+    // break without a separate used[] array or K full rescans.
+    for (int e = 0; e < w.num_experts; ++e) {
+        const float score = affinity[e] + w.bias[e];
+        int pos = 0;
+        while (pos < w.top_k && !(score > best_score[pos])) ++pos;
+        if (pos == w.top_k) continue;
+        for (int j = w.top_k - 1; j > pos; --j) {
+            best_score[j] = best_score[j - 1];
+            best_idx[j] = best_idx[j - 1];
+        }
+        best_score[pos] = score;
+        best_idx[pos] = e;
+    }
+
+    float sum = 0.0f;
+    for (int k = 0; k < w.top_k; ++k) sum += affinity[best_idx[k]];
+    for (int k = 0; k < w.top_k; ++k) {
+        indices[k] = best_idx[k];
+        gates[k] = affinity[best_idx[k]] / sum;
+    }
+}
+
+// Keep the FP32 dot-product kernel separate from sigmoid.  When both were
+// inlined into one large function GCC kept polynomial constants live across
+// the D loop and spilled ten of the sixteen accumulators on every iteration.
+// These explicit accumulators all remain in ZMM registers.
+static __attribute__((noinline)) void router_dot_16(
+    const float* x, int d_model, const float* wr, float* out) {
+    __m512 a0 = _mm512_setzero_ps(), a1 = a0, a2 = a0, a3 = a0;
+    __m512 a4 = a0, a5 = a0, a6 = a0, a7 = a0;
+    __m512 a8 = a0, a9 = a0, a10 = a0, a11 = a0;
+    __m512 a12 = a0, a13 = a0, a14 = a0, a15 = a0;
+    for (int d = 0; d < d_model; ++d) {
+        const __m512 wv = _mm512_load_ps(wr + (size_t)d * N_BLOCK);
+        a0 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[d]), a0);
+        a1 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[d_model + d]), a1);
+        a2 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[2LL * d_model + d]), a2);
+        a3 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[3LL * d_model + d]), a3);
+        a4 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[4LL * d_model + d]), a4);
+        a5 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[5LL * d_model + d]), a5);
+        a6 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[6LL * d_model + d]), a6);
+        a7 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[7LL * d_model + d]), a7);
+        a8 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[8LL * d_model + d]), a8);
+        a9 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[9LL * d_model + d]), a9);
+        a10 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[10LL * d_model + d]), a10);
+        a11 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[11LL * d_model + d]), a11);
+        a12 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[12LL * d_model + d]), a12);
+        a13 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[13LL * d_model + d]), a13);
+        a14 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[14LL * d_model + d]), a14);
+        a15 = _mm512_fmadd_ps(wv, _mm512_set1_ps(x[15LL * d_model + d]), a15);
+    }
+    _mm512_store_ps(out + 0LL * MAX_NUM_EXPERTS, a0);
+    _mm512_store_ps(out + 1LL * MAX_NUM_EXPERTS, a1);
+    _mm512_store_ps(out + 2LL * MAX_NUM_EXPERTS, a2);
+    _mm512_store_ps(out + 3LL * MAX_NUM_EXPERTS, a3);
+    _mm512_store_ps(out + 4LL * MAX_NUM_EXPERTS, a4);
+    _mm512_store_ps(out + 5LL * MAX_NUM_EXPERTS, a5);
+    _mm512_store_ps(out + 6LL * MAX_NUM_EXPERTS, a6);
+    _mm512_store_ps(out + 7LL * MAX_NUM_EXPERTS, a7);
+    _mm512_store_ps(out + 8LL * MAX_NUM_EXPERTS, a8);
+    _mm512_store_ps(out + 9LL * MAX_NUM_EXPERTS, a9);
+    _mm512_store_ps(out + 10LL * MAX_NUM_EXPERTS, a10);
+    _mm512_store_ps(out + 11LL * MAX_NUM_EXPERTS, a11);
+    _mm512_store_ps(out + 12LL * MAX_NUM_EXPERTS, a12);
+    _mm512_store_ps(out + 13LL * MAX_NUM_EXPERTS, a13);
+    _mm512_store_ps(out + 14LL * MAX_NUM_EXPERTS, a14);
+    _mm512_store_ps(out + 15LL * MAX_NUM_EXPERTS, a15);
+}
+
+static __attribute__((noinline)) void router_dot_small(
+    const float* x, int rows, int d_model, const float* wr, float* out) {
+    __m512 acc[ROUTER_BATCH];
+    for (int r = 0; r < rows; ++r) acc[r] = _mm512_setzero_ps();
+    for (int d = 0; d < d_model; ++d) {
+        const __m512 wv = _mm512_load_ps(wr + (size_t)d * N_BLOCK);
+        for (int r = 0; r < rows; ++r)
+            acc[r] = _mm512_fmadd_ps(
+                wv, _mm512_set1_ps(x[(size_t)r * d_model + d]), acc[r]);
+    }
+    for (int r = 0; r < rows; ++r)
+        _mm512_store_ps(out + (size_t)r * MAX_NUM_EXPERTS, acc[r]);
+}
+
+static __attribute__((noinline)) void router_dot_1(
+    const float* x, int d_model, const float* wr, float* out) {
+    __m512 a0 = _mm512_setzero_ps(), a1 = a0, a2 = a0, a3 = a0;
+    __m512 a4 = a0, a5 = a0, a6 = a0, a7 = a0;
+    for (int d = 0; d < d_model; d += 8) {
+        a0 = _mm512_fmadd_ps(_mm512_load_ps(wr + (size_t)(d + 0) * N_BLOCK),
+                             _mm512_set1_ps(x[d + 0]), a0);
+        a1 = _mm512_fmadd_ps(_mm512_load_ps(wr + (size_t)(d + 1) * N_BLOCK),
+                             _mm512_set1_ps(x[d + 1]), a1);
+        a2 = _mm512_fmadd_ps(_mm512_load_ps(wr + (size_t)(d + 2) * N_BLOCK),
+                             _mm512_set1_ps(x[d + 2]), a2);
+        a3 = _mm512_fmadd_ps(_mm512_load_ps(wr + (size_t)(d + 3) * N_BLOCK),
+                             _mm512_set1_ps(x[d + 3]), a3);
+        a4 = _mm512_fmadd_ps(_mm512_load_ps(wr + (size_t)(d + 4) * N_BLOCK),
+                             _mm512_set1_ps(x[d + 4]), a4);
+        a5 = _mm512_fmadd_ps(_mm512_load_ps(wr + (size_t)(d + 5) * N_BLOCK),
+                             _mm512_set1_ps(x[d + 5]), a5);
+        a6 = _mm512_fmadd_ps(_mm512_load_ps(wr + (size_t)(d + 6) * N_BLOCK),
+                             _mm512_set1_ps(x[d + 6]), a6);
+        a7 = _mm512_fmadd_ps(_mm512_load_ps(wr + (size_t)(d + 7) * N_BLOCK),
+                             _mm512_set1_ps(x[d + 7]), a7);
+    }
+    a0 = _mm512_add_ps(a0, a1);
+    a2 = _mm512_add_ps(a2, a3);
+    a4 = _mm512_add_ps(a4, a5);
+    a6 = _mm512_add_ps(a6, a7);
+    a0 = _mm512_add_ps(a0, a2);
+    a4 = _mm512_add_ps(a4, a6);
+    _mm512_store_ps(out, _mm512_add_ps(a0, a4));
+}
+
+// Router for up to sixteen tokens.  The same 16-expert weight vector is
+// reused across all rows before advancing D, i.e. a 16x16 register-blocked
+// GEMM rather than independent GEMVs.
+static inline void router_block(const float* x, int rows, int d_model,
+                                float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS]) {
+    const int eblocks = pw.padded_experts / N_BLOCK;
+    for (int eb = 0; eb < eblocks; ++eb) {
+        const float* wr = pw.router + (size_t)eb * d_model * N_BLOCK;
+        float* out = affinity[0] + eb * N_BLOCK;
+        if (rows == ROUTER_BATCH)
+            router_dot_16(x, d_model, wr, out);
+        else if (rows == 1)
+            router_dot_1(x, d_model, wr, out);
+        else
+            router_dot_small(x, rows, d_model, wr, out);
+    }
+    for (int r = 0; r < rows; ++r) {
+        for (int eb = 0; eb < eblocks; ++eb) {
+            float* v = affinity[r] + eb * N_BLOCK;
+            _mm512_store_ps(v, sigmoid512_ps(_mm512_load_ps(v)));
+        }
+    }
+}
+
+static inline void forward_block(const float* x, const MoEWeights& w,
+                                 float* y, int rows) {
+    alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
+    router_block(x, rows, w.d_model, affinity);
+
+    for (int r = 0; r < rows; ++r) {
+        const float* xr = x + (size_t)r * w.d_model;
+        float* yr = y + (size_t)r * w.d_model;
+        int indices[MAX_TOP_K];
+        float gates[MAX_TOP_K];
+        select_topk(affinity[r], w, indices, gates);
+
+        alignas(64) int8_t xq[MAX_D_MODEL];
+        float s_x;
+        quantize_row(xr, w.d_model, xq, s_x);
+        std::memcpy(yr, xr, (size_t)w.d_model * sizeof(float));
+
+        expert_vnni(pw.shared_gu, pw.shared_down,
+                    pw.shared_gu_comp, pw.shared_down_comp,
+                    w.sh_s_gate, w.sh_s_up, w.sh_s_down,
+                    xq, s_x, 1.0f, yr, w.d_model, w.d_ff);
+        for (int k = 0; k < w.top_k; ++k) {
+            const int e = indices[k];
+            expert_vnni(pw.routed_gu + (size_t)e * pw.gu_expert_stride,
+                        pw.routed_down + (size_t)e * pw.down_expert_stride,
+                        pw.routed_gu_comp + (size_t)e * 2 * w.d_ff,
+                        pw.routed_down_comp + (size_t)e * w.d_model,
+                        w.s_gate[e], w.s_up[e], w.s_down[e], xq, s_x,
+                        gates[k], yr, w.d_model, w.d_ff);
+        }
+    }
+}
+
+struct SinglePipelineContext {
+    const MoEWeights* w;
+    const int* indices;
+    const int8_t* aq;
+    float sx;
+    int experts;
+    int gu_groups;
+    int down_groups;
+    int team;
+    uint8_t gu_owner[(MAX_TOP_K + 1) * 11];
+    uint8_t down_owner[(MAX_TOP_K + 1) * 11];
+};
+
+static void assign_single_tasks(SinglePipelineContext& ctx) {
+    const MoEWeights& w = *ctx.w;
+    // Profile-guided colors for the 16 routed experts plus the shared expert.
+    // A color is the first core of that expert's cyclic group distribution.
+    // Unlike per-call balancing, this keeps every packed tile on one core and
+    // therefore preserves private-L2 residency across the rotating batches.
+    static constexpr uint8_t s2_rotation[17] = {
+        1, 4, 1, 1, 1, 4, 3, 6, 6, 5, 4, 4, 5, 2, 6, 2, 7};
+    auto assign_stage = [&](int groups, uint8_t* owner) {
+        for (int slot = 0; slot < ctx.experts; ++slot) {
+            const int expert_key =
+                slot == 0 ? w.num_experts : ctx.indices[slot - 1];
+            const int rotation =
+                (ctx.team == 8 && w.num_experts == 16)
+                    ? s2_rotation[expert_key]
+                    : (expert_key * groups) % ctx.team;
+            for (int g = 0; g < groups; ++g)
+                owner[slot * groups + g] =
+                    static_cast<uint8_t>((rotation + g) % ctx.team);
+        }
+    };
+    assign_stage(ctx.gu_groups, ctx.gu_owner);
+    assign_stage(ctx.down_groups, ctx.down_owner);
+}
+
+static inline void single_expert_parameters(
+    const SinglePipelineContext& ctx, int slot, const int8_t*& gu,
+    const int8_t*& down, float& sg, float& su, float& sd) {
+    const MoEWeights& w = *ctx.w;
+    const int e = slot == 0 ? -1 : ctx.indices[slot - 1];
+    gu = slot == 0
+        ? pw.shared_gu
+        : pw.routed_gu + (size_t)e * pw.gu_expert_stride;
+    down = slot == 0
+        ? pw.shared_down
+        : pw.routed_down + (size_t)e * pw.down_expert_stride;
+    sg = slot == 0 ? w.sh_s_gate : w.s_gate[e];
+    su = slot == 0 ? w.sh_s_up : w.s_up[e];
+    sd = slot == 0 ? w.sh_s_down : w.s_down[e];
+}
+
+static void single_whole_vnni_task(int slot, void* opaque) {
+    const auto& ctx = *static_cast<SinglePipelineContext*>(opaque);
+    const MoEWeights& w = *ctx.w;
+    const int e = slot == 0 ? -1 : ctx.indices[slot - 1];
+    const int8_t* gu = slot == 0
+        ? pw.shared_gu
+        : pw.routed_gu + (size_t)e * pw.gu_expert_stride;
+    const int8_t* down = slot == 0
+        ? pw.shared_down
+        : pw.routed_down + (size_t)e * pw.down_expert_stride;
+    const int32_t* gu_comp = slot == 0
+        ? pw.shared_gu_comp
+        : pw.routed_gu_comp + (size_t)e * 2 * w.d_ff;
+    const int32_t* down_comp = slot == 0
+        ? pw.shared_down_comp
+        : pw.routed_down_comp + (size_t)e * w.d_model;
+    const float sg = slot == 0 ? w.sh_s_gate : w.s_gate[e];
+    const float su = slot == 0 ? w.sh_s_up : w.s_up[e];
+    const float sd = slot == 0 ? w.sh_s_down : w.s_down[e];
+    float* output = pw.routed_output + (size_t)slot * w.d_model;
+    if (w.d_model == 256 && w.d_ff == 128) {
+        expert_vnni_s1(gu, down, gu_comp, down_comp, sg, su, sd, ctx.aq,
+                       ctx.sx, output);
+    } else {
+        std::memset(output, 0, (size_t)w.d_model * sizeof(float));
+        expert_vnni(gu, down, gu_comp, down_comp, sg, su, sd, ctx.aq,
+                    ctx.sx, 1.0f, output, w.d_model, w.d_ff);
+    }
+}
+
+struct SingleS1FusedContext {
+    SinglePipelineContext* pipeline = nullptr;
+    const float* x = nullptr;
+    float* gates = nullptr;
+    alignas(64) std::atomic<int> route_ready{0};
+};
+
+// The shared expert is independent of routing.  Run it immediately on one
+// worker while the main core computes the router; the other four workers
+// consume the selected routed experts as soon as their indices are published.
+// This removes router latency from the critical path without another pool
+// launch or a global barrier.
+static void single_s1_fused_task(int id, void* opaque) {
+    auto& fused = *static_cast<SingleS1FusedContext*>(opaque);
+    SinglePipelineContext& ctx = *fused.pipeline;
+    if (id == 0) {
+        alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
+        router_block(fused.x, 1, ctx.w->d_model, affinity);
+        select_topk(affinity[0], *ctx.w,
+                    const_cast<int*>(ctx.indices), fused.gates);
+        int* indices = const_cast<int*>(ctx.indices);
+        for (int i = 1; i < ctx.w->top_k; ++i) {
+            const int index = indices[i];
+            const float gate = fused.gates[i];
+            int j = i;
+            while (j != 0 && indices[j - 1] > index) {
+                indices[j] = indices[j - 1];
+                fused.gates[j] = fused.gates[j - 1];
+                --j;
+            }
+            indices[j] = index;
+            fused.gates[j] = gate;
+        }
+        fused.route_ready.store(1, std::memory_order_release);
+        return;
+    }
+
+    const int slot = id - 1;
+    if (slot != 0) {
+        while (fused.route_ready.load(std::memory_order_acquire) == 0)
+            _mm_pause();
+    }
+    single_whole_vnni_task(slot, &ctx);
+}
+
+static void single_gu_task(int task, void* opaque) {
+    const auto& ctx = *static_cast<SinglePipelineContext*>(opaque);
+    const MoEWeights& w = *ctx.w;
+    const int slot = task / ctx.gu_groups;
+    const int group_index = task - slot * ctx.gu_groups;
+    const int ob = group_index * 3;
+    const int h_oblocks = w.d_ff / N_BLOCK;
+    const int group = std::min(3, h_oblocks - ob);
+    const int d_kblocks = w.d_model / K_BLOCK;
+    const int8_t *gu, *down;
+    float sg, su, sd;
+    single_expert_parameters(ctx, slot, gu, down, sg, su, sd);
+    const int8_t* group_base = gu +
+        (size_t)ob * 2 * d_kblocks * TILE_BYTES;
+
+    _tile_zero(0);
+    _tile_zero(1);
+    if (group > 1) {
+        _tile_zero(2);
+        _tile_zero(3);
+    }
+    if (group > 2) {
+        _tile_zero(4);
+        _tile_zero(5);
+    }
+    for (int kb = 0; kb < d_kblocks; ++kb) {
+        _tile_loadd(6, ctx.aq + kb * K_BLOCK, w.d_model);
+        const int8_t* b = group_base +
+            (size_t)kb * group * 2 * TILE_BYTES;
+        _tile_loadd(7, b, 64);
+        _tile_dpbssd(0, 6, 7);
+        _tile_loadd(7, b + TILE_BYTES, 64);
+        _tile_dpbssd(1, 6, 7);
+        if (group > 1) {
+            _tile_loadd(7, b + 2 * TILE_BYTES, 64);
+            _tile_dpbssd(2, 6, 7);
+            _tile_loadd(7, b + 3 * TILE_BYTES, 64);
+            _tile_dpbssd(3, 6, 7);
+        }
+        if (group > 2) {
+            _tile_loadd(7, b + 4 * TILE_BYTES, 64);
+            _tile_dpbssd(4, 6, 7);
+            _tile_loadd(7, b + 5 * TILE_BYTES, 64);
+            _tile_dpbssd(5, 6, 7);
+        }
+    }
+    int32_t* gate = pw.single_gate_acc + (size_t)slot * w.d_ff;
+    int32_t* up = pw.single_up_acc + (size_t)slot * w.d_ff;
+    _tile_stored(0, gate + ob * N_BLOCK, w.d_ff * sizeof(int32_t));
+    _tile_stored(1, up + ob * N_BLOCK, w.d_ff * sizeof(int32_t));
+    if (group > 1) {
+        _tile_stored(2, gate + (ob + 1) * N_BLOCK,
+                     w.d_ff * sizeof(int32_t));
+        _tile_stored(3, up + (ob + 1) * N_BLOCK,
+                     w.d_ff * sizeof(int32_t));
+    }
+    if (group > 2) {
+        _tile_stored(4, gate + (ob + 2) * N_BLOCK,
+                     w.d_ff * sizeof(int32_t));
+        _tile_stored(5, up + (ob + 2) * N_BLOCK,
+                     w.d_ff * sizeof(int32_t));
+    }
+
+    const __m512 gs = _mm512_set1_ps(ctx.sx * sg);
+    const __m512 us = _mm512_set1_ps(ctx.sx * su);
+    __m512 vmax = _mm512_setzero_ps();
+    float* hidden = pw.single_hidden + (size_t)slot * w.d_ff;
+    for (int j = 0; j < group; ++j) {
+        const int f = (ob + j) * N_BLOCK;
+        const __m512 vg = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(_mm512_load_si512(gate + f)), gs);
+        const __m512 vu = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(_mm512_load_si512(up + f)), us);
+        const __m512 hv = _mm512_mul_ps(
+            _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
+        _mm512_store_ps(hidden + f, hv);
+        vmax = _mm512_max_ps(vmax, abs512_ps(hv));
+    }
+    pw.single_chunk_max[task] = _mm512_reduce_max_ps(vmax);
+}
+
+static void single_quantize_task(int slot, void* opaque) {
+    const auto& ctx = *static_cast<SinglePipelineContext*>(opaque);
+    const MoEWeights& w = *ctx.w;
+    float amax = 0.0f;
+    const float* maxima =
+        pw.single_chunk_max + (size_t)slot * ctx.gu_groups;
+    for (int g = 0; g < ctx.gu_groups; ++g)
+        amax = std::max(amax, maxima[g]);
+    const float scale = amax > 0.0f ? amax / 127.0f : 1.0f;
+    pw.single_hscale[slot] = scale;
+    const __m512 inverse = _mm512_set1_ps(1.0f / scale);
+    const float* hidden = pw.single_hidden + (size_t)slot * w.d_ff;
+    int8_t* hq = pw.single_hq + (size_t)slot * w.d_ff;
+    for (int f = 0; f < w.d_ff; f += N_BLOCK) {
+        const __m512 v = _mm512_mul_ps(_mm512_load_ps(hidden + f), inverse);
+        const __m128i q8 =
+            _mm512_cvtsepi32_epi8(_mm512_cvtps_epi32(v));
+        _mm_store_si128(reinterpret_cast<__m128i*>(hq + f), q8);
+    }
+}
+
+static void single_down_task(int task, void* opaque) {
+    const auto& ctx = *static_cast<SinglePipelineContext*>(opaque);
+    const MoEWeights& w = *ctx.w;
+    const int slot = task / ctx.down_groups;
+    const int group_index = task - slot * ctx.down_groups;
+    const int ob = group_index * 6;
+    const int d_oblocks = w.d_model / N_BLOCK;
+    const int group = std::min(6, d_oblocks - ob);
+    const int h_kblocks = w.d_ff / K_BLOCK;
+    const int8_t *gu, *down;
+    float sg, su, sd;
+    single_expert_parameters(ctx, slot, gu, down, sg, su, sd);
+    const int8_t* group_base = down +
+        (size_t)ob * h_kblocks * TILE_BYTES;
+    const int8_t* hq = pw.single_hq + (size_t)slot * w.d_ff;
+
+    _tile_zero(0);
+    if (group > 1) _tile_zero(1);
+    if (group > 2) _tile_zero(2);
+    if (group > 3) _tile_zero(3);
+    if (group > 4) _tile_zero(4);
+    if (group > 5) _tile_zero(5);
+    for (int kb = 0; kb < h_kblocks; ++kb) {
+        _tile_loadd(6, hq + kb * K_BLOCK, w.d_ff);
+        const int8_t* b = group_base +
+            (size_t)kb * group * TILE_BYTES;
+        _tile_loadd(7, b, 64);
+        _tile_dpbssd(0, 6, 7);
+        if (group > 1) {
+            _tile_loadd(7, b + TILE_BYTES, 64);
+            _tile_dpbssd(1, 6, 7);
+        }
+        if (group > 2) {
+            _tile_loadd(7, b + 2 * TILE_BYTES, 64);
+            _tile_dpbssd(2, 6, 7);
+        }
+        if (group > 3) {
+            _tile_loadd(7, b + 3 * TILE_BYTES, 64);
+            _tile_dpbssd(3, 6, 7);
+        }
+        if (group > 4) {
+            _tile_loadd(7, b + 4 * TILE_BYTES, 64);
+            _tile_dpbssd(4, 6, 7);
+        }
+        if (group > 5) {
+            _tile_loadd(7, b + 5 * TILE_BYTES, 64);
+            _tile_dpbssd(5, 6, 7);
+        }
+    }
+    alignas(64) int32_t acc[N_BLOCK];
+    float* output = pw.routed_output + (size_t)slot * w.d_model;
+    const __m512 scale =
+        _mm512_set1_ps(pw.single_hscale[slot] * sd);
+    auto emit = [&](int block) {
+        _mm512_store_ps(output + (size_t)block * N_BLOCK,
+                        _mm512_mul_ps(_mm512_cvtepi32_ps(
+                            _mm512_load_si512(acc)), scale));
+    };
+    _tile_stored(0, acc, 64);
+    emit(ob);
+    if (group > 1) {
+        _tile_stored(1, acc, 64); emit(ob + 1);
+    }
+    if (group > 2) {
+        _tile_stored(2, acc, 64); emit(ob + 2);
+    }
+    if (group > 3) {
+        _tile_stored(3, acc, 64); emit(ob + 3);
+    }
+    if (group > 4) {
+        _tile_stored(4, acc, 64); emit(ob + 4);
+    }
+    if (group > 5) {
+        _tile_stored(5, acc, 64); emit(ob + 5);
+    }
+}
+
+static void single_vnni_gu_s1_task(int task, void* opaque) {
+    const auto& ctx = *static_cast<SinglePipelineContext*>(opaque);
+    const MoEWeights& w = *ctx.w;
+    const int slot = task / 3;
+    const int group_index = task - slot * 3;
+    const int e = slot == 0 ? -1 : ctx.indices[slot - 1];
+    const int8_t* gu = slot == 0
+        ? pw.shared_gu
+        : pw.routed_gu + (size_t)e * pw.gu_expert_stride;
+    const int32_t* comp = slot == 0
+        ? pw.shared_gu_comp
+        : pw.routed_gu_comp + (size_t)e * 2 * w.d_ff;
+    const float sg = slot == 0 ? w.sh_s_gate : w.s_gate[e];
+    const float su = slot == 0 ? w.sh_s_up : w.s_up[e];
+    int32_t* gate = pw.single_gate_acc + (size_t)slot * 128;
+    int32_t* up = pw.single_up_acc + (size_t)slot * 128;
+    const int ob = group_index * 3;
+    if (group_index < 2)
+        vnni_s1_gu_group<3>(gu, comp, ctx.aq, ob, gate, up);
+    else
+        vnni_s1_gu_group<2>(gu, comp, ctx.aq, ob, gate, up);
+
+    const int group = group_index < 2 ? 3 : 2;
+    const __m512 gs = _mm512_set1_ps(ctx.sx * sg);
+    const __m512 us = _mm512_set1_ps(ctx.sx * su);
+    __m512 vmax = _mm512_setzero_ps();
+    float* hidden = pw.single_hidden + (size_t)slot * 128;
+    for (int j = 0; j < group; ++j) {
+        const int f = (ob + j) * N_BLOCK;
+        const __m512 vg = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(_mm512_load_si512(gate + f)), gs);
+        const __m512 vu = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(_mm512_load_si512(up + f)), us);
+        const __m512 h = _mm512_mul_ps(
+            _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
+        _mm512_store_ps(hidden + f, h);
+        vmax = _mm512_max_ps(vmax, abs512_ps(h));
+    }
+    pw.single_chunk_max[task] = _mm512_reduce_max_ps(vmax);
+}
+
+static void single_vnni_down_s1_task(int task, void* opaque) {
+    const auto& ctx = *static_cast<SinglePipelineContext*>(opaque);
+    const MoEWeights& w = *ctx.w;
+    const int slot = task / 3;
+    const int group_index = task - slot * 3;
+    const int e = slot == 0 ? -1 : ctx.indices[slot - 1];
+    const int8_t* down = slot == 0
+        ? pw.shared_down
+        : pw.routed_down + (size_t)e * pw.down_expert_stride;
+    const int32_t* comp = slot == 0
+        ? pw.shared_down_comp
+        : pw.routed_down_comp + (size_t)e * w.d_model;
+    const float sd = slot == 0 ? w.sh_s_down : w.s_down[e];
+    const int8_t* hq = pw.single_hq + (size_t)slot * 128;
+    int32_t* acc = pw.single_down_acc + (size_t)slot * 256;
+    const int ob = group_index * 6;
+    if (group_index < 2)
+        vnni_s1_down_group<6>(down, comp, hq, ob, acc);
+    else
+        vnni_s1_down_group<4>(down, comp, hq, ob, acc);
+
+    const int group = group_index < 2 ? 6 : 4;
+    const __m512 scale =
+        _mm512_set1_ps(pw.single_hscale[slot] * sd);
+    float* output = pw.routed_output + (size_t)slot * 256;
+    for (int j = 0; j < group; ++j) {
+        const int d = (ob + j) * N_BLOCK;
+        _mm512_store_ps(output + d,
+                        _mm512_mul_ps(_mm512_cvtepi32_ps(
+                            _mm512_load_si512(acc + d)), scale));
+    }
+}
+
+struct SingleS1Context {
+    SinglePipelineContext* pipeline = nullptr;
+    int team = 1;
+    alignas(64) std::atomic<int> gu_barrier{0};
+    alignas(64) std::atomic<int> quant_barrier{0};
+};
+
+static void single_s1_pipeline_worker(int id, void* opaque) {
+    auto& shared = *static_cast<SingleS1Context*>(opaque);
+    SinglePipelineContext& ctx = *shared.pipeline;
+    const int tasks = ctx.experts * 3;
+    for (int task = id; task < tasks; task += shared.team)
+        single_vnni_gu_s1_task(task, &ctx);
+    shared.gu_barrier.fetch_add(1, std::memory_order_release);
+    while (shared.gu_barrier.load(std::memory_order_acquire) != shared.team)
+        _mm_pause();
+
+    if (id < ctx.experts)
+        single_quantize_task(id, &ctx);
+    shared.quant_barrier.fetch_add(1, std::memory_order_release);
+    while (shared.quant_barrier.load(std::memory_order_acquire) != shared.team)
+        _mm_pause();
+
+    for (int task = id; task < tasks; task += shared.team)
+        single_vnni_down_s1_task(task, &ctx);
+}
+
+struct SingleDagContext {
+    SinglePipelineContext* pipeline = nullptr;
+    std::atomic<int> next_gu{0};
+    std::atomic<int> next_down{0};
+    std::atomic<int> finished_experts{0};
+    std::atomic<int> gu_finished[MAX_TOP_K + 1];
+};
+
+struct SingleMappedContext {
+    SinglePipelineContext* pipeline = nullptr;
+    int team = 1;
+    std::atomic<int> gu_barrier{0};
+    std::atomic<int> quant_barrier{0};
+};
+
+static void single_mapped_pipeline_worker(int id, void* opaque) {
+    auto& shared = *static_cast<SingleMappedContext*>(opaque);
+    SinglePipelineContext& ctx = *shared.pipeline;
+
+    for (int slot = 0; slot < ctx.experts; ++slot) {
+        for (int g = 0; g < ctx.gu_groups; ++g) {
+            const int owner = ctx.gu_owner[slot * ctx.gu_groups + g];
+            if (owner == id)
+                single_gu_task(slot * ctx.gu_groups + g, &ctx);
+        }
+    }
+    shared.gu_barrier.fetch_add(1, std::memory_order_release);
+    while (shared.gu_barrier.load(std::memory_order_acquire) != shared.team)
+        _mm_pause();
+
+    for (int slot = id; slot < ctx.experts; slot += shared.team)
+        single_quantize_task(slot, &ctx);
+    shared.quant_barrier.fetch_add(1, std::memory_order_release);
+    while (shared.quant_barrier.load(std::memory_order_acquire) != shared.team)
+        _mm_pause();
+
+    for (int slot = 0; slot < ctx.experts; ++slot) {
+        for (int g = 0; g < ctx.down_groups; ++g) {
+            const int owner = ctx.down_owner[slot * ctx.down_groups + g];
+            if (owner == id)
+                single_down_task(slot * ctx.down_groups + g, &ctx);
+        }
+    }
+}
+
+static void single_pipeline_worker(int, void* opaque) {
+    auto& dag = *static_cast<SingleDagContext*>(opaque);
+    SinglePipelineContext& ctx = *dag.pipeline;
+    const int total_gu = ctx.experts * ctx.gu_groups;
+    for (;;) {
+        const int task = dag.next_gu.fetch_add(1, std::memory_order_relaxed);
+        if (task >= total_gu) break;
+        single_gu_task(task, &ctx);
+        const int slot = task / ctx.gu_groups;
+        if (dag.gu_finished[slot].fetch_add(1, std::memory_order_acq_rel) + 1 ==
+            ctx.gu_groups) {
+            single_quantize_task(slot, &ctx);
+            dag.finished_experts.fetch_add(1, std::memory_order_release);
+        }
+    }
+    while (dag.finished_experts.load(std::memory_order_acquire) != ctx.experts)
+        _mm_pause();
+
+    const int total_down = ctx.experts * ctx.down_groups;
+    for (;;) {
+        const int task = dag.next_down.fetch_add(1, std::memory_order_relaxed);
+        if (task >= total_down) break;
+        single_down_task(task, &ctx);
+    }
+}
+
+static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
+    if (pool.size() > 1 && w.d_model == 256 && w.d_ff == 128) {
+        alignas(64) int8_t aq[256];
+        float sx;
+        quantize_row(x, 256, aq, sx);
+        int indices[MAX_TOP_K];
+        float gates[MAX_TOP_K];
+        SinglePipelineContext ctx{
+            &w, indices, aq, sx, w.top_k + 1, 3, 3,
+            pool.size(), {}, {}};
+        SingleS1FusedContext fused;
+        fused.pipeline = &ctx;
+        fused.x = x;
+        fused.gates = gates;
+        pool.dispatch(w.top_k + 2, 0, single_s1_fused_task, &fused);
+
+        const float* shared = pw.routed_output;
+        for (int d = 0; d < 256; d += N_BLOCK) {
+            __m512 out = _mm512_add_ps(_mm512_loadu_ps(x + d),
+                                       _mm512_load_ps(shared + d));
+            for (int k = 0; k < w.top_k; ++k) {
+                out = _mm512_fmadd_ps(
+                    _mm512_set1_ps(gates[k]),
+                    _mm512_load_ps(pw.routed_output +
+                                   (size_t)(k + 1) * 256 + d),
+                    out);
+            }
+            _mm512_storeu_ps(y + d, out);
+        }
+        return;
+    }
+
+    alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
+    router_block(x, 1, w.d_model, affinity);
+    int indices[MAX_TOP_K];
+    float gates[MAX_TOP_K];
+    select_topk(affinity[0], w, indices, gates);
+
+    alignas(64) int8_t aq[ROUTER_BATCH * MAX_D_MODEL];
+    alignas(64) float sx[ROUTER_BATCH];
+    quantize_row(x, w.d_model, aq, sx[0]);
+
+    if (pool.size() > 1) {
+        const int experts = w.top_k + 1;
+        const int gu_groups = (w.d_ff / N_BLOCK + 2) / 3;
+        const int down_groups = (w.d_model / N_BLOCK + 5) / 6;
+        SinglePipelineContext ctx{
+            &w, indices, aq, sx[0], experts, gu_groups, down_groups,
+            pool.size(), {}, {}};
+        if (w.d_model < 512) {
+            pool.dispatch(experts, 0, single_whole_vnni_task, &ctx);
+        } else {
+            assign_single_tasks(ctx);
+            SingleMappedContext shared;
+            shared.pipeline = &ctx;
+            shared.team = pool.size();
+            pool.dispatch(pool.size(), 1, single_mapped_pipeline_worker,
+                          &shared);
+        }
+
+        const float* shared = pw.routed_output;
+        for (int d = 0; d < w.d_model; d += N_BLOCK) {
+            __m512 out = _mm512_add_ps(_mm512_loadu_ps(x + d),
+                                       _mm512_load_ps(shared + d));
+            for (int k = 0; k < w.top_k; ++k) {
+                out = _mm512_fmadd_ps(
+                    _mm512_set1_ps(gates[k]),
+                    _mm512_load_ps(pw.routed_output +
+                                   (size_t)(k + 1) * w.d_model + d),
+                    out);
+            }
+            _mm512_storeu_ps(y + d, out);
+        }
+        return;
+    }
+
+    std::memcpy(y, x, (size_t)w.d_model * sizeof(float));
+    load_tile_config(1);
+    float* destination[ROUTER_BATCH] = {y};
+    expert_amx(pw.shared_gu, pw.shared_down, w.sh_s_gate, w.sh_s_up,
+               w.sh_s_down, aq, sx, destination, 1, 1.0f, true,
+               w.d_model, w.d_ff);
+    for (int k = 0; k < w.top_k; ++k) {
+        const int e = indices[k];
+        expert_amx(pw.routed_gu + (size_t)e * pw.gu_expert_stride,
+                   pw.routed_down + (size_t)e * pw.down_expert_stride,
+                   w.s_gate[e], w.s_up[e], w.s_down[e], aq, sx, destination,
+                   1, gates[k], true, w.d_model, w.d_ff);
+    }
+}
+
+static inline void prepare_token_block(const float* x, const MoEWeights& w,
+                                       float* y, int first, int rows) {
+    alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
+    router_block(x + (size_t)first * w.d_model, rows, w.d_model, affinity);
+    for (int r = 0; r < rows; ++r) {
+        const int t = first + r;
+        select_topk(affinity[r], w, pw.route_idx + (size_t)t * w.top_k,
+                    pw.route_gate + (size_t)t * w.top_k);
+        quantize_row(x + (size_t)t * w.d_model, w.d_model,
+                     pw.xq + (size_t)t * w.d_model, pw.x_scale[t]);
+        std::memcpy(y + (size_t)t * w.d_model,
+                    x + (size_t)t * w.d_model,
+                    (size_t)w.d_model * sizeof(float));
+    }
+}
+
+static inline void run_shared_chunk(const MoEWeights& w, float* y, int first,
+                                    int rows) {
+    alignas(64) int8_t aq[ROUTER_BATCH * MAX_D_MODEL];
+    alignas(64) float sx[ROUTER_BATCH];
+    float* destination[ROUTER_BATCH];
+    for (int r = 0; r < rows; ++r) {
+        std::memcpy(aq + (size_t)r * w.d_model,
+                    pw.xq + (size_t)(first + r) * w.d_model, w.d_model);
+        sx[r] = pw.x_scale[first + r];
+        destination[r] = y + (size_t)(first + r) * w.d_model;
+    }
+    for (int r = rows; r < ROUTER_BATCH; ++r)
+        std::memset(aq + (size_t)r * w.d_model, 0, w.d_model);
+    expert_amx(pw.shared_gu, pw.shared_down, w.sh_s_gate, w.sh_s_up,
+               w.sh_s_down, aq, sx, destination, rows, 1.0f, true,
+               w.d_model, w.d_ff);
+}
+
+static inline void run_routed_range(const MoEWeights& w, int e, int start,
+                                    int rows) {
+    alignas(64) int8_t aq[ROUTER_BATCH * MAX_D_MODEL];
+    alignas(64) float sx[ROUTER_BATCH];
+    float* destination[ROUTER_BATCH];
+    for (int r = 0; r < rows; ++r) {
+        const int assignment = pw.bucket_entries[start + r];
+        const int token = assignment / w.top_k;
+        std::memcpy(aq + (size_t)r * w.d_model,
+                    pw.xq + (size_t)token * w.d_model, w.d_model);
+        sx[r] = pw.x_scale[token];
+        destination[r] =
+            pw.routed_output + (size_t)assignment * w.d_model;
+    }
+    for (int r = rows; r < ROUTER_BATCH; ++r)
+        std::memset(aq + (size_t)r * w.d_model, 0, w.d_model);
+
+    expert_amx(pw.routed_gu + (size_t)e * pw.gu_expert_stride,
+               pw.routed_down + (size_t)e * pw.down_expert_stride,
+               w.s_gate[e], w.s_up[e], w.s_down[e], aq, sx, destination,
+               rows, 1.0f, false, w.d_model, w.d_ff);
+}
+
+static void build_expert_buckets(const MoEWeights& w, int num_tokens) {
+    std::memset(pw.expert_counts, 0,
+                (size_t)(w.num_experts + 1) * sizeof(int));
+    const int assignments = num_tokens * w.top_k;
+    for (int a = 0; a < assignments; ++a)
+        ++pw.expert_counts[pw.route_idx[a]];
+
+    pw.expert_offsets[0] = 0;
+    for (int e = 0; e < w.num_experts; ++e)
+        pw.expert_offsets[e + 1] =
+            pw.expert_offsets[e] + pw.expert_counts[e];
+    std::memcpy(pw.expert_counts, pw.expert_offsets,
+                (size_t)w.num_experts * sizeof(int));
+    for (int a = 0; a < assignments; ++a) {
+        const int e = pw.route_idx[a];
+        pw.bucket_entries[pw.expert_counts[e]++] = a;
+    }
+
+}
+
+static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
+                              int num_tokens) {
+    const int token_blocks =
+        (num_tokens + ROUTER_BATCH - 1) / ROUTER_BATCH;
+
+    struct BatchContext {
+        const float* x;
+        const MoEWeights* w;
+        float* y;
+        int num_tokens;
+    } ctx{x, &w, y, num_tokens};
+
+    auto prepare_task = [](int b, void* opaque) {
+        auto& c = *static_cast<BatchContext*>(opaque);
+        const int first = b * ROUTER_BATCH;
+        prepare_token_block(c.x, *c.w, c.y, first,
+                            std::min(ROUTER_BATCH, c.num_tokens - first));
+    };
+    auto shared_task = [](int b, void* opaque) {
+        auto& c = *static_cast<BatchContext*>(opaque);
+        const int first = b * ROUTER_BATCH;
+        run_shared_chunk(*c.w, c.y, first,
+                         std::min(ROUTER_BATCH, c.num_tokens - first));
+    };
+    auto routed_expert_task = [](int e, void* opaque) {
+        auto& c = *static_cast<BatchContext*>(opaque);
+        for (int start = pw.expert_offsets[e];
+             start < pw.expert_offsets[e + 1]; start += ROUTER_BATCH) {
+            run_routed_range(*c.w, e, start,
+                             std::min(ROUTER_BATCH,
+                                      pw.expert_offsets[e + 1] - start));
+        }
+    };
+    auto combine_task = [](int b, void* opaque) {
+        auto& c = *static_cast<BatchContext*>(opaque);
+        const MoEWeights& weights = *c.w;
+        const int first = b * ROUTER_BATCH;
+        const int end = std::min(c.num_tokens, first + ROUTER_BATCH);
+        for (int t = first; t < end; ++t) {
+            float* yt = c.y + (size_t)t * weights.d_model;
+            for (int d = 0; d < weights.d_model; d += N_BLOCK) {
+                __m512 out = _mm512_loadu_ps(yt + d);
+                for (int k = 0; k < weights.top_k; ++k) {
+                    const int assignment = t * weights.top_k + k;
+                    out = _mm512_fmadd_ps(
+                        _mm512_set1_ps(pw.route_gate[assignment]),
+                        _mm512_load_ps(pw.routed_output +
+                                       (size_t)assignment * weights.d_model + d),
+                        out);
+                }
+                _mm512_storeu_ps(yt + d, out);
+            }
+        }
+    };
+
+    pool.dispatch(token_blocks, 0, prepare_task, &ctx);
+    build_expert_buckets(w, num_tokens);
+    pool.dispatch(token_blocks, ROUTER_BATCH, shared_task, &ctx);
+    // One worker owns all chunks of an expert.  Consecutive chunks therefore
+    // reuse its packed weights from private L2 instead of migrating them
+    // between cores through the dynamic OpenMP queue.
+    pool.dispatch(w.num_experts, ROUTER_BATCH, routed_expert_task, &ctx);
+    pool.dispatch(token_blocks, 0, combine_task, &ctx);
+}
+
+// Allocation-failure / unexpected-shape fallback.  It is intentionally
+// simple because all scored dimensions are multiples of 64 and packing fits
+// comfortably in the lab memory limit.
+static void scalar_expert(const int8_t* wg, const int8_t* wu,
+                          const int8_t* wd, float sg, float su, float sd,
+                          const int8_t* xq, float sx, float* out, int d,
+                          int h) {
+    float hidden[MAX_D_FF];
+    float amax = 0.0f;
+    for (int f = 0; f < h; ++f) {
+        int32_t ag = 0, au = 0;
+        for (int j = 0; j < d; ++j) {
+            ag += (int32_t)wg[(size_t)f * d + j] * xq[j];
+            au += (int32_t)wu[(size_t)f * d + j] * xq[j];
+        }
+        const float vg = ag * (sx * sg);
+        const float vu = au * (sx * su);
+        hidden[f] = vg / (1.0f + std::exp(-vg)) * vu;
+        amax = std::max(amax, std::fabs(hidden[f]));
+    }
+    const float sh = amax > 0.0f ? amax / 127.0f : 1.0f;
+    int8_t hq[MAX_D_FF];
+    for (int f = 0; f < h; ++f) hq[f] = (int8_t)lrintf(hidden[f] / sh);
+    for (int j = 0; j < d; ++j) {
+        int32_t acc = 0;
+        for (int f = 0; f < h; ++f)
+            acc += (int32_t)wd[(size_t)j * h + f] * hq[f];
+        out[j] = acc * (sh * sd);
+    }
+}
+
+static void scalar_forward(const float* x, const MoEWeights& w, float* y,
+                           int num_tokens) {
+    for (int t = 0; t < num_tokens; ++t) {
+        const float* xt = x + (size_t)t * w.d_model;
+        float* yt = y + (size_t)t * w.d_model;
+        float affinity[MAX_NUM_EXPERTS];
+        for (int e = 0; e < w.num_experts; ++e) {
+            float acc = 0.0f;
+            for (int d = 0; d < w.d_model; ++d)
+                acc += w.w_router[(size_t)e * w.d_model + d] * xt[d];
+            affinity[e] = 1.0f / (1.0f + std::exp(-acc));
+        }
+        int idx[MAX_TOP_K];
+        float gates[MAX_TOP_K];
+        select_topk(affinity, w, idx, gates);
+        float amax = 0.0f;
+        for (int d = 0; d < w.d_model; ++d)
+            amax = std::max(amax, std::fabs(xt[d]));
+        const float sx = amax > 0.0f ? amax / 127.0f : 1.0f;
+        int8_t xq[MAX_D_MODEL];
+        for (int d = 0; d < w.d_model; ++d)
+            xq[d] = (int8_t)lrintf(xt[d] / sx);
+        float out[MAX_D_MODEL];
+        scalar_expert(w.sh_gate, w.sh_up, w.sh_down, w.sh_s_gate,
+                      w.sh_s_up, w.sh_s_down, xq, sx, out, w.d_model, w.d_ff);
+        for (int d = 0; d < w.d_model; ++d) yt[d] = xt[d] + out[d];
+        for (int k = 0; k < w.top_k; ++k) {
+            const int e = idx[k];
+            scalar_expert(w.w_gate + (size_t)e * w.d_ff * w.d_model,
+                          w.w_up + (size_t)e * w.d_ff * w.d_model,
+                          w.w_down + (size_t)e * w.d_model * w.d_ff,
+                          w.s_gate[e], w.s_up[e], w.s_down[e], xq, sx, out,
+                          w.d_model, w.d_ff);
+            for (int d = 0; d < w.d_model; ++d)
+                yt[d] += gates[k] * out[d];
+        }
+    }
 }
 
 }  // namespace
 
 void preprocess(MoEWeights& w) {
-    packed_w.clear();
-
+    pool.stop();
+    pw.clear();
     const size_t gu_stride = (size_t)2 * w.d_ff * w.d_model;
     const size_t down_stride = (size_t)w.d_model * w.d_ff;
-    packed_w.routed_gu =
-        alloc_aligned_bytes((size_t)w.num_experts * gu_stride);
-    packed_w.routed_down =
-        alloc_aligned_bytes((size_t)w.num_experts * down_stride);
-    packed_w.shared_gu = alloc_aligned_bytes(gu_stride);
-    packed_w.shared_down = alloc_aligned_bytes(down_stride);
+    const int padded_e = (w.num_experts + N_BLOCK - 1) & -N_BLOCK;
 
-    // Allocation failure is not a correctness failure: later optimized
-    // kernels can test ready and fall back to the original weight layout.
-    if (!packed_w.routed_gu || !packed_w.routed_down ||
-        !packed_w.shared_gu || !packed_w.shared_down) {
-        packed_w.clear();
+    pw.routed_gu = alloc_aligned<int8_t>((size_t)w.num_experts * gu_stride);
+    pw.routed_down =
+        alloc_aligned<int8_t>((size_t)w.num_experts * down_stride);
+    pw.shared_gu = alloc_aligned<int8_t>(gu_stride);
+    pw.shared_down = alloc_aligned<int8_t>(down_stride);
+    pw.routed_gu_comp =
+        alloc_aligned<int32_t>((size_t)w.num_experts * 2 * w.d_ff);
+    pw.routed_down_comp =
+        alloc_aligned<int32_t>((size_t)w.num_experts * w.d_model);
+    pw.shared_gu_comp = alloc_aligned<int32_t>((size_t)2 * w.d_ff);
+    pw.shared_down_comp = alloc_aligned<int32_t>(w.d_model);
+    pw.router = alloc_aligned<float>((size_t)padded_e * w.d_model);
+    const size_t max_assignments = (size_t)MAX_NUM_TOKENS * w.top_k;
+    pw.xq = alloc_aligned<int8_t>((size_t)MAX_NUM_TOKENS * w.d_model);
+    pw.x_scale = alloc_aligned<float>(MAX_NUM_TOKENS);
+    pw.route_idx = alloc_aligned<int>(max_assignments);
+    pw.route_gate = alloc_aligned<float>(max_assignments);
+    pw.routed_output =
+        alloc_aligned<float>(max_assignments * w.d_model);
+    pw.expert_counts = alloc_aligned<int>((size_t)w.num_experts + 1);
+    pw.expert_offsets = alloc_aligned<int>((size_t)w.num_experts + 1);
+    pw.bucket_entries = alloc_aligned<int>(max_assignments);
+    const size_t single_experts = (size_t)w.top_k + 1;
+    pw.single_gate_acc =
+        alloc_aligned<int32_t>(single_experts * w.d_ff);
+    pw.single_up_acc =
+        alloc_aligned<int32_t>(single_experts * w.d_ff);
+    pw.single_hidden = alloc_aligned<float>(single_experts * w.d_ff);
+    pw.single_hq = alloc_aligned<int8_t>(single_experts * w.d_ff);
+    pw.single_hscale = alloc_aligned<float>(single_experts);
+    const size_t single_gu_groups =
+        (size_t)(w.d_ff / N_BLOCK + 2) / 3;
+    pw.single_chunk_max =
+        alloc_aligned<float>(single_experts * single_gu_groups);
+    pw.single_down_acc =
+        alloc_aligned<int32_t>(single_experts * w.d_model);
+    if (!pw.routed_gu || !pw.routed_down || !pw.shared_gu ||
+        !pw.shared_down || !pw.routed_gu_comp || !pw.routed_down_comp ||
+        !pw.shared_gu_comp || !pw.shared_down_comp || !pw.router || !pw.xq ||
+        !pw.x_scale || !pw.route_idx || !pw.route_gate ||
+        !pw.routed_output || !pw.expert_counts || !pw.expert_offsets ||
+        !pw.bucket_entries || !pw.single_gate_acc || !pw.single_up_acc ||
+        !pw.single_hidden || !pw.single_hq || !pw.single_hscale ||
+        !pw.single_chunk_max || !pw.single_down_acc) {
+        pw.clear();
         return;
     }
 
-    // Preprocessing is outside the timed region, so extra OpenMP launch cost
-    // cannot improve the scored forward time.  Keep it serial here as well so
-    // this AVX2 fallback remains runnable when CMake targets Sapphire Rapids.
-    // On the grading host this loop can safely be parallelized if startup time
-    // itself matters; each iteration writes a disjoint expert-sized range.
     for (int e = 0; e < w.num_experts; ++e) {
-        const size_t gu_src_offset = (size_t)e * w.d_ff * w.d_model;
-        const size_t down_src_offset = (size_t)e * w.d_model * w.d_ff;
-        pack_gate_up(w.w_gate + gu_src_offset, w.w_up + gu_src_offset,
+        const size_t gu_off = (size_t)e * w.d_ff * w.d_model;
+        const size_t down_off = (size_t)e * w.d_model * w.d_ff;
+        pack_gate_up(w.w_gate + gu_off, w.w_up + gu_off,
                      w.d_model, w.d_ff,
-                     packed_w.routed_gu + (size_t)e * gu_stride);
-        pack_matrix(w.w_down + down_src_offset, w.d_model, w.d_ff,
-                    packed_w.routed_down + (size_t)e * down_stride);
+                     pw.routed_gu + (size_t)e * gu_stride);
+        pack_matrix_grouped(w.w_down + down_off, w.d_model, w.d_ff, 6,
+                            pw.routed_down + (size_t)e * down_stride);
+        make_compensation(w.w_gate + gu_off, w.d_ff, w.d_model,
+                          pw.routed_gu_comp + (size_t)e * 2 * w.d_ff);
+        make_compensation(w.w_up + gu_off, w.d_ff, w.d_model,
+                          pw.routed_gu_comp + (size_t)e * 2 * w.d_ff + w.d_ff);
+        make_compensation(w.w_down + down_off, w.d_model, w.d_ff,
+                          pw.routed_down_comp + (size_t)e * w.d_model);
     }
-    pack_gate_up(w.sh_gate, w.sh_up, w.d_model, w.d_ff,
-                 packed_w.shared_gu);
-    pack_matrix(w.sh_down, w.d_model, w.d_ff, packed_w.shared_down);
+    pack_gate_up(w.sh_gate, w.sh_up, w.d_model, w.d_ff, pw.shared_gu);
+    pack_matrix_grouped(w.sh_down, w.d_model, w.d_ff, 6, pw.shared_down);
+    make_compensation(w.sh_gate, w.d_ff, w.d_model, pw.shared_gu_comp);
+    make_compensation(w.sh_up, w.d_ff, w.d_model,
+                      pw.shared_gu_comp + w.d_ff);
+    make_compensation(w.sh_down, w.d_model, w.d_ff, pw.shared_down_comp);
 
-    packed_w.gu_expert_stride = gu_stride;
-    packed_w.down_expert_stride = down_stride;
-    packed_w.d_model = w.d_model;
-    packed_w.d_ff = w.d_ff;
-    packed_w.num_experts = w.num_experts;
-    packed_w.ready = true;
-}
-
-// One SwiGLU expert on one already-quantized token
-static void expert_ffn(const int8_t* w_gate, const int8_t* w_up,
-                       const int8_t* w_down, float s_gate, float s_up,
-                       float s_down, const int8_t* xq, float s_x, float* out,
-                       int d_model, int d_ff) {
-    // Gate / up projections + SwiGLU activation
-    float h[MAX_D_FF];
-    float h_amax = 0.0f;
-
-    for (int f = 0; f < d_ff; f++) {
-        int32_t acc_g = 0;
-        int32_t acc_u = 0;
-        for (int d = 0; d < d_model; d++) {
-            acc_g += (int32_t)w_gate[f * d_model + d] * (int32_t)xq[d];
-            acc_u += (int32_t)w_up[f * d_model + d] * (int32_t)xq[d];
-        }
-        float vg = (float)acc_g * (s_x * s_gate);
-        float vu = (float)acc_u * (s_x * s_up);
-        float silu = vg / (1.0f + expf(-vg));
-        h[f] = silu * vu;
-        float a = fabsf(h[f]);
-        if (a > h_amax) h_amax = a;
-    }
-
-    // Requantize hidden activation to int8
-    float s_h = (h_amax > 0.0f) ? h_amax / 127.0f : 1.0f;
-    int8_t hq[MAX_D_FF];
-    for (int f = 0; f < d_ff; f++) {
-        hq[f] = (int8_t)lrintf(h[f] / s_h);
-    }
-
-    // Down projection
-    for (int d = 0; d < d_model; d++) {
-        int32_t acc = 0;
-        for (int f = 0; f < d_ff; f++) {
-            acc += (int32_t)w_down[d * d_ff + f] * (int32_t)hq[f];
-        }
-        out[d] = (float)acc * (s_h * s_down);
-    }
-}
-
-void moe_forward(const float* x, const MoEWeights& w, float* y,
-                     int num_tokens) {
-    const int d_model = w.d_model;
-    const int d_ff = w.d_ff;
-    const int num_experts = w.num_experts;
-    const int top_k = w.top_k;
-
-    for (int t = 0; t < num_tokens; t++) {
-        const float* xt = x + (size_t)t * d_model;
-        float* yt = y + (size_t)t * d_model;
-
-        // 1. Affinity scores
-        float s[MAX_NUM_EXPERTS];
-
-        // 优化：并行打分
-        for (int e = 0; e < num_experts; e++) {
-            float acc = 0.0f;
-            for (int d = 0; d < d_model; d++) {
-                acc += w.w_router[(size_t)e * d_model + d] * xt[d];
-            }
-            s[e] = 1.0f / (1.0f + expf(-acc));
-        }
-
-        // 2. Top-K selection by biased score (ties broken by smaller index)
-        int topk_idx[MAX_TOP_K];
-        bool used[MAX_NUM_EXPERTS] = {};
-        for (int k = 0; k < top_k; k++) {
-            int best = -1;
-            for (int e = 0; e < num_experts; e++) {
-                if (used[e]) continue;
-                if (best < 0 || s[e] + w.bias[e] > s[best] + w.bias[best]) {
-                    best = e;
-                }
-            }
-            used[best] = true;
-            topk_idx[k] = best;
-        }
-
-        // 3. Gate values: normalize the ORIGINAL affinities of the selected
-        //    experts (the bias never enters the gate values)
-        float gate_sum = 0.0f;
-        for (int k = 0; k < top_k; k++) gate_sum += s[topk_idx[k]];
-
-        // 4. Quantize the token to int8 (symmetric, per-token scale)
-        float x_amax = 0.0f;
-        for (int d = 0; d < d_model; d++) {
-            float a = fabsf(xt[d]);
-            if (a > x_amax) x_amax = a;
-        }
-        float s_x = (x_amax > 0.0f) ? x_amax / 127.0f : 1.0f;
-        int8_t xq[MAX_D_MODEL];
-        for (int d = 0; d < d_model; d++) {
-            xq[d] = (int8_t)lrintf(xt[d] / s_x);
-        }
-
-        // 5+6. Shared expert (always on), then selected routed experts,
-        //      combined on top of the residual connection
-        float o[MAX_D_MODEL];
-        expert_ffn(w.sh_gate, w.sh_up, w.sh_down, w.sh_s_gate, w.sh_s_up,
-                   w.sh_s_down, xq, s_x, o, d_model, d_ff);
-        for (int d = 0; d < d_model; d++) {
-            yt[d] = xt[d] + o[d];
-        }
-
-        for (int k = 0; k < top_k; k++) {
-            int e = topk_idx[k];
-            float gate = s[e] / gate_sum;
-            expert_ffn(w.w_gate + (size_t)e * d_ff * d_model,
-                       w.w_up + (size_t)e * d_ff * d_model,
-                       w.w_down + (size_t)e * d_model * d_ff, w.s_gate[e],
-                       w.s_up[e], w.s_down[e], xq, s_x, o, d_model, d_ff);
-            for (int d = 0; d < d_model; d++) {
-                yt[d] += gate * o[d];
+    for (int eb = 0; eb < padded_e / N_BLOCK; ++eb) {
+        float* block = pw.router + (size_t)eb * w.d_model * N_BLOCK;
+        for (int d = 0; d < w.d_model; ++d) {
+            for (int lane = 0; lane < N_BLOCK; ++lane) {
+                const int e = eb * N_BLOCK + lane;
+                block[(size_t)d * N_BLOCK + lane] =
+                    e < w.num_experts
+                        ? w.w_router[(size_t)e * w.d_model + d]
+                        : 0.0f;
             }
         }
     }
+
+    pw.gu_expert_stride = gu_stride;
+    pw.down_expert_stride = down_stride;
+    pw.d_model = w.d_model;
+    pw.d_ff = w.d_ff;
+    pw.num_experts = w.num_experts;
+    pw.padded_experts = padded_e;
+    pw.ready = true;
+
+    // Create the latency-oriented worker team outside timing.  Eight is the
+    // lab allocation size; respecting a smaller OMP limit also keeps this
+    // safe for constrained correctness runs.
+    pool.start(std::min(8, omp_get_max_threads()));
+    pw.amx_ready = pool.amx_ok();
 }
 
 void moe_forward_optimized(const float* x, const MoEWeights& w, float* y,
                            int num_tokens) {
-    if (num_tokens > 1){
-      #pragma omp parallel for schedule(static)
-      for (int t = 0; t < num_tokens; ++t) {
-          const float* xt = x + (size_t)t * w.d_model;
-          float* yt = y + (size_t)t * w.d_model;
-          moe_forward(xt, w, yt, 1);
-      } 
+    if (!pw.ready || pw.d_model != w.d_model || pw.d_ff != w.d_ff ||
+        pw.num_experts != w.num_experts) {
+        scalar_forward(x, w, y, num_tokens);
+        return;
     }
 
-    else 
-      moe_forward(x, w, y, 1);
+    pool.set_enabled(num_tokens == 1 && w.d_model < 512
+                         ? w.top_k + 2
+                         : pool.size());
+
+    if (pw.amx_ready) {
+        if (num_tokens == 1) {
+            forward_single_amx(x, w, y);
+            return;
+        }
+        if (num_tokens >= ROUTER_BATCH) {
+            forward_batch_amx(x, w, y, num_tokens);
+            return;
+        }
+    }
+
+    if (num_tokens < ROUTER_BATCH * 2) {
+        forward_block(x, w, y, num_tokens);
+        return;
+    }
+
+    const int blocks = (num_tokens + ROUTER_BATCH - 1) / ROUTER_BATCH;
+#pragma omp parallel for schedule(static)
+    for (int b = 0; b < blocks; ++b) {
+        const int first = b * ROUTER_BATCH;
+        const int rows = std::min(ROUTER_BATCH, num_tokens - first);
+        forward_block(x + (size_t)first * w.d_model, w,
+                      y + (size_t)first * w.d_model, rows);
+    }
 }

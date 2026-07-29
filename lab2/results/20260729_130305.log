@@ -1,0 +1,34 @@
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab2/build
+[ 60%] Built target framework
+[ 80%] Built target student
+[100%] Built target lab2
+------------------------------------------- Test 1 -------------------------------------------
+------------------------- N = 1 | D = 256 | H = 128 | E = 16 | K = 4 -------------------------
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0514542 s
+Optimized time: 0.00435472 s
+Result is correct! (rel RMSE: 7.92121e-08, worst token: 7.92121e-08 at 0)
+Speedup: 11.8157
+------------------------------------------- Test 2 -------------------------------------------
+------------------------- N = 1 | D = 1024 | H = 512 | E = 16 | K = 4 ------------------------
+problem size: num_tokens=1 d_model=1024 d_ff=512 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.613189 s
+Optimized time: 0.0335785 s
+Result is correct! (rel RMSE: 4.68025e-08, worst token: 4.68025e-08 at 0)
+Speedup: 18.2613
+------------------------------------------- Test 3 -------------------------------------------
+------------------------- N = 128 | D = 256 | H = 128 | E = 16 | K = 4 -----------------------
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  6.62994 s
+Optimized time: 0.057318 s
+Result is correct! (rel RMSE: 8.99909e-08, worst token: 2.18202e-07 at 125)
+Speedup: 115.669
+------------------------------------------- Test 4 -------------------------------------------
+------------------------- N = 1024 | D = 512 | H = 128 | E = 512 | K = 2 ---------------------
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (1000 iterations)
+Baseline time:  228.431 s
+Optimized time: 1.2331 s
+Result is correct! (rel RMSE: 0.000246886, worst token: 0.00843211 at 499)
+Speedup: 185.248
