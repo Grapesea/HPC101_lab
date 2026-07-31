@@ -1,5 +1,6 @@
 build/
 vtune-hotspots/
+vtune-hotspots-*/
 core.*
 perf.*
 *.pdf:Zone.Identifier
