@@ -5,3 +5,5 @@ core.*
 perf.*
 *.pdf:Zone.Identifier
 .vscode/
+*.pyc
+__pycache__/
