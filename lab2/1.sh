@@ -2,7 +2,7 @@
 #HPC --partition=lab2
 #HPC --cpu=16
 #HPC --mem=16Gi
-#HPC --time=5m
+#HPC --time=10m
 
 DATE=$(date +%Y%m%d_%H%M%S)
 mkdir -p results

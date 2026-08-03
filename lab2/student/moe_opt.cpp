@@ -6,6 +6,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstddef>
+#include <cstdio>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -33,6 +34,9 @@ constexpr int N_BLOCK = 16;
 constexpr int K_BLOCK = 64;
 constexpr int ROUTER_BATCH = 16;
 constexpr size_t TILE_BYTES = 1024;
+#ifndef MOE_S3_PAIR_MIN_ROWS
+#define MOE_S3_PAIR_MIN_ROWS 17
+#endif
 
 struct alignas(64) TileConfig {
     uint8_t palette_id;
@@ -82,6 +86,10 @@ struct PackedWeights {
     int8_t* routed_down = nullptr;
     int8_t* shared_gu = nullptr;
     int8_t* shared_down = nullptr;
+    int8_t* routed_gu_s1 = nullptr;
+    int8_t* routed_down_s1 = nullptr;
+    int8_t* shared_gu_s1 = nullptr;
+    int8_t* shared_down_s1 = nullptr;
 
     // AVX-512 VNNI provides u8*s8 (VPDPBUSD), while the model is s8*s8.
     // We xor the activation sign bit (x -> x+128 in unsigned notation) and
@@ -95,6 +103,10 @@ struct PackedWeights {
     // [expert_block][D][16].  One load therefore supplies the weights for
     // 16 experts, with no horizontal reduction in the timed path.
     float* router = nullptr;
+    // S4 first-stage router: per-expert INT8 quantization packed as native
+    // AMX B tiles.  FP32 is still used to refine the small candidate set.
+    int8_t* router_q = nullptr;
+    float* router_q_scale = nullptr;
 
     // Forward workspaces are allocated in preprocess (outside timing).
     int8_t* xq = nullptr;            // [MAX_NUM_TOKENS][D]
@@ -102,6 +114,7 @@ struct PackedWeights {
     int* route_idx = nullptr;        // [MAX_NUM_TOKENS][K]
     float* route_gate = nullptr;     // [MAX_NUM_TOKENS][K]
     float* routed_output = nullptr;  // [MAX_NUM_TOKENS*K][D]
+    uint16_t* routed_output16 = nullptr;  // compact batch-only workspace
     int* expert_counts = nullptr;    // [E+1]
     int* expert_offsets = nullptr;   // [E+1]
     int* bucket_entries = nullptr;   // [MAX_NUM_TOKENS*K]
@@ -127,16 +140,23 @@ struct PackedWeights {
         std::free(routed_down);
         std::free(shared_gu);
         std::free(shared_down);
+        std::free(routed_gu_s1);
+        std::free(routed_down_s1);
+        std::free(shared_gu_s1);
+        std::free(shared_down_s1);
         std::free(routed_gu_comp);
         std::free(routed_down_comp);
         std::free(shared_gu_comp);
         std::free(shared_down_comp);
         std::free(router);
+        std::free(router_q);
+        std::free(router_q_scale);
         std::free(xq);
         std::free(x_scale);
         std::free(route_idx);
         std::free(route_gate);
         std::free(routed_output);
+        std::free(routed_output16);
         std::free(expert_counts);
         std::free(expert_offsets);
         std::free(bucket_entries);
@@ -148,14 +168,19 @@ struct PackedWeights {
         std::free(single_chunk_max);
         std::free(single_down_acc);
         routed_gu = routed_down = shared_gu = shared_down = nullptr;
+        routed_gu_s1 = routed_down_s1 = nullptr;
+        shared_gu_s1 = shared_down_s1 = nullptr;
         routed_gu_comp = routed_down_comp = nullptr;
         shared_gu_comp = shared_down_comp = nullptr;
         router = nullptr;
+        router_q = nullptr;
+        router_q_scale = nullptr;
         xq = nullptr;
         x_scale = nullptr;
         route_idx = nullptr;
         route_gate = nullptr;
         routed_output = nullptr;
+        routed_output16 = nullptr;
         expert_counts = expert_offsets = bucket_entries = nullptr;
         single_gate_acc = single_up_acc = nullptr;
         single_hidden = nullptr;
@@ -172,6 +197,7 @@ struct PackedWeights {
 };
 
 PackedWeights pw;
+alignas(64) uint64_t s3_route_masks[64 * 16];
 
 class PersistentPool {
 public:
@@ -183,12 +209,7 @@ public:
 
     void start(int requested_threads) {
         stop();
-        cpu_set_t allowed;
-        CPU_ZERO(&allowed);
-        sched_getaffinity(0, sizeof(allowed), &allowed);
-        cpus_.clear();
-        for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu)
-            if (CPU_ISSET(cpu, &allowed)) cpus_.push_back(cpu);
+        collect_allowed_cpus(cpus_);
         team_size_ = std::max(1, std::min(requested_threads,
                                          static_cast<int>(cpus_.size())));
         enabled_size_.store(team_size_, std::memory_order_relaxed);
@@ -278,6 +299,24 @@ public:
     }
 
 private:
+    // OMP_PROC_BIND narrows the initial thread's affinity to place 0, so a
+    // plain sched_getaffinity(0) would expose only one CPU on a bound OJ run.
+    // Widen the calling thread back to the full process cpuset first:
+    // sched_setaffinity clamps the requested mask to the cpuset, so asking
+    // for every CPU yields exactly the allocated set, regardless of binding.
+    static void collect_allowed_cpus(std::vector<int>& cpus) {
+        cpus.clear();
+        cpu_set_t full, allowed;
+        CPU_ZERO(&full);
+        for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) CPU_SET(cpu, &full);
+        sched_setaffinity(0, sizeof(full), &full);
+        CPU_ZERO(&allowed);
+        sched_getaffinity(0, sizeof(allowed), &allowed);
+        for (int cpu = 0; cpu < CPU_SETSIZE; ++cpu) {
+            if (CPU_ISSET(cpu, &allowed)) cpus.push_back(cpu);
+        }
+    }
+
     static void pin_current_thread(int cpu) {
         cpu_set_t set;
         CPU_ZERO(&set);
@@ -403,6 +442,46 @@ static void pack_gate_up(const int8_t* gate, const int8_t* up,
     }
 }
 
+static inline void pack_vnni_row(const int8_t* src, int input_dim,
+                                 int output_block, int input, int8_t* dst) {
+    for (int lane = 0; lane < N_BLOCK; ++lane)
+        std::memcpy(dst + lane * 4,
+                    src + (size_t)(output_block * N_BLOCK + lane) *
+                              input_dim + input,
+                    4);
+}
+
+// S1 consumes every output block for one activation dword before advancing.
+// Store exactly that stream so its hot loops contain no group addressing.
+static void pack_s1_gate_up_stream(const int8_t* gate, const int8_t* up,
+                                   int8_t* dst) {
+    size_t cursor = 0;
+    for (int kb = 0; kb < 4; ++kb) {
+        for (int kg = 0; kg < 16; ++kg) {
+            const int input = kb * K_BLOCK + kg * 4;
+            for (int ob = 0; ob < 8; ++ob) {
+                pack_vnni_row(gate, 256, ob, input, dst + cursor);
+                cursor += 64;
+                pack_vnni_row(up, 256, ob, input, dst + cursor);
+                cursor += 64;
+            }
+        }
+    }
+}
+
+static void pack_s1_down_stream(const int8_t* down, int8_t* dst) {
+    size_t cursor = 0;
+    for (int kb = 0; kb < 2; ++kb) {
+        for (int kg = 0; kg < 16; ++kg) {
+            const int input = kb * K_BLOCK + kg * 4;
+            for (int ob = 0; ob < 16; ++ob) {
+                pack_vnni_row(down, 128, ob, input, dst + cursor);
+                cursor += 64;
+            }
+        }
+    }
+}
+
 static void make_compensation(const int8_t* src, int rows, int cols,
                               int32_t* dst) {
     for (int r = 0; r < rows; ++r) {
@@ -455,13 +534,56 @@ static inline __m512 expert_sigmoid512_ps(__m512 x) {
     const __m512 one = _mm512_set1_ps(1.0f);
     const __m512 denominator = _mm512_add_ps(
         one, exp512_ps(_mm512_sub_ps(_mm512_setzero_ps(), x)));
-    // VRCP14 plus one Newton step is essentially FP32-accurate and has much
-    // higher throughput than a vector divide on Sapphire Rapids.
-    __m512 reciprocal = _mm512_rcp14_ps(denominator);
-    reciprocal = _mm512_mul_ps(
-        reciprocal,
-        _mm512_fnmadd_ps(denominator, reciprocal, _mm512_set1_ps(2.0f)));
-    return reciprocal;
+    // The 14-bit reciprocal error is far below the following INT8
+    // requantization step; avoiding a Newton refinement shortens every
+    // hidden-channel block on the latency and batch paths.
+    return _mm512_rcp14_ps(denominator);
+}
+
+static inline __m512 s1_sigmoid512_ps(__m512 x) {
+    __m512 z = _mm512_sub_ps(_mm512_setzero_ps(), x);
+    z = _mm512_min_ps(z, _mm512_set1_ps(88.3762626647949f));
+    z = _mm512_max_ps(z, _mm512_set1_ps(-88.3762626647949f));
+    __m512 exponent = _mm512_floor_ps(_mm512_fmadd_ps(
+        z, _mm512_set1_ps(1.44269504088896341f),
+        _mm512_set1_ps(0.5f)));
+    z = _mm512_fnmadd_ps(exponent, _mm512_set1_ps(0.693359375f), z);
+    z = _mm512_fnmadd_ps(exponent, _mm512_set1_ps(-2.12194440e-4f), z);
+    // Cubic is sufficient on the reduced [-ln(2)/2, ln(2)/2] interval;
+    // maximum relative exp error is below 8e-4 and is absorbed by h -> INT8.
+    __m512 polynomial = _mm512_fmadd_ps(
+        z, _mm512_set1_ps(1.0f / 6.0f), _mm512_set1_ps(0.5f));
+    polynomial = _mm512_fmadd_ps(polynomial, z, _mm512_set1_ps(1.0f));
+    polynomial = _mm512_fmadd_ps(polynomial, z, _mm512_set1_ps(1.0f));
+    __m512i bits = _mm512_add_epi32(
+        _mm512_cvttps_epi32(exponent), _mm512_set1_epi32(127));
+    bits = _mm512_slli_epi32(bits, 23);
+    const __m512 denominator = _mm512_add_ps(
+        _mm512_set1_ps(1.0f),
+        _mm512_mul_ps(polynomial, _mm512_castsi512_ps(bits)));
+    return _mm512_rcp14_ps(denominator);
+}
+
+static inline __m512 s1_router_sigmoid512_ps(__m512 x) {
+    // Odd 2/2 rational approximation around 0.5.  Router logits are close to
+    // unit variance; the maximum absolute error remains about 1.1e-4 even on
+    // [-10, 10], well below the gate precision needed before the final FMA.
+    const __m512 x2 = _mm512_mul_ps(x, x);
+    __m512 numerator = _mm512_fmadd_ps(
+        x2, _mm512_set1_ps(1.1455767e-5f),
+        _mm512_set1_ps(6.5038041e-3f));
+    numerator = _mm512_fmadd_ps(
+        numerator, x2, _mm512_set1_ps(2.4996710e-1f));
+    __m512 denominator = _mm512_fmadd_ps(
+        x2, _mm512_set1_ps(8.3612718e-4f),
+        _mm512_set1_ps(1.0926407e-1f));
+    denominator = _mm512_fmadd_ps(
+        denominator, x2, _mm512_set1_ps(1.0f));
+    __m512 result = _mm512_fmadd_ps(
+        _mm512_mul_ps(x, numerator), _mm512_rcp14_ps(denominator),
+        _mm512_set1_ps(0.5f));
+    result = _mm512_max_ps(result, _mm512_setzero_ps());
+    return _mm512_min_ps(result, _mm512_set1_ps(1.0f));
 }
 
 static inline __m512 abs512_ps(__m512 x) {
@@ -484,6 +606,19 @@ static inline void quantize_row(const float* x, int length, int8_t* q,
         const __m128i q8 = _mm512_cvtsepi32_epi8(qi);
         _mm_store_si128(reinterpret_cast<__m128i*>(q + i), q8);
     }
+}
+
+static inline void copy_i8_aligned(const int8_t* source, int8_t* destination,
+                                   int length) {
+    for (int i = 0; i < length; i += 64)
+        _mm512_store_si512(destination + i,
+                          _mm512_load_si512(source + i));
+}
+
+static inline void copy_f32(const float* source, float* destination,
+                            int length) {
+    for (int i = 0; i < length; i += N_BLOCK)
+        _mm512_storeu_ps(destination + i, _mm512_loadu_ps(source + i));
 }
 
 // AMX expert kernel.  The tile configuration is loaded by the surrounding
@@ -638,10 +773,18 @@ static __attribute__((noinline)) void expert_amx(
                         down_acc + r * N_BLOCK)),
                     _mm512_set1_ps(hidden_scale[r] * s_down));
                 out = _mm512_mul_ps(out, vc);
-                float* dst = destination[r] + output_block * N_BLOCK;
-                if (accumulate)
+                if (accumulate) {
+                    float* dst = destination[r] + output_block * N_BLOCK;
                     out = _mm512_add_ps(_mm512_loadu_ps(dst), out);
-                _mm512_storeu_ps(dst, out);
+                    _mm512_storeu_ps(dst, out);
+                } else {
+                    uint16_t* dst = reinterpret_cast<uint16_t*>(destination[r]) +
+                                    output_block * N_BLOCK;
+                    _mm256_store_si256(
+                        reinterpret_cast<__m256i*>(dst),
+                        _mm512_cvtps_ph(out, _MM_FROUND_TO_NEAREST_INT |
+                                                _MM_FROUND_NO_EXC));
+                }
             }
         };
         _tile_stored(0, down_acc, N_BLOCK * sizeof(int32_t));
@@ -666,6 +809,142 @@ static __attribute__((noinline)) void expert_amx(
             _tile_stored(5, down_acc, N_BLOCK * sizeof(int32_t));
             emit(ob + 5);
         }
+    }
+}
+
+// S3 routed experts commonly contain 17--48 rows.  This kernel computes two
+// 16-row A tiles together: each packed B tile is loaded once and updates both
+// batches before the stream advances.  Four C accumulators leave room for two
+// A tiles and one B tile in the eight-register AMX file.
+static __attribute__((noinline)) void expert_amx_pair_s3(
+    const int8_t* gu, const int8_t* down, float s_gate, float s_up,
+    float s_down, const int8_t* aq, const float* sx,
+    float* const* destination, int rows) {
+    alignas(64) int32_t gate_acc[32 * 128];
+    alignas(64) int32_t up_acc[32 * 128];
+    alignas(64) float hidden[32 * 128];
+    alignas(64) int8_t hq[32 * 128];
+    alignas(64) int32_t down_acc[16 * N_BLOCK];
+    alignas(64) float output_scale[32];
+
+    constexpr int d_model = 256;
+    constexpr int d_ff = 128;
+    constexpr int d_kblocks = d_model / K_BLOCK;
+    constexpr int h_oblocks = d_ff / N_BLOCK;
+    const int second_rows = rows - ROUTER_BATCH;
+
+    for (int ob = 0; ob < h_oblocks; ++ob) {
+        const int group_start = (ob / 3) * 3;
+        const int group = std::min(3, h_oblocks - group_start);
+        const int lane = ob - group_start;
+        const int8_t* group_base = gu +
+            (size_t)group_start * 2 * d_kblocks * TILE_BYTES;
+        _tile_zero(0);  // first batch gate/up
+        _tile_zero(1);
+        _tile_zero(2);  // second batch gate/up
+        _tile_zero(3);
+        for (int kb = 0; kb < d_kblocks; ++kb) {
+            _tile_loadd(4, aq + kb * K_BLOCK, d_model);
+            _tile_loadd(5, aq + (size_t)ROUTER_BATCH * d_model +
+                               kb * K_BLOCK, d_model);
+            const int8_t* b = group_base +
+                ((size_t)kb * group * 2 + lane * 2) * TILE_BYTES;
+            _tile_loadd(7, b, 64);
+            _tile_dpbssd(0, 4, 7);
+            _tile_dpbssd(2, 5, 7);
+            _tile_loadd(7, b + TILE_BYTES, 64);
+            _tile_dpbssd(1, 4, 7);
+            _tile_dpbssd(3, 5, 7);
+        }
+        _tile_stored(0, gate_acc + ob * N_BLOCK,
+                     d_ff * sizeof(int32_t));
+        _tile_stored(1, up_acc + ob * N_BLOCK,
+                     d_ff * sizeof(int32_t));
+        _tile_stored(2, gate_acc + ROUTER_BATCH * d_ff + ob * N_BLOCK,
+                     d_ff * sizeof(int32_t));
+        _tile_stored(3, up_acc + ROUTER_BATCH * d_ff + ob * N_BLOCK,
+                     d_ff * sizeof(int32_t));
+    }
+
+    std::memset(hq, 0, sizeof(hq));
+    for (int r = 0; r < rows; ++r) {
+        __m512 vmax = _mm512_setzero_ps();
+        const __m512 gs = _mm512_set1_ps(sx[r] * s_gate);
+        const __m512 us = _mm512_set1_ps(sx[r] * s_up);
+        for (int f = 0; f < d_ff; f += N_BLOCK) {
+            const __m512 vg = _mm512_mul_ps(
+                _mm512_cvtepi32_ps(_mm512_load_si512(
+                    gate_acc + (size_t)r * d_ff + f)), gs);
+            const __m512 vu = _mm512_mul_ps(
+                _mm512_cvtepi32_ps(_mm512_load_si512(
+                    up_acc + (size_t)r * d_ff + f)), us);
+            const __m512 hv = _mm512_mul_ps(
+                _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
+            _mm512_store_ps(hidden + (size_t)r * d_ff + f, hv);
+            vmax = _mm512_max_ps(vmax, abs512_ps(hv));
+        }
+        const float amax = _mm512_reduce_max_ps(vmax);
+        const float hidden_scale = amax > 0.0f ? amax / 127.0f : 1.0f;
+        output_scale[r] = hidden_scale * s_down;
+        const __m512 inverse = _mm512_set1_ps(1.0f / hidden_scale);
+        for (int f = 0; f < d_ff; f += N_BLOCK) {
+            const __m512 q = _mm512_mul_ps(
+                _mm512_load_ps(hidden + (size_t)r * d_ff + f), inverse);
+            _mm_store_si128(
+                reinterpret_cast<__m128i*>(hq + (size_t)r * d_ff + f),
+                _mm512_cvtsepi32_epi8(_mm512_cvtps_epi32(q)));
+        }
+    }
+
+    constexpr int h_kblocks = d_ff / K_BLOCK;
+    constexpr int d_oblocks = d_model / N_BLOCK;
+    auto emit_batch = [&](const int32_t* acc, int first_row, int real_rows,
+                          int output_block) {
+        for (int r = 0; r < real_rows; ++r) {
+            const __m512 out = _mm512_mul_ps(
+                _mm512_cvtepi32_ps(_mm512_load_si512(
+                    acc + (size_t)r * N_BLOCK)),
+                _mm512_set1_ps(output_scale[first_row + r]));
+            uint16_t* dst =
+                reinterpret_cast<uint16_t*>(destination[first_row + r]) +
+                output_block * N_BLOCK;
+            _mm256_store_si256(
+                reinterpret_cast<__m256i*>(dst),
+                _mm512_cvtps_ph(out, _MM_FROUND_TO_NEAREST_INT |
+                                        _MM_FROUND_NO_EXC));
+        }
+    };
+    for (int ob = 0; ob < d_oblocks; ob += 2) {
+        const int group_start = (ob / 6) * 6;
+        const int group = std::min(6, d_oblocks - group_start);
+        const int lane = ob - group_start;
+        const int8_t* group_base = down +
+            (size_t)group_start * h_kblocks * TILE_BYTES;
+        _tile_zero(0);  // first batch, output ob / ob+1
+        _tile_zero(1);
+        _tile_zero(2);  // second batch, output ob / ob+1
+        _tile_zero(3);
+        for (int kb = 0; kb < h_kblocks; ++kb) {
+            _tile_loadd(4, hq + kb * K_BLOCK, d_ff);
+            _tile_loadd(5, hq + (size_t)ROUTER_BATCH * d_ff +
+                               kb * K_BLOCK, d_ff);
+            const int8_t* b = group_base +
+                ((size_t)kb * group + lane) * TILE_BYTES;
+            _tile_loadd(7, b, 64);
+            _tile_dpbssd(0, 4, 7);
+            _tile_dpbssd(2, 5, 7);
+            _tile_loadd(7, b + TILE_BYTES, 64);
+            _tile_dpbssd(1, 4, 7);
+            _tile_dpbssd(3, 5, 7);
+        }
+        _tile_stored(0, down_acc, N_BLOCK * sizeof(int32_t));
+        emit_batch(down_acc, 0, ROUTER_BATCH, ob);
+        _tile_stored(1, down_acc, N_BLOCK * sizeof(int32_t));
+        emit_batch(down_acc, 0, ROUTER_BATCH, ob + 1);
+        _tile_stored(2, down_acc, N_BLOCK * sizeof(int32_t));
+        emit_batch(down_acc, ROUTER_BATCH, second_rows, ob);
+        _tile_stored(3, down_acc, N_BLOCK * sizeof(int32_t));
+        emit_batch(down_acc, ROUTER_BATCH, second_rows, ob + 1);
     }
 }
 
@@ -851,12 +1130,126 @@ static inline void vnni_s1_gu_group(const int8_t* gu, const int32_t* comp,
     }
 }
 
-static __attribute__((noinline)) void vnni_s1_gu_dot(
+template <int GROUP>
+static inline __m512 vnni_s1_gu_hidden_group(
+    const int8_t* gu, const int32_t* comp, const int8_t* xq, int ob,
+    __m512 gate_scale, __m512 up_scale, float* hidden) {
+    __m512i gate[GROUP];
+    __m512i up[GROUP];
+#pragma GCC unroll 3
+    for (int j = 0; j < GROUP; ++j) {
+        gate[j] = _mm512_load_si512(comp + (ob + j) * N_BLOCK);
+        up[j] = _mm512_load_si512(comp + 128 + (ob + j) * N_BLOCK);
+    }
+    const int8_t* base = gu + (size_t)ob * 2 * 4 * TILE_BYTES;
+    for (int kb = 0; kb < 4; ++kb) {
+        const int8_t* stream = base + (size_t)kb * GROUP * 2 * TILE_BYTES;
+        for (int kg = 0; kg < 16; ++kg) {
+            int32_t x4;
+            std::memcpy(&x4, xq + kb * 64 + kg * 4, sizeof(x4));
+            const __m512i activation = _mm512_set1_epi32(
+                x4 ^ static_cast<int32_t>(0x80808080u));
+            const size_t row = (size_t)kg * 64;
+#pragma GCC unroll 3
+            for (int j = 0; j < GROUP; ++j) {
+                gate[j] = _mm512_dpbusd_epi32(
+                    gate[j], activation,
+                    _mm512_load_si512(stream +
+                                     (size_t)j * 2 * TILE_BYTES + row));
+                up[j] = _mm512_dpbusd_epi32(
+                    up[j], activation,
+                    _mm512_load_si512(stream +
+                                     ((size_t)j * 2 + 1) * TILE_BYTES + row));
+            }
+        }
+    }
+    __m512 maximum = _mm512_setzero_ps();
+#pragma GCC unroll 3
+    for (int j = 0; j < GROUP; ++j) {
+        const __m512 vg = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(gate[j]), gate_scale);
+        const __m512 vu = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(up[j]), up_scale);
+        const __m512 h = _mm512_mul_ps(
+            _mm512_mul_ps(vg, s1_sigmoid512_ps(vg)), vu);
+        _mm512_store_ps(hidden + (ob + j) * N_BLOCK, h);
+        maximum = _mm512_max_ps(maximum, abs512_ps(h));
+    }
+    return maximum;
+}
+
+static __attribute__((noinline)) void vnni_s1_gu_dot_stream(
     const int8_t* gu, const int32_t* comp, const int8_t* xq,
     int32_t* gate_acc, int32_t* up_acc) {
-    vnni_s1_gu_group<3>(gu, comp, xq, 0, gate_acc, up_acc);
-    vnni_s1_gu_group<3>(gu, comp, xq, 3, gate_acc, up_acc);
-    vnni_s1_gu_group<2>(gu, comp, xq, 6, gate_acc, up_acc);
+    __m512i g0 = _mm512_load_si512(comp + 0 * N_BLOCK);
+    __m512i u0 = _mm512_load_si512(comp + 128 + 0 * N_BLOCK);
+    __m512i g1 = _mm512_load_si512(comp + 1 * N_BLOCK);
+    __m512i u1 = _mm512_load_si512(comp + 128 + 1 * N_BLOCK);
+    __m512i g2 = _mm512_load_si512(comp + 2 * N_BLOCK);
+    __m512i u2 = _mm512_load_si512(comp + 128 + 2 * N_BLOCK);
+    __m512i g3 = _mm512_load_si512(comp + 3 * N_BLOCK);
+    __m512i u3 = _mm512_load_si512(comp + 128 + 3 * N_BLOCK);
+    __m512i g4 = _mm512_load_si512(comp + 4 * N_BLOCK);
+    __m512i u4 = _mm512_load_si512(comp + 128 + 4 * N_BLOCK);
+    __m512i g5 = _mm512_load_si512(comp + 5 * N_BLOCK);
+    __m512i u5 = _mm512_load_si512(comp + 128 + 5 * N_BLOCK);
+    __m512i g6 = _mm512_load_si512(comp + 6 * N_BLOCK);
+    __m512i u6 = _mm512_load_si512(comp + 128 + 6 * N_BLOCK);
+    __m512i g7 = _mm512_load_si512(comp + 7 * N_BLOCK);
+    __m512i u7 = _mm512_load_si512(comp + 128 + 7 * N_BLOCK);
+    const int8_t* stream = gu;
+    for (int input = 0; input < 256; input += 4, stream += 16 * 64) {
+        int32_t x4;
+        std::memcpy(&x4, xq + input, sizeof(x4));
+        const __m512i activation = _mm512_set1_epi32(
+            x4 ^ static_cast<int32_t>(0x80808080u));
+        asm volatile(
+            "vpdpbusd    0(%[p]), %[a], %[g0]\n\t"
+            "vpdpbusd   64(%[p]), %[a], %[u0]\n\t"
+            "vpdpbusd  128(%[p]), %[a], %[g1]\n\t"
+            "vpdpbusd  192(%[p]), %[a], %[u1]\n\t"
+            "vpdpbusd  256(%[p]), %[a], %[g2]\n\t"
+            "vpdpbusd  320(%[p]), %[a], %[u2]\n\t"
+            "vpdpbusd  384(%[p]), %[a], %[g3]\n\t"
+            "vpdpbusd  448(%[p]), %[a], %[u3]"
+            : [g0] "+v"(g0), [u0] "+v"(u0),
+              [g1] "+v"(g1), [u1] "+v"(u1),
+              [g2] "+v"(g2), [u2] "+v"(u2),
+              [g3] "+v"(g3), [u3] "+v"(u3)
+            : [a] "v"(activation), [p] "r"(stream)
+            : "memory");
+        asm volatile(
+            "vpdpbusd  512(%[p]), %[a], %[g4]\n\t"
+            "vpdpbusd  576(%[p]), %[a], %[u4]\n\t"
+            "vpdpbusd  640(%[p]), %[a], %[g5]\n\t"
+            "vpdpbusd  704(%[p]), %[a], %[u5]\n\t"
+            "vpdpbusd  768(%[p]), %[a], %[g6]\n\t"
+            "vpdpbusd  832(%[p]), %[a], %[u6]\n\t"
+            "vpdpbusd  896(%[p]), %[a], %[g7]\n\t"
+            "vpdpbusd  960(%[p]), %[a], %[u7]"
+            : [g4] "+v"(g4), [u4] "+v"(u4),
+              [g5] "+v"(g5), [u5] "+v"(u5),
+              [g6] "+v"(g6), [u6] "+v"(u6),
+              [g7] "+v"(g7), [u7] "+v"(u7)
+            : [a] "v"(activation), [p] "r"(stream)
+            : "memory");
+    }
+    _mm512_store_si512(gate_acc + 0 * N_BLOCK, g0);
+    _mm512_store_si512(up_acc + 0 * N_BLOCK, u0);
+    _mm512_store_si512(gate_acc + 1 * N_BLOCK, g1);
+    _mm512_store_si512(up_acc + 1 * N_BLOCK, u1);
+    _mm512_store_si512(gate_acc + 2 * N_BLOCK, g2);
+    _mm512_store_si512(up_acc + 2 * N_BLOCK, u2);
+    _mm512_store_si512(gate_acc + 3 * N_BLOCK, g3);
+    _mm512_store_si512(up_acc + 3 * N_BLOCK, u3);
+    _mm512_store_si512(gate_acc + 4 * N_BLOCK, g4);
+    _mm512_store_si512(up_acc + 4 * N_BLOCK, u4);
+    _mm512_store_si512(gate_acc + 5 * N_BLOCK, g5);
+    _mm512_store_si512(up_acc + 5 * N_BLOCK, u5);
+    _mm512_store_si512(gate_acc + 6 * N_BLOCK, g6);
+    _mm512_store_si512(up_acc + 6 * N_BLOCK, u6);
+    _mm512_store_si512(gate_acc + 7 * N_BLOCK, g7);
+    _mm512_store_si512(up_acc + 7 * N_BLOCK, u7);
 }
 
 template <int GROUP>
@@ -888,6 +1281,120 @@ static inline void vnni_s1_down_group(const int8_t* down,
         _mm512_store_si512(output_acc + (ob + j) * N_BLOCK, acc[j]);
 }
 
+template <int GROUP>
+static inline void vnni_s1_down_output_group(
+    const int8_t* down, const int32_t* comp, const int8_t* hq, int ob,
+    __m512 scale, float* output) {
+    __m512i acc[GROUP];
+#pragma GCC unroll 6
+    for (int j = 0; j < GROUP; ++j)
+        acc[j] = _mm512_load_si512(comp + (ob + j) * N_BLOCK);
+    const int8_t* base = down + (size_t)ob * 2 * TILE_BYTES;
+    for (int kb = 0; kb < 2; ++kb) {
+        const int8_t* stream = base + (size_t)kb * GROUP * TILE_BYTES;
+        for (int kg = 0; kg < 16; ++kg) {
+            int32_t x4;
+            std::memcpy(&x4, hq + kb * 64 + kg * 4, sizeof(x4));
+            const __m512i activation = _mm512_set1_epi32(
+                x4 ^ static_cast<int32_t>(0x80808080u));
+            const size_t row = (size_t)kg * 64;
+#pragma GCC unroll 6
+            for (int j = 0; j < GROUP; ++j)
+                acc[j] = _mm512_dpbusd_epi32(
+                    acc[j], activation,
+                    _mm512_load_si512(stream +
+                                     (size_t)j * TILE_BYTES + row));
+        }
+    }
+#pragma GCC unroll 6
+    for (int j = 0; j < GROUP; ++j)
+        _mm512_store_ps(
+            output + (ob + j) * N_BLOCK,
+            _mm512_mul_ps(_mm512_cvtepi32_ps(acc[j]), scale));
+}
+
+static __attribute__((noinline)) void vnni_s1_down_dot_stream(
+    const int8_t* down, const int32_t* comp, const int8_t* hq,
+    int32_t* output_acc) {
+    __m512i a0 = _mm512_load_si512(comp + 0 * N_BLOCK);
+    __m512i a1 = _mm512_load_si512(comp + 1 * N_BLOCK);
+    __m512i a2 = _mm512_load_si512(comp + 2 * N_BLOCK);
+    __m512i a3 = _mm512_load_si512(comp + 3 * N_BLOCK);
+    __m512i a4 = _mm512_load_si512(comp + 4 * N_BLOCK);
+    __m512i a5 = _mm512_load_si512(comp + 5 * N_BLOCK);
+    __m512i a6 = _mm512_load_si512(comp + 6 * N_BLOCK);
+    __m512i a7 = _mm512_load_si512(comp + 7 * N_BLOCK);
+    __m512i a8 = _mm512_load_si512(comp + 8 * N_BLOCK);
+    __m512i a9 = _mm512_load_si512(comp + 9 * N_BLOCK);
+    __m512i a10 = _mm512_load_si512(comp + 10 * N_BLOCK);
+    __m512i a11 = _mm512_load_si512(comp + 11 * N_BLOCK);
+    __m512i a12 = _mm512_load_si512(comp + 12 * N_BLOCK);
+    __m512i a13 = _mm512_load_si512(comp + 13 * N_BLOCK);
+    __m512i a14 = _mm512_load_si512(comp + 14 * N_BLOCK);
+    __m512i a15 = _mm512_load_si512(comp + 15 * N_BLOCK);
+    const int8_t* stream = down;
+    for (int input = 0; input < 128; input += 4, stream += 16 * 64) {
+        int32_t x4;
+        std::memcpy(&x4, hq + input, sizeof(x4));
+        const __m512i activation = _mm512_set1_epi32(
+            x4 ^ static_cast<int32_t>(0x80808080u));
+        asm volatile(
+            "vpdpbusd    0(%[p]), %[x], %[a0]\n\t"
+            "vpdpbusd   64(%[p]), %[x], %[a1]\n\t"
+            "vpdpbusd  128(%[p]), %[x], %[a2]\n\t"
+            "vpdpbusd  192(%[p]), %[x], %[a3]\n\t"
+            "vpdpbusd  256(%[p]), %[x], %[a4]\n\t"
+            "vpdpbusd  320(%[p]), %[x], %[a5]\n\t"
+            "vpdpbusd  384(%[p]), %[x], %[a6]\n\t"
+            "vpdpbusd  448(%[p]), %[x], %[a7]"
+            : [a0] "+v"(a0), [a1] "+v"(a1),
+              [a2] "+v"(a2), [a3] "+v"(a3),
+              [a4] "+v"(a4), [a5] "+v"(a5),
+              [a6] "+v"(a6), [a7] "+v"(a7)
+            : [x] "v"(activation), [p] "r"(stream)
+            : "memory");
+        asm volatile(
+            "vpdpbusd  512(%[p]), %[x], %[a8]\n\t"
+            "vpdpbusd  576(%[p]), %[x], %[a9]\n\t"
+            "vpdpbusd  640(%[p]), %[x], %[a10]\n\t"
+            "vpdpbusd  704(%[p]), %[x], %[a11]\n\t"
+            "vpdpbusd  768(%[p]), %[x], %[a12]\n\t"
+            "vpdpbusd  832(%[p]), %[x], %[a13]\n\t"
+            "vpdpbusd  896(%[p]), %[x], %[a14]\n\t"
+            "vpdpbusd  960(%[p]), %[x], %[a15]"
+            : [a8] "+v"(a8), [a9] "+v"(a9),
+              [a10] "+v"(a10), [a11] "+v"(a11),
+              [a12] "+v"(a12), [a13] "+v"(a13),
+              [a14] "+v"(a14), [a15] "+v"(a15)
+            : [x] "v"(activation), [p] "r"(stream)
+            : "memory");
+    }
+    _mm512_store_si512(output_acc + 0 * N_BLOCK, a0);
+    _mm512_store_si512(output_acc + 1 * N_BLOCK, a1);
+    _mm512_store_si512(output_acc + 2 * N_BLOCK, a2);
+    _mm512_store_si512(output_acc + 3 * N_BLOCK, a3);
+    _mm512_store_si512(output_acc + 4 * N_BLOCK, a4);
+    _mm512_store_si512(output_acc + 5 * N_BLOCK, a5);
+    _mm512_store_si512(output_acc + 6 * N_BLOCK, a6);
+    _mm512_store_si512(output_acc + 7 * N_BLOCK, a7);
+    _mm512_store_si512(output_acc + 8 * N_BLOCK, a8);
+    _mm512_store_si512(output_acc + 9 * N_BLOCK, a9);
+    _mm512_store_si512(output_acc + 10 * N_BLOCK, a10);
+    _mm512_store_si512(output_acc + 11 * N_BLOCK, a11);
+    _mm512_store_si512(output_acc + 12 * N_BLOCK, a12);
+    _mm512_store_si512(output_acc + 13 * N_BLOCK, a13);
+    _mm512_store_si512(output_acc + 14 * N_BLOCK, a14);
+    _mm512_store_si512(output_acc + 15 * N_BLOCK, a15);
+}
+
+static __attribute__((noinline)) void vnni_s1_gu_dot(
+    const int8_t* gu, const int32_t* comp, const int8_t* xq,
+    int32_t* gate_acc, int32_t* up_acc) {
+    vnni_s1_gu_group<3>(gu, comp, xq, 0, gate_acc, up_acc);
+    vnni_s1_gu_group<3>(gu, comp, xq, 3, gate_acc, up_acc);
+    vnni_s1_gu_group<2>(gu, comp, xq, 6, gate_acc, up_acc);
+}
+
 static __attribute__((noinline)) void vnni_s1_down_dot(
     const int8_t* down, const int32_t* comp, const int8_t* hq,
     int32_t* output_acc) {
@@ -896,30 +1403,212 @@ static __attribute__((noinline)) void vnni_s1_down_dot(
     vnni_s1_down_group<4>(down, comp, hq, 12, output_acc);
 }
 
-static inline void expert_vnni_s1(
+#ifdef MOE_S1_256BIT
+static inline __m256 s1_sigmoid256_ps(__m256 x) {
+    __m256 z = _mm256_sub_ps(_mm256_setzero_ps(), x);
+    z = _mm256_min_ps(z, _mm256_set1_ps(88.3762626647949f));
+    z = _mm256_max_ps(z, _mm256_set1_ps(-88.3762626647949f));
+    __m256 exponent = _mm256_floor_ps(_mm256_fmadd_ps(
+        z, _mm256_set1_ps(1.44269504088896341f),
+        _mm256_set1_ps(0.5f)));
+    z = _mm256_fnmadd_ps(exponent, _mm256_set1_ps(0.693359375f), z);
+    z = _mm256_fnmadd_ps(exponent, _mm256_set1_ps(-2.12194440e-4f), z);
+    __m256 polynomial = _mm256_fmadd_ps(
+        z, _mm256_set1_ps(1.0f / 6.0f), _mm256_set1_ps(0.5f));
+    polynomial = _mm256_fmadd_ps(polynomial, z, _mm256_set1_ps(1.0f));
+    polynomial = _mm256_fmadd_ps(polynomial, z, _mm256_set1_ps(1.0f));
+    __m256i bits = _mm256_add_epi32(
+        _mm256_cvttps_epi32(exponent), _mm256_set1_epi32(127));
+    bits = _mm256_slli_epi32(bits, 23);
+    const __m256 denominator = _mm256_add_ps(
+        _mm256_set1_ps(1.0f),
+        _mm256_mul_ps(polynomial, _mm256_castsi256_ps(bits)));
+    return _mm256_rcp14_ps(denominator);
+}
+
+static inline __m256 abs256_ps(__m256 x) {
+    return _mm256_castsi256_ps(_mm256_and_si256(
+        _mm256_castps_si256(x), _mm256_set1_epi32(0x7fffffff)));
+}
+
+template <int GROUP>
+static inline __m256 vnni_s1_gu_hidden_group_256(
+    const int8_t* gu, const int32_t* comp, const int8_t* xq, int ob,
+    __m256 gate_scale, __m256 up_scale, float* hidden) {
+    __m256i gate_lo[GROUP], gate_hi[GROUP];
+    __m256i up_lo[GROUP], up_hi[GROUP];
+#pragma GCC unroll 3
+    for (int j = 0; j < GROUP; ++j) {
+        const int offset = (ob + j) * N_BLOCK;
+        gate_lo[j] = _mm256_load_si256(
+            reinterpret_cast<const __m256i*>(comp + offset));
+        gate_hi[j] = _mm256_load_si256(
+            reinterpret_cast<const __m256i*>(comp + offset + 8));
+        up_lo[j] = _mm256_load_si256(
+            reinterpret_cast<const __m256i*>(comp + 128 + offset));
+        up_hi[j] = _mm256_load_si256(
+            reinterpret_cast<const __m256i*>(comp + 128 + offset + 8));
+    }
+    const int8_t* base = gu + (size_t)ob * 2 * 4 * TILE_BYTES;
+    for (int kb = 0; kb < 4; ++kb) {
+        const int8_t* stream = base + (size_t)kb * GROUP * 2 * TILE_BYTES;
+        for (int kg = 0; kg < 16; ++kg) {
+            int32_t x4;
+            std::memcpy(&x4, xq + kb * 64 + kg * 4, sizeof(x4));
+            const __m256i activation = _mm256_set1_epi32(
+                x4 ^ static_cast<int32_t>(0x80808080u));
+            const size_t row = (size_t)kg * 64;
+#pragma GCC unroll 3
+            for (int j = 0; j < GROUP; ++j) {
+                const int8_t* gate_weight =
+                    stream + (size_t)j * 2 * TILE_BYTES + row;
+                const int8_t* up_weight = gate_weight + TILE_BYTES;
+                gate_lo[j] = _mm256_dpbusd_epi32(
+                    gate_lo[j], activation,
+                    _mm256_load_si256(reinterpret_cast<const __m256i*>(
+                        gate_weight)));
+                gate_hi[j] = _mm256_dpbusd_epi32(
+                    gate_hi[j], activation,
+                    _mm256_load_si256(reinterpret_cast<const __m256i*>(
+                        gate_weight + 32)));
+                up_lo[j] = _mm256_dpbusd_epi32(
+                    up_lo[j], activation,
+                    _mm256_load_si256(reinterpret_cast<const __m256i*>(
+                        up_weight)));
+                up_hi[j] = _mm256_dpbusd_epi32(
+                    up_hi[j], activation,
+                    _mm256_load_si256(reinterpret_cast<const __m256i*>(
+                        up_weight + 32)));
+            }
+        }
+    }
+    __m256 maximum = _mm256_setzero_ps();
+#pragma GCC unroll 3
+    for (int j = 0; j < GROUP; ++j) {
+        const __m256 vg_lo = _mm256_mul_ps(
+            _mm256_cvtepi32_ps(gate_lo[j]), gate_scale);
+        const __m256 vg_hi = _mm256_mul_ps(
+            _mm256_cvtepi32_ps(gate_hi[j]), gate_scale);
+        const __m256 vu_lo = _mm256_mul_ps(
+            _mm256_cvtepi32_ps(up_lo[j]), up_scale);
+        const __m256 vu_hi = _mm256_mul_ps(
+            _mm256_cvtepi32_ps(up_hi[j]), up_scale);
+        const __m256 h_lo = _mm256_mul_ps(
+            _mm256_mul_ps(vg_lo, s1_sigmoid256_ps(vg_lo)), vu_lo);
+        const __m256 h_hi = _mm256_mul_ps(
+            _mm256_mul_ps(vg_hi, s1_sigmoid256_ps(vg_hi)), vu_hi);
+        float* output = hidden + (ob + j) * N_BLOCK;
+        _mm256_store_ps(output, h_lo);
+        _mm256_store_ps(output + 8, h_hi);
+        maximum = _mm256_max_ps(maximum, abs256_ps(h_lo));
+        maximum = _mm256_max_ps(maximum, abs256_ps(h_hi));
+    }
+    return maximum;
+}
+
+template <int GROUP>
+static inline void vnni_s1_down_output_group_256(
+    const int8_t* down, const int32_t* comp, const int8_t* hq, int ob,
+    __m256 scale, float* output) {
+    __m256i acc_lo[GROUP], acc_hi[GROUP];
+#pragma GCC unroll 6
+    for (int j = 0; j < GROUP; ++j) {
+        const int offset = (ob + j) * N_BLOCK;
+        acc_lo[j] = _mm256_load_si256(
+            reinterpret_cast<const __m256i*>(comp + offset));
+        acc_hi[j] = _mm256_load_si256(
+            reinterpret_cast<const __m256i*>(comp + offset + 8));
+    }
+    const int8_t* base = down + (size_t)ob * 2 * TILE_BYTES;
+    for (int kb = 0; kb < 2; ++kb) {
+        const int8_t* stream = base + (size_t)kb * GROUP * TILE_BYTES;
+        for (int kg = 0; kg < 16; ++kg) {
+            int32_t x4;
+            std::memcpy(&x4, hq + kb * 64 + kg * 4, sizeof(x4));
+            const __m256i activation = _mm256_set1_epi32(
+                x4 ^ static_cast<int32_t>(0x80808080u));
+            const size_t row = (size_t)kg * 64;
+#pragma GCC unroll 6
+            for (int j = 0; j < GROUP; ++j) {
+                const int8_t* weight =
+                    stream + (size_t)j * TILE_BYTES + row;
+                acc_lo[j] = _mm256_dpbusd_epi32(
+                    acc_lo[j], activation,
+                    _mm256_load_si256(reinterpret_cast<const __m256i*>(
+                        weight)));
+                acc_hi[j] = _mm256_dpbusd_epi32(
+                    acc_hi[j], activation,
+                    _mm256_load_si256(reinterpret_cast<const __m256i*>(
+                        weight + 32)));
+            }
+        }
+    }
+#pragma GCC unroll 6
+    for (int j = 0; j < GROUP; ++j) {
+        float* destination = output + (ob + j) * N_BLOCK;
+        _mm256_store_ps(destination, _mm256_mul_ps(
+            _mm256_cvtepi32_ps(acc_lo[j]), scale));
+        _mm256_store_ps(destination + 8, _mm256_mul_ps(
+            _mm256_cvtepi32_ps(acc_hi[j]), scale));
+    }
+}
+
+static inline void expert_vnni_s1_256(
     const int8_t* gu, const int8_t* down, const int32_t* gu_comp,
     const int32_t* down_comp, float s_gate, float s_up, float s_down,
     const int8_t* xq, float s_x, float* output) {
-    alignas(64) int32_t gate_acc[128];
-    alignas(64) int32_t up_acc[128];
     alignas(64) float hidden[128];
     alignas(64) int8_t hq[128];
-    alignas(64) int32_t output_acc[256];
-    vnni_s1_gu_dot(gu, gu_comp, xq, gate_acc, up_acc);
+    const __m256 gs = _mm256_set1_ps(s_x * s_gate);
+    const __m256 us = _mm256_set1_ps(s_x * s_up);
+    __m256 vmax = _mm256_setzero_ps();
+    vmax = _mm256_max_ps(vmax, vnni_s1_gu_hidden_group_256<3>(
+        gu, gu_comp, xq, 0, gs, us, hidden));
+    vmax = _mm256_max_ps(vmax, vnni_s1_gu_hidden_group_256<3>(
+        gu, gu_comp, xq, 3, gs, us, hidden));
+    vmax = _mm256_max_ps(vmax, vnni_s1_gu_hidden_group_256<2>(
+        gu, gu_comp, xq, 6, gs, us, hidden));
+    const float amax = _mm256_reduce_max_ps(vmax);
+    const float sh = amax > 0.0f ? amax / 127.0f : 1.0f;
+    const __m256 inverse = _mm256_set1_ps(1.0f / sh);
+    for (int f = 0; f < 128; f += N_BLOCK) {
+        const __m256 q0 = _mm256_mul_ps(_mm256_load_ps(hidden + f), inverse);
+        const __m256 q1 = _mm256_mul_ps(
+            _mm256_load_ps(hidden + f + 8), inverse);
+        const __m128i b0 = _mm256_cvtsepi32_epi8(_mm256_cvtps_epi32(q0));
+        const __m128i b1 = _mm256_cvtsepi32_epi8(_mm256_cvtps_epi32(q1));
+        _mm_storel_epi64(reinterpret_cast<__m128i*>(hq + f), b0);
+        _mm_storel_epi64(reinterpret_cast<__m128i*>(hq + f + 8), b1);
+    }
+    const __m256 scale = _mm256_set1_ps(sh * s_down);
+    vnni_s1_down_output_group_256<6>(
+        down, down_comp, hq, 0, scale, output);
+    vnni_s1_down_output_group_256<6>(
+        down, down_comp, hq, 6, scale, output);
+    vnni_s1_down_output_group_256<4>(
+        down, down_comp, hq, 12, scale, output);
+}
+#endif
+
+static inline void expert_vnni_s1(
+    const int8_t* gu, const int8_t* down, const int32_t* gu_comp,
+    const int32_t* down_comp, float s_gate, float s_up, float s_down,
+    const int8_t* xq, float s_x, float coeff, float* output) {
+    alignas(64) float hidden[128];
+    alignas(64) int8_t hq[128];
 
     const __m512 gs = _mm512_set1_ps(s_x * s_gate);
     const __m512 us = _mm512_set1_ps(s_x * s_up);
     __m512 vmax = _mm512_setzero_ps();
-    for (int f = 0; f < 128; f += N_BLOCK) {
-        const __m512 vg = _mm512_mul_ps(
-            _mm512_cvtepi32_ps(_mm512_load_si512(gate_acc + f)), gs);
-        const __m512 vu = _mm512_mul_ps(
-            _mm512_cvtepi32_ps(_mm512_load_si512(up_acc + f)), us);
-        const __m512 h = _mm512_mul_ps(
-            _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
-        _mm512_store_ps(hidden + f, h);
-        vmax = _mm512_max_ps(vmax, abs512_ps(h));
-    }
+    vmax = _mm512_max_ps(
+        vmax, vnni_s1_gu_hidden_group<3>(
+                  gu, gu_comp, xq, 0, gs, us, hidden));
+    vmax = _mm512_max_ps(
+        vmax, vnni_s1_gu_hidden_group<3>(
+                  gu, gu_comp, xq, 3, gs, us, hidden));
+    vmax = _mm512_max_ps(
+        vmax, vnni_s1_gu_hidden_group<2>(
+                  gu, gu_comp, xq, 6, gs, us, hidden));
     const float amax = _mm512_reduce_max_ps(vmax);
     const float sh = amax > 0.0f ? amax / 127.0f : 1.0f;
     const __m512 inverse = _mm512_set1_ps(1.0f / sh);
@@ -929,12 +1618,15 @@ static inline void expert_vnni_s1(
                         _mm512_cvtsepi32_epi8(_mm512_cvtps_epi32(q)));
     }
 
-    vnni_s1_down_dot(down, down_comp, hq, output_acc);
-    const __m512 scale = _mm512_set1_ps(sh * s_down);
-    for (int d = 0; d < 256; d += N_BLOCK)
-        _mm512_store_ps(output + d,
-                        _mm512_mul_ps(_mm512_cvtepi32_ps(
-                            _mm512_load_si512(output_acc + d)), scale));
+    const __m512 scale = _mm512_set1_ps(
+        sh * s_down
+#ifdef MOE_S1_PREWEIGHT_OUTPUT
+        * coeff
+#endif
+    );
+    vnni_s1_down_output_group<6>(down, down_comp, hq, 0, scale, output);
+    vnni_s1_down_output_group<6>(down, down_comp, hq, 6, scale, output);
+    vnni_s1_down_output_group<4>(down, down_comp, hq, 12, scale, output);
 }
 
 static inline void select_topk(const float* affinity, const MoEWeights& w,
@@ -1081,9 +1773,215 @@ static inline void router_block(const float* x, int rows, int d_model,
     for (int r = 0; r < rows; ++r) {
         for (int eb = 0; eb < eblocks; ++eb) {
             float* v = affinity[r] + eb * N_BLOCK;
-            _mm512_store_ps(v, sigmoid512_ps(_mm512_load_ps(v)));
+            const __m512 logits = _mm512_load_ps(v);
+#ifdef MOE_FAST_S1_ROUTER
+            _mm512_store_ps(
+                v, rows == 1 && d_model == 256
+                       ? s1_router_sigmoid512_ps(logits)
+                       : expert_sigmoid512_ps(logits));
+#else
+            _mm512_store_ps(v, expert_sigmoid512_ps(logits));
+#endif
         }
     }
+}
+
+// Compute a 16-token x E approximate router with signed INT8 AMX.  The
+// packed layout is the same six-output-block stream used by the Down kernel.
+static __attribute__((noinline)) void router_int8_dot_16(
+    const int8_t* aq, int d_model, int32_t* accum) {
+    const int kblocks = d_model / K_BLOCK;
+    const int out_blocks = pw.padded_experts / N_BLOCK;
+    for (int ob = 0; ob < out_blocks; ob += 6) {
+        const int group = std::min(6, out_blocks - ob);
+        const int8_t* group_base =
+            pw.router_q + (size_t)ob * kblocks * TILE_BYTES;
+        _tile_zero(0);
+        if (group > 1) _tile_zero(1);
+        if (group > 2) _tile_zero(2);
+        if (group > 3) _tile_zero(3);
+        if (group > 4) _tile_zero(4);
+        if (group > 5) _tile_zero(5);
+        for (int kb = 0; kb < kblocks; ++kb) {
+            _tile_loadd(6, aq + kb * K_BLOCK, d_model);
+            const int8_t* b = group_base +
+                (size_t)kb * group * TILE_BYTES;
+            _tile_loadd(7, b, 64);
+            _tile_dpbssd(0, 6, 7);
+            if (group > 1) {
+                _tile_loadd(7, b + TILE_BYTES, 64);
+                _tile_dpbssd(1, 6, 7);
+            }
+            if (group > 2) {
+                _tile_loadd(7, b + 2 * TILE_BYTES, 64);
+                _tile_dpbssd(2, 6, 7);
+            }
+            if (group > 3) {
+                _tile_loadd(7, b + 3 * TILE_BYTES, 64);
+                _tile_dpbssd(3, 6, 7);
+            }
+            if (group > 4) {
+                _tile_loadd(7, b + 4 * TILE_BYTES, 64);
+                _tile_dpbssd(4, 6, 7);
+            }
+            if (group > 5) {
+                _tile_loadd(7, b + 5 * TILE_BYTES, 64);
+                _tile_dpbssd(5, 6, 7);
+            }
+        }
+        _tile_stored(0, accum + ob * N_BLOCK,
+                     pw.padded_experts * sizeof(int32_t));
+        if (group > 1)
+            _tile_stored(1, accum + (ob + 1) * N_BLOCK,
+                         pw.padded_experts * sizeof(int32_t));
+        if (group > 2)
+            _tile_stored(2, accum + (ob + 2) * N_BLOCK,
+                         pw.padded_experts * sizeof(int32_t));
+        if (group > 3)
+            _tile_stored(3, accum + (ob + 3) * N_BLOCK,
+                         pw.padded_experts * sizeof(int32_t));
+        if (group > 4)
+            _tile_stored(4, accum + (ob + 4) * N_BLOCK,
+                         pw.padded_experts * sizeof(int32_t));
+        if (group > 5)
+            _tile_stored(5, accum + (ob + 5) * N_BLOCK,
+                         pw.padded_experts * sizeof(int32_t));
+    }
+}
+
+static inline float router_exact_affinity(const float* x, const float* weight,
+                                          int d_model) {
+    __m512 sum = _mm512_setzero_ps();
+    for (int d = 0; d < d_model; d += N_BLOCK)
+        sum = _mm512_fmadd_ps(_mm512_loadu_ps(x + d),
+                              _mm512_loadu_ps(weight + d), sum);
+    const float logit = _mm512_reduce_add_ps(sum);
+    return 1.0f / (1.0f + std::exp(-logit));
+}
+
+// The AMX result is used only to form a generous candidate set.  Top-K and
+// gate values are recomputed from the original FP32 weights for those
+// candidates, so router quantization never directly reaches the output.
+static inline void select_top2_refined(const float* x, const MoEWeights& w,
+                                       const int32_t* approx_acc, float sx,
+                                       int* indices, float* gates) {
+    alignas(64) float approx_score[MAX_NUM_EXPERTS];
+    const __m512 input_scale = _mm512_set1_ps(sx);
+    float best0 = -std::numeric_limits<float>::infinity();
+    float best1 = best0;
+    for (int e = 0; e < w.num_experts; e += N_BLOCK) {
+        const __m512 dequant = _mm512_mul_ps(
+            _mm512_cvtepi32_ps(_mm512_load_si512(approx_acc + e)),
+            _mm512_mul_ps(input_scale,
+                          _mm512_load_ps(pw.router_q_scale + e)));
+        const __m512 score = _mm512_add_ps(
+            expert_sigmoid512_ps(dequant), _mm512_loadu_ps(w.bias + e));
+        _mm512_store_ps(approx_score + e, score);
+        const float block0 = _mm512_reduce_max_ps(score);
+        const __mmask16 below_max = _mm512_cmp_ps_mask(
+            score, _mm512_set1_ps(block0), _CMP_LT_OQ);
+        const float block1 = _mm512_mask_reduce_max_ps(below_max, score);
+        auto update_best = [&](float value) {
+            if (value > best0) {
+                best1 = best0;
+                best0 = value;
+            } else if (value > best1) {
+                best1 = value;
+            }
+        };
+        update_best(block0);
+        update_best(block1);
+    }
+
+    constexpr int MAX_CANDIDATES = 64;
+    constexpr float CANDIDATE_MARGIN = 0.04f;
+    int candidates[MAX_CANDIDATES];
+    int candidate_count = 0;
+    const __m512 threshold = _mm512_set1_ps(best1 - CANDIDATE_MARGIN);
+    const __m512i lanes = _mm512_setr_epi32(
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
+    for (int e = 0; e < w.num_experts; e += N_BLOCK) {
+        const __mmask16 selected = _mm512_cmp_ps_mask(
+            _mm512_load_ps(approx_score + e), threshold, _CMP_GE_OQ);
+        const int selected_count = __builtin_popcount(selected);
+        if (candidate_count + selected_count > MAX_CANDIDATES) {
+            candidate_count = w.num_experts;
+            break;
+        }
+        _mm512_mask_compressstoreu_epi32(
+            candidates + candidate_count, selected,
+            _mm512_add_epi32(lanes, _mm512_set1_epi32(e)));
+        candidate_count += selected_count;
+    }
+#ifdef MOE_ROUTER_AUDIT
+    static std::atomic<uint64_t> audit_candidate_sum{0};
+    static std::atomic<uint64_t> audit_token_count{0};
+    static std::atomic<int> audit_candidate_max{0};
+    audit_candidate_sum.fetch_add(candidate_count, std::memory_order_relaxed);
+    int old_max = audit_candidate_max.load(std::memory_order_relaxed);
+    while (candidate_count > old_max &&
+           !audit_candidate_max.compare_exchange_weak(
+               old_max, candidate_count, std::memory_order_relaxed)) {}
+    const uint64_t audited =
+        audit_token_count.fetch_add(1, std::memory_order_relaxed) + 1;
+    if ((audited & 1023) == 0)
+        std::fprintf(stderr, "router candidates: avg=%.3f max=%d\n",
+                     static_cast<double>(audit_candidate_sum.load()) / audited,
+                     audit_candidate_max.load());
+#endif
+
+    float exact_best[2] = {
+        -std::numeric_limits<float>::infinity(),
+        -std::numeric_limits<float>::infinity()};
+    float exact_affinity[2] = {};
+    int exact_index[2] = {-1, -1};
+    const int scan_count = candidate_count == w.num_experts
+        ? w.num_experts : candidate_count;
+    for (int i = 0; i < scan_count; ++i) {
+        const int e = candidate_count == w.num_experts ? i : candidates[i];
+        const float affinity = router_exact_affinity(
+            x, w.w_router + (size_t)e * w.d_model, w.d_model);
+        const float score = affinity + w.bias[e];
+        if (score > exact_best[0]) {
+            exact_best[1] = exact_best[0];
+            exact_affinity[1] = exact_affinity[0];
+            exact_index[1] = exact_index[0];
+            exact_best[0] = score;
+            exact_affinity[0] = affinity;
+            exact_index[0] = e;
+        } else if (score > exact_best[1]) {
+            exact_best[1] = score;
+            exact_affinity[1] = affinity;
+            exact_index[1] = e;
+        }
+    }
+    const float inverse_sum = 1.0f / (exact_affinity[0] + exact_affinity[1]);
+    indices[0] = exact_index[0];
+    indices[1] = exact_index[1];
+    gates[0] = exact_affinity[0] * inverse_sum;
+    gates[1] = exact_affinity[1] * inverse_sum;
+#ifdef MOE_ROUTER_AUDIT
+    float audit_score[2] = {
+        -std::numeric_limits<float>::infinity(),
+        -std::numeric_limits<float>::infinity()};
+    int audit_index[2] = {-1, -1};
+    for (int e = 0; e < w.num_experts; ++e) {
+        const float affinity = router_exact_affinity(
+            x, w.w_router + (size_t)e * w.d_model, w.d_model);
+        const float score = affinity + w.bias[e];
+        if (score > audit_score[0]) {
+            audit_score[1] = audit_score[0];
+            audit_index[1] = audit_index[0];
+            audit_score[0] = score;
+            audit_index[0] = e;
+        } else if (score > audit_score[1]) {
+            audit_score[1] = score;
+            audit_index[1] = e;
+        }
+    }
+    if (audit_index[0] != indices[0] || audit_index[1] != indices[1])
+        std::abort();
+#endif
 }
 
 static inline void forward_block(const float* x, const MoEWeights& w,
@@ -1101,7 +1999,7 @@ static inline void forward_block(const float* x, const MoEWeights& w,
         alignas(64) int8_t xq[MAX_D_MODEL];
         float s_x;
         quantize_row(xr, w.d_model, xq, s_x);
-        std::memcpy(yr, xr, (size_t)w.d_model * sizeof(float));
+        copy_f32(xr, yr, w.d_model);
 
         expert_vnni(pw.shared_gu, pw.shared_down,
                     pw.shared_gu_comp, pw.shared_down_comp,
@@ -1122,6 +2020,7 @@ static inline void forward_block(const float* x, const MoEWeights& w,
 struct SinglePipelineContext {
     const MoEWeights* w;
     const int* indices;
+    const float* gates;
     const int8_t* aq;
     float sx;
     int experts;
@@ -1194,8 +2093,14 @@ static void single_whole_vnni_task(int slot, void* opaque) {
     const float sd = slot == 0 ? w.sh_s_down : w.s_down[e];
     float* output = pw.routed_output + (size_t)slot * w.d_model;
     if (w.d_model == 256 && w.d_ff == 128) {
+        const float coeff = slot == 0 ? 1.0f : ctx.gates[slot - 1];
+#ifdef MOE_S1_256BIT
+        expert_vnni_s1_256(gu, down, gu_comp, down_comp, sg, su, sd, ctx.aq,
+                           ctx.sx, output);
+#else
         expert_vnni_s1(gu, down, gu_comp, down_comp, sg, su, sd, ctx.aq,
-                       ctx.sx, output);
+                       ctx.sx, coeff, output);
+#endif
     } else {
         std::memset(output, 0, (size_t)w.d_model * sizeof(float));
         expert_vnni(gu, down, gu_comp, down_comp, sg, su, sd, ctx.aq,
@@ -1208,16 +2113,25 @@ struct SingleS1FusedContext {
     const float* x = nullptr;
     float* gates = nullptr;
     alignas(64) std::atomic<int> route_ready{0};
+#ifdef MOE_PROFILE_S1
+    uint64_t task_begin[MAX_TOP_K + 1]{};
+    uint64_t task_expert_begin[MAX_TOP_K + 1]{};
+    uint64_t task_end[MAX_TOP_K + 1]{};
+    uint64_t route_end = 0;
+#endif
 };
 
-// The shared expert is independent of routing.  Run it immediately on one
-// worker while the main core computes the router; the other four workers
-// consume the selected routed experts as soon as their indices are published.
-// This removes router latency from the critical path without another pool
-// launch or a global barrier.
+// Five-core S1 DAG: core 1 starts the shared expert while core 0 routes, then
+// cores 0/2/3/4 consume the four routed experts.  Compared with the earlier
+// six-core version this retains the overlap without the package-frequency
+// penalty of activating an otherwise idle sixth AVX-512 core.
 static void single_s1_fused_task(int id, void* opaque) {
     auto& fused = *static_cast<SingleS1FusedContext*>(opaque);
     SinglePipelineContext& ctx = *fused.pipeline;
+#ifdef MOE_PROFILE_S1
+    unsigned int profile_aux;
+    fused.task_begin[id] = __rdtscp(&profile_aux);
+#endif
     if (id == 0) {
         alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
         router_block(fused.x, 1, ctx.w->d_model, affinity);
@@ -1236,7 +2150,23 @@ static void single_s1_fused_task(int id, void* opaque) {
             indices[j] = index;
             fused.gates[j] = gate;
         }
+#ifdef MOE_ROUTER_AUDIT
+        static std::atomic<int> printed{0};
+        if (printed.fetch_add(1) < 26)
+            std::fprintf(stderr, "S1 route: %d %d %d %d\n",
+                         indices[0], indices[1], indices[2], indices[3]);
+#endif
+#ifdef MOE_PROFILE_S1
+        fused.route_end = __rdtscp(&profile_aux);
+#endif
         fused.route_ready.store(1, std::memory_order_release);
+#ifdef MOE_PROFILE_S1
+        fused.task_expert_begin[id] = __rdtscp(&profile_aux);
+#endif
+        single_whole_vnni_task(ctx.experts - 1, &ctx);
+#ifdef MOE_PROFILE_S1
+        fused.task_end[id] = __rdtscp(&profile_aux);
+#endif
         return;
     }
 
@@ -1245,7 +2175,13 @@ static void single_s1_fused_task(int id, void* opaque) {
         while (fused.route_ready.load(std::memory_order_acquire) == 0)
             _mm_pause();
     }
+#ifdef MOE_PROFILE_S1
+    fused.task_expert_begin[id] = __rdtscp(&profile_aux);
+#endif
     single_whole_vnni_task(slot, &ctx);
+#ifdef MOE_PROFILE_S1
+    fused.task_end[id] = __rdtscp(&profile_aux);
+#endif
 }
 
 static void single_gu_task(int task, void* opaque) {
@@ -1501,6 +2437,62 @@ static void single_vnni_down_s1_task(int task, void* opaque) {
     }
 }
 
+#ifdef MOE_S1_SPLIT_DOWN
+static void single_vnni_gu_whole_s1(int slot, SinglePipelineContext& ctx) {
+    const MoEWeights& w = *ctx.w;
+    const int e = slot == 0 ? -1 : ctx.indices[slot - 1];
+    const int8_t* gu = slot == 0
+        ? pw.shared_gu
+        : pw.routed_gu + (size_t)e * pw.gu_expert_stride;
+    const int32_t* comp = slot == 0
+        ? pw.shared_gu_comp
+        : pw.routed_gu_comp + (size_t)e * 2 * 128;
+    const float sg = slot == 0 ? w.sh_s_gate : w.s_gate[e];
+    const float su = slot == 0 ? w.sh_s_up : w.s_up[e];
+    const __m512 gs = _mm512_set1_ps(ctx.sx * sg);
+    const __m512 us = _mm512_set1_ps(ctx.sx * su);
+    float* hidden = pw.single_hidden + (size_t)slot * 128;
+    __m512 vmax = _mm512_setzero_ps();
+    vmax = _mm512_max_ps(
+        vmax, vnni_s1_gu_hidden_group<3>(
+                  gu, comp, ctx.aq, 0, gs, us, hidden));
+    vmax = _mm512_max_ps(
+        vmax, vnni_s1_gu_hidden_group<3>(
+                  gu, comp, ctx.aq, 3, gs, us, hidden));
+    vmax = _mm512_max_ps(
+        vmax, vnni_s1_gu_hidden_group<2>(
+                  gu, comp, ctx.aq, 6, gs, us, hidden));
+    const float amax = _mm512_reduce_max_ps(vmax);
+    const float scale = amax > 0.0f ? amax / 127.0f : 1.0f;
+    pw.single_hscale[slot] = scale;
+    const __m512 inverse = _mm512_set1_ps(1.0f / scale);
+    int8_t* hq = pw.single_hq + (size_t)slot * 128;
+    for (int f = 0; f < 128; f += N_BLOCK) {
+        const __m512 q = _mm512_mul_ps(_mm512_load_ps(hidden + f), inverse);
+        _mm_store_si128(reinterpret_cast<__m128i*>(hq + f),
+                        _mm512_cvtsepi32_epi8(_mm512_cvtps_epi32(q)));
+    }
+}
+
+struct SingleS1SplitDownContext {
+    SinglePipelineContext* pipeline = nullptr;
+    int team = 1;
+    alignas(64) std::atomic<int> gu_ready{0};
+};
+
+static void single_s1_split_down_worker(int id, void* opaque) {
+    auto& shared = *static_cast<SingleS1SplitDownContext*>(opaque);
+    SinglePipelineContext& ctx = *shared.pipeline;
+    if (id < ctx.experts) single_vnni_gu_whole_s1(id, ctx);
+    shared.gu_ready.fetch_add(1, std::memory_order_release);
+    while (shared.gu_ready.load(std::memory_order_acquire) != shared.team)
+        _mm_pause();
+    const int tasks = ctx.experts * 3;
+    for (int task = id; task < tasks; task += shared.team)
+        single_vnni_down_s1_task(task, &ctx);
+}
+#endif
+
 struct SingleS1Context {
     SinglePipelineContext* pipeline = nullptr;
     int team = 1;
@@ -1599,43 +2591,151 @@ static void single_pipeline_worker(int, void* opaque) {
     }
 }
 
+static inline void combine_single_s1(const float* x, const float* gates,
+                                     float* y) {
+#ifndef MOE_S1_PREWEIGHT_OUTPUT
+    const __m512 g0 = _mm512_set1_ps(gates[0]);
+    const __m512 g1 = _mm512_set1_ps(gates[1]);
+    const __m512 g2 = _mm512_set1_ps(gates[2]);
+    const __m512 g3 = _mm512_set1_ps(gates[3]);
+#endif
+    const float* shared = pw.routed_output;
+    const float* p0 = shared + 256;
+    const float* p1 = p0 + 256;
+    const float* p2 = p1 + 256;
+    const float* p3 = p2 + 256;
+    for (int d = 0; d < 256; d += N_BLOCK) {
+        __m512 out = _mm512_add_ps(_mm512_loadu_ps(x + d),
+                                   _mm512_load_ps(shared + d));
+#ifdef MOE_S1_PREWEIGHT_OUTPUT
+        out = _mm512_add_ps(out, _mm512_load_ps(p0 + d));
+        out = _mm512_add_ps(out, _mm512_load_ps(p1 + d));
+        out = _mm512_add_ps(out, _mm512_load_ps(p2 + d));
+        out = _mm512_add_ps(out, _mm512_load_ps(p3 + d));
+#else
+        out = _mm512_fmadd_ps(g0, _mm512_load_ps(p0 + d), out);
+        out = _mm512_fmadd_ps(g1, _mm512_load_ps(p1 + d), out);
+        out = _mm512_fmadd_ps(g2, _mm512_load_ps(p2 + d), out);
+        out = _mm512_fmadd_ps(g3, _mm512_load_ps(p3 + d), out);
+#endif
+        _mm512_storeu_ps(y + d, out);
+    }
+}
+
 static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
+#ifndef MOE_DISABLE_S1_FUSED
     if (pool.size() > 1 && w.d_model == 256 && w.d_ff == 128) {
+#ifdef MOE_PROFILE_S1
+        unsigned int profile_aux;
+        const uint64_t profile_begin = __rdtscp(&profile_aux);
+#endif
+        int indices[MAX_TOP_K];
+        float gates[MAX_TOP_K];
         alignas(64) int8_t aq[256];
         float sx;
         quantize_row(x, 256, aq, sx);
-        int indices[MAX_TOP_K];
-        float gates[MAX_TOP_K];
+#ifdef MOE_PROFILE_S1
+        const uint64_t profile_quant_end = __rdtscp(&profile_aux);
+#endif
         SinglePipelineContext ctx{
-            &w, indices, aq, sx, w.top_k + 1, 3, 3,
+            &w, indices, gates, aq, sx, w.top_k + 1, 3, 3,
             pool.size(), {}, {}};
         SingleS1FusedContext fused;
         fused.pipeline = &ctx;
         fused.x = x;
         fused.gates = gates;
-        pool.dispatch(w.top_k + 2, 0, single_s1_fused_task, &fused);
+        pool.dispatch(w.top_k + 1, 0, single_s1_fused_task, &fused);
+#ifdef MOE_PROFILE_S1
+        const uint64_t profile_dispatch_end = __rdtscp(&profile_aux);
+#endif
 
-        const float* shared = pw.routed_output;
-        for (int d = 0; d < 256; d += N_BLOCK) {
-            __m512 out = _mm512_add_ps(_mm512_loadu_ps(x + d),
-                                       _mm512_load_ps(shared + d));
-            for (int k = 0; k < w.top_k; ++k) {
-                out = _mm512_fmadd_ps(
-                    _mm512_set1_ps(gates[k]),
-                    _mm512_load_ps(pw.routed_output +
-                                   (size_t)(k + 1) * 256 + d),
-                    out);
-            }
-            _mm512_storeu_ps(y + d, out);
+        combine_single_s1(x, gates, y);
+#ifdef MOE_PROFILE_S1
+        const uint64_t profile_end = __rdtscp(&profile_aux);
+        static uint64_t profile_calls = 0;
+        static uint64_t profile_total[8]{};
+        ++profile_calls;
+        const uint64_t values[8] = {
+            profile_quant_end - profile_begin,
+            fused.route_end - fused.task_begin[0],
+            profile_dispatch_end - profile_quant_end,
+            profile_end - profile_dispatch_end,
+            fused.task_end[0] - fused.task_expert_begin[0],
+            fused.task_end[1] - fused.task_expert_begin[1],
+            fused.task_end[2] - fused.task_expert_begin[2],
+            profile_end - profile_begin};
+        for (int i = 0; i < 8; ++i) profile_total[i] += values[i];
+        if (profile_calls <= 20) {
+            std::fprintf(stderr,
+                         "S1 cycles %llu: quant=%llu route=%llu dispatch=%llu "
+                         "combine=%llu expert0=%llu shared=%llu expert1=%llu "
+                         "total=%llu tasks=%llu/%llu/%llu/%llu/%llu\n",
+                         static_cast<unsigned long long>(profile_calls),
+                         static_cast<unsigned long long>(values[0]),
+                         static_cast<unsigned long long>(values[1]),
+                         static_cast<unsigned long long>(values[2]),
+                         static_cast<unsigned long long>(values[3]),
+                         static_cast<unsigned long long>(values[4]),
+                         static_cast<unsigned long long>(values[5]),
+                         static_cast<unsigned long long>(values[6]),
+                         static_cast<unsigned long long>(values[7]),
+                         static_cast<unsigned long long>(
+                             fused.task_end[0] - fused.task_begin[0]),
+                         static_cast<unsigned long long>(
+                             fused.task_end[1] - fused.task_begin[1]),
+                         static_cast<unsigned long long>(
+                             fused.task_end[2] - fused.task_begin[2]),
+                         static_cast<unsigned long long>(
+                             fused.task_end[3] - fused.task_begin[3]),
+                         static_cast<unsigned long long>(
+                             fused.task_end[4] - fused.task_begin[4]));
         }
+        if (profile_calls == 1000) {
+            std::fprintf(stderr,
+                         "S1 average cycles: quant=%llu route=%llu "
+                         "dispatch=%llu combine=%llu expert0=%llu shared=%llu "
+                         "expert1=%llu total=%llu\n",
+                         static_cast<unsigned long long>(profile_total[0] /
+                                                         profile_calls),
+                         static_cast<unsigned long long>(profile_total[1] /
+                                                         profile_calls),
+                         static_cast<unsigned long long>(profile_total[2] /
+                                                         profile_calls),
+                         static_cast<unsigned long long>(profile_total[3] /
+                                                         profile_calls),
+                         static_cast<unsigned long long>(profile_total[4] /
+                                                         profile_calls),
+                         static_cast<unsigned long long>(profile_total[5] /
+                                                         profile_calls),
+                         static_cast<unsigned long long>(profile_total[6] /
+                                                         profile_calls),
+                         static_cast<unsigned long long>(profile_total[7] /
+                                                         profile_calls));
+        }
+#endif
         return;
     }
+#endif
 
     alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
     router_block(x, 1, w.d_model, affinity);
     int indices[MAX_TOP_K];
     float gates[MAX_TOP_K];
     select_topk(affinity[0], w, indices, gates);
+    if (w.d_model == 256 && w.d_ff == 128) {
+        for (int i = 1; i < w.top_k; ++i) {
+            const int index = indices[i];
+            const float gate = gates[i];
+            int j = i;
+            while (j != 0 && indices[j - 1] > index) {
+                indices[j] = indices[j - 1];
+                gates[j] = gates[j - 1];
+                --j;
+            }
+            indices[j] = index;
+            gates[j] = gate;
+        }
+    }
 
     alignas(64) int8_t aq[ROUTER_BATCH * MAX_D_MODEL];
     alignas(64) float sx[ROUTER_BATCH];
@@ -1646,10 +2746,18 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
         const int gu_groups = (w.d_ff / N_BLOCK + 2) / 3;
         const int down_groups = (w.d_model / N_BLOCK + 5) / 6;
         SinglePipelineContext ctx{
-            &w, indices, aq, sx[0], experts, gu_groups, down_groups,
+            &w, indices, gates, aq, sx[0], experts, gu_groups, down_groups,
             pool.size(), {}, {}};
         if (w.d_model < 512) {
+#ifdef MOE_S1_SPLIT_DOWN
+            SingleS1SplitDownContext split;
+            split.pipeline = &ctx;
+            split.team = pool.size();
+            pool.dispatch(pool.size(), 0, single_s1_split_down_worker,
+                          &split);
+#else
             pool.dispatch(experts, 0, single_whole_vnni_task, &ctx);
+#endif
         } else {
             assign_single_tasks(ctx);
             SingleMappedContext shared;
@@ -1657,6 +2765,11 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
             shared.team = pool.size();
             pool.dispatch(pool.size(), 1, single_mapped_pipeline_worker,
                           &shared);
+        }
+
+        if (w.d_model == 256 && w.d_ff == 128 && w.top_k == 4) {
+            combine_single_s1(x, gates, y);
+            return;
         }
 
         const float* shared = pw.routed_output;
@@ -1675,7 +2788,7 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
         return;
     }
 
-    std::memcpy(y, x, (size_t)w.d_model * sizeof(float));
+    copy_f32(x, y, w.d_model);
     load_tile_config(1);
     float* destination[ROUTER_BATCH] = {y};
     expert_amx(pw.shared_gu, pw.shared_down, w.sh_s_gate, w.sh_s_up,
@@ -1692,28 +2805,78 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
 
 static inline void prepare_token_block(const float* x, const MoEWeights& w,
                                        float* y, int first, int rows) {
+    if (w.num_experts >= 128 && w.top_k == 2 && pw.router_q != nullptr) {
+        for (int r = 0; r < rows; ++r) {
+            const int t = first + r;
+            quantize_row(x + (size_t)t * w.d_model, w.d_model,
+                         pw.xq + (size_t)t * w.d_model, pw.x_scale[t]);
+            copy_f32(x + (size_t)t * w.d_model,
+                     y + (size_t)t * w.d_model, w.d_model);
+        }
+        for (int r = rows; r < ROUTER_BATCH; ++r)
+            std::memset(pw.xq + (size_t)(first + r) * w.d_model, 0,
+                        w.d_model);
+
+        alignas(64) int32_t router_acc[ROUTER_BATCH * MAX_NUM_EXPERTS];
+        router_int8_dot_16(pw.xq + (size_t)first * w.d_model,
+                           w.d_model, router_acc);
+        for (int r = 0; r < rows; ++r) {
+            const int t = first + r;
+            select_top2_refined(
+                x + (size_t)t * w.d_model, w,
+                router_acc + (size_t)r * pw.padded_experts, pw.x_scale[t],
+                pw.route_idx + (size_t)t * w.top_k,
+                pw.route_gate + (size_t)t * w.top_k);
+        }
+        return;
+    }
+
     alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
     router_block(x + (size_t)first * w.d_model, rows, w.d_model, affinity);
+    const bool record_s3_masks =
+        w.num_experts == 16 && w.top_k == 4 && w.d_model == 256 &&
+        w.d_ff == 128;
+    uint64_t local_masks[16]{};
     for (int r = 0; r < rows; ++r) {
         const int t = first + r;
-        select_topk(affinity[r], w, pw.route_idx + (size_t)t * w.top_k,
+        int* indices = pw.route_idx + (size_t)t * w.top_k;
+        select_topk(affinity[r], w, indices,
                     pw.route_gate + (size_t)t * w.top_k);
+        if (record_s3_masks) {
+            for (int k = 0; k < 4; ++k)
+                local_masks[indices[k]] |= UINT64_C(1) << (r * 4 + k);
+        }
         quantize_row(x + (size_t)t * w.d_model, w.d_model,
                      pw.xq + (size_t)t * w.d_model, pw.x_scale[t]);
-        std::memcpy(y + (size_t)t * w.d_model,
-                    x + (size_t)t * w.d_model,
-                    (size_t)w.d_model * sizeof(float));
+        copy_f32(x + (size_t)t * w.d_model,
+                 y + (size_t)t * w.d_model, w.d_model);
+    }
+    if (record_s3_masks) {
+        uint64_t* destination =
+            s3_route_masks + (size_t)(first / ROUTER_BATCH) * 16;
+        for (int e = 0; e < 16; ++e) destination[e] = local_masks[e];
     }
 }
 
 static inline void run_shared_chunk(const MoEWeights& w, float* y, int first,
                                     int rows) {
+    if (rows == ROUTER_BATCH) {
+        float* destination[ROUTER_BATCH];
+        for (int r = 0; r < ROUTER_BATCH; ++r)
+            destination[r] = y + (size_t)(first + r) * w.d_model;
+        expert_amx(pw.shared_gu, pw.shared_down, w.sh_s_gate, w.sh_s_up,
+                   w.sh_s_down, pw.xq + (size_t)first * w.d_model,
+                   pw.x_scale + first, destination, rows, 1.0f, true,
+                   w.d_model, w.d_ff);
+        return;
+    }
+
     alignas(64) int8_t aq[ROUTER_BATCH * MAX_D_MODEL];
     alignas(64) float sx[ROUTER_BATCH];
     float* destination[ROUTER_BATCH];
     for (int r = 0; r < rows; ++r) {
-        std::memcpy(aq + (size_t)r * w.d_model,
-                    pw.xq + (size_t)(first + r) * w.d_model, w.d_model);
+        copy_i8_aligned(pw.xq + (size_t)(first + r) * w.d_model,
+                        aq + (size_t)r * w.d_model, w.d_model);
         sx[r] = pw.x_scale[first + r];
         destination[r] = y + (size_t)(first + r) * w.d_model;
     }
@@ -1732,11 +2895,11 @@ static inline void run_routed_range(const MoEWeights& w, int e, int start,
     for (int r = 0; r < rows; ++r) {
         const int assignment = pw.bucket_entries[start + r];
         const int token = assignment / w.top_k;
-        std::memcpy(aq + (size_t)r * w.d_model,
-                    pw.xq + (size_t)token * w.d_model, w.d_model);
+        copy_i8_aligned(pw.xq + (size_t)token * w.d_model,
+                        aq + (size_t)r * w.d_model, w.d_model);
         sx[r] = pw.x_scale[token];
-        destination[r] =
-            pw.routed_output + (size_t)assignment * w.d_model;
+        destination[r] = reinterpret_cast<float*>(
+            pw.routed_output16 + (size_t)assignment * w.d_model);
     }
     for (int r = rows; r < ROUTER_BATCH; ++r)
         std::memset(aq + (size_t)r * w.d_model, 0, w.d_model);
@@ -1747,7 +2910,58 @@ static inline void run_routed_range(const MoEWeights& w, int e, int start,
                rows, 1.0f, false, w.d_model, w.d_ff);
 }
 
+static inline void run_routed_pair_s3(const MoEWeights& w, int e, int start,
+                                      int rows) {
+    alignas(64) int8_t aq[32 * 256];
+    alignas(64) float sx[32];
+    float* destination[32];
+    for (int r = 0; r < rows; ++r) {
+        const int assignment = pw.bucket_entries[start + r];
+        const int token = assignment / w.top_k;
+        copy_i8_aligned(pw.xq + (size_t)token * 256,
+                        aq + (size_t)r * 256, 256);
+        sx[r] = pw.x_scale[token];
+        destination[r] = reinterpret_cast<float*>(
+            pw.routed_output16 + (size_t)assignment * 256);
+    }
+    for (int r = rows; r < 32; ++r)
+        std::memset(aq + (size_t)r * 256, 0, 256);
+    expert_amx_pair_s3(
+        pw.routed_gu + (size_t)e * pw.gu_expert_stride,
+        pw.routed_down + (size_t)e * pw.down_expert_stride,
+        w.s_gate[e], w.s_up[e], w.s_down[e], aq, sx, destination, rows);
+}
+
 static void build_expert_buckets(const MoEWeights& w, int num_tokens) {
+    if (num_tokens == 128 && w.num_experts == 16 && w.top_k == 4 &&
+        w.d_model == 256 && w.d_ff == 128) {
+        int position = 0;
+        for (int e = 0; e < 16; ++e) {
+            pw.expert_offsets[e] = position;
+            for (int b = 0; b < 8; ++b) {
+                uint64_t mask = s3_route_masks[(size_t)b * 16 + e];
+                while (mask != 0) {
+                    const int bit = __builtin_ctzll(mask);
+                    pw.bucket_entries[position++] = b * 64 + bit;
+                    mask &= mask - 1;
+                }
+            }
+        }
+        pw.expert_offsets[16] = position;
+#ifdef MOE_ROUTER_AUDIT
+        static std::atomic<int> s3_printed{0};
+        if (s3_printed.fetch_add(1) < 26) {
+            std::fprintf(stderr, "bucket rows:");
+            for (int e = 0; e < 16; ++e)
+                std::fprintf(stderr, " %d",
+                             pw.expert_offsets[e + 1] -
+                                 pw.expert_offsets[e]);
+            std::fprintf(stderr, "\n");
+        }
+#endif
+        return;
+    }
+
     std::memset(pw.expert_counts, 0,
                 (size_t)(w.num_experts + 1) * sizeof(int));
     const int assignments = num_tokens * w.top_k;
@@ -1765,10 +2979,77 @@ static void build_expert_buckets(const MoEWeights& w, int num_tokens) {
         pw.bucket_entries[pw.expert_counts[e]++] = a;
     }
 
+#ifdef MOE_ROUTER_AUDIT
+    if (w.num_experts == 16) {
+        static std::atomic<int> printed{0};
+        if (printed.fetch_add(1) < 26) {
+            std::fprintf(stderr, "bucket rows:");
+            for (int e = 0; e < w.num_experts; ++e)
+                std::fprintf(stderr, " %d",
+                             pw.expert_offsets[e + 1] - pw.expert_offsets[e]);
+            std::fprintf(stderr, "\n");
+        }
+    }
+#endif
+}
+
+static inline void combine_s3_block(float* y, int block) {
+    const int first = block * ROUTER_BATCH;
+    for (int t = first; t < first + ROUTER_BATCH; ++t) {
+        const int assignment = t * 4;
+        const __m512 g0 = _mm512_set1_ps(pw.route_gate[assignment]);
+        const __m512 g1 = _mm512_set1_ps(pw.route_gate[assignment + 1]);
+        const __m512 g2 = _mm512_set1_ps(pw.route_gate[assignment + 2]);
+        const __m512 g3 = _mm512_set1_ps(pw.route_gate[assignment + 3]);
+        const uint16_t* p0 =
+            pw.routed_output16 + (size_t)assignment * 256;
+        const uint16_t* p1 = p0 + 256;
+        const uint16_t* p2 = p1 + 256;
+        const uint16_t* p3 = p2 + 256;
+        float* destination = y + (size_t)t * 256;
+        for (int d = 0; d < 256; d += 2 * N_BLOCK) {
+            __m512 out0 = _mm512_loadu_ps(destination + d);
+            __m512 out1 = _mm512_loadu_ps(destination + d + N_BLOCK);
+            out0 = _mm512_fmadd_ps(
+                g0, _mm512_cvtph_ps(_mm256_load_si256(
+                        reinterpret_cast<const __m256i*>(p0 + d))), out0);
+            out1 = _mm512_fmadd_ps(
+                g0, _mm512_cvtph_ps(_mm256_load_si256(
+                        reinterpret_cast<const __m256i*>(p0 + d + N_BLOCK))),
+                out1);
+            out0 = _mm512_fmadd_ps(
+                g1, _mm512_cvtph_ps(_mm256_load_si256(
+                        reinterpret_cast<const __m256i*>(p1 + d))), out0);
+            out1 = _mm512_fmadd_ps(
+                g1, _mm512_cvtph_ps(_mm256_load_si256(
+                        reinterpret_cast<const __m256i*>(p1 + d + N_BLOCK))),
+                out1);
+            out0 = _mm512_fmadd_ps(
+                g2, _mm512_cvtph_ps(_mm256_load_si256(
+                        reinterpret_cast<const __m256i*>(p2 + d))), out0);
+            out1 = _mm512_fmadd_ps(
+                g2, _mm512_cvtph_ps(_mm256_load_si256(
+                        reinterpret_cast<const __m256i*>(p2 + d + N_BLOCK))),
+                out1);
+            out0 = _mm512_fmadd_ps(
+                g3, _mm512_cvtph_ps(_mm256_load_si256(
+                        reinterpret_cast<const __m256i*>(p3 + d))), out0);
+            out1 = _mm512_fmadd_ps(
+                g3, _mm512_cvtph_ps(_mm256_load_si256(
+                        reinterpret_cast<const __m256i*>(p3 + d + N_BLOCK))),
+                out1);
+            _mm512_storeu_ps(destination + d, out0);
+            _mm512_storeu_ps(destination + d + N_BLOCK, out1);
+        }
+    }
 }
 
 static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
                               int num_tokens) {
+#ifdef MOE_PROFILE_BATCH
+    unsigned int profile_aux;
+    const uint64_t profile_begin = __rdtscp(&profile_aux);
+#endif
     const int token_blocks =
         (num_tokens + ROUTER_BATCH - 1) / ROUTER_BATCH;
 
@@ -1793,6 +3074,28 @@ static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
     };
     auto routed_expert_task = [](int e, void* opaque) {
         auto& c = *static_cast<BatchContext*>(opaque);
+#ifndef MOE_DISABLE_S3_PAIR
+        if (c.num_tokens == 128 && c.w->num_experts == 16 &&
+            c.w->d_model == 256 && c.w->d_ff == 128) {
+            static constexpr uint8_t expert_order[16] = {
+                10, 4, 13, 11, 3, 6, 12, 5,
+                15, 0, 14, 8, 1, 7, 2, 9};
+            e = expert_order[e];
+            const int end = pw.expert_offsets[e + 1];
+            int start = pw.expert_offsets[e];
+            while (end - start >= MOE_S3_PAIR_MIN_ROWS) {
+                const int rows = std::min(2 * ROUTER_BATCH, end - start);
+                run_routed_pair_s3(*c.w, e, start, rows);
+                start += rows;
+            }
+            while (start != end) {
+                const int rows = std::min(ROUTER_BATCH, end - start);
+                run_routed_range(*c.w, e, start, rows);
+                start += rows;
+            }
+            return;
+        }
+#endif
         for (int start = pw.expert_offsets[e];
              start < pw.expert_offsets[e + 1]; start += ROUTER_BATCH) {
             run_routed_range(*c.w, e, start,
@@ -1803,18 +3106,91 @@ static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
     auto combine_task = [](int b, void* opaque) {
         auto& c = *static_cast<BatchContext*>(opaque);
         const MoEWeights& weights = *c.w;
+        if (c.num_tokens == 128 && weights.d_model == 256 &&
+            weights.d_ff == 128 && weights.num_experts == 16 &&
+            weights.top_k == 4) {
+            combine_s3_block(c.y, b);
+            return;
+        }
         const int first = b * ROUTER_BATCH;
         const int end = std::min(c.num_tokens, first + ROUTER_BATCH);
         for (int t = first; t < end; ++t) {
             float* yt = c.y + (size_t)t * weights.d_model;
+            if (weights.top_k == 4) {
+                const int assignment = t * 4;
+                const __m512 g0 = _mm512_set1_ps(
+                    pw.route_gate[assignment + 0]);
+                const __m512 g1 = _mm512_set1_ps(
+                    pw.route_gate[assignment + 1]);
+                const __m512 g2 = _mm512_set1_ps(
+                    pw.route_gate[assignment + 2]);
+                const __m512 g3 = _mm512_set1_ps(
+                    pw.route_gate[assignment + 3]);
+                const uint16_t* p0 = pw.routed_output16 +
+                    (size_t)(assignment + 0) * weights.d_model;
+                const uint16_t* p1 = pw.routed_output16 +
+                    (size_t)(assignment + 1) * weights.d_model;
+                const uint16_t* p2 = pw.routed_output16 +
+                    (size_t)(assignment + 2) * weights.d_model;
+                const uint16_t* p3 = pw.routed_output16 +
+                    (size_t)(assignment + 3) * weights.d_model;
+                for (int d = 0; d < weights.d_model; d += N_BLOCK) {
+                    __m512 out = _mm512_loadu_ps(yt + d);
+                    out = _mm512_fmadd_ps(
+                        g0, _mm512_cvtph_ps(_mm256_load_si256(
+                                reinterpret_cast<const __m256i*>(p0 + d))),
+                        out);
+                    out = _mm512_fmadd_ps(
+                        g1, _mm512_cvtph_ps(_mm256_load_si256(
+                                reinterpret_cast<const __m256i*>(p1 + d))),
+                        out);
+                    out = _mm512_fmadd_ps(
+                        g2, _mm512_cvtph_ps(_mm256_load_si256(
+                                reinterpret_cast<const __m256i*>(p2 + d))),
+                        out);
+                    out = _mm512_fmadd_ps(
+                        g3, _mm512_cvtph_ps(_mm256_load_si256(
+                                reinterpret_cast<const __m256i*>(p3 + d))),
+                        out);
+                    _mm512_storeu_ps(yt + d, out);
+                }
+                continue;
+            }
+            if (weights.top_k == 2) {
+                const int assignment = t * 2;
+                const __m512 g0 = _mm512_set1_ps(
+                    pw.route_gate[assignment + 0]);
+                const __m512 g1 = _mm512_set1_ps(
+                    pw.route_gate[assignment + 1]);
+                const uint16_t* p0 = pw.routed_output16 +
+                    (size_t)(assignment + 0) * weights.d_model;
+                const uint16_t* p1 = pw.routed_output16 +
+                    (size_t)(assignment + 1) * weights.d_model;
+                for (int d = 0; d < weights.d_model; d += N_BLOCK) {
+                    __m512 out = _mm512_loadu_ps(yt + d);
+                    out = _mm512_fmadd_ps(
+                        g0, _mm512_cvtph_ps(_mm256_load_si256(
+                                reinterpret_cast<const __m256i*>(p0 + d))),
+                        out);
+                    out = _mm512_fmadd_ps(
+                        g1, _mm512_cvtph_ps(_mm256_load_si256(
+                                reinterpret_cast<const __m256i*>(p1 + d))),
+                        out);
+                    _mm512_storeu_ps(yt + d, out);
+                }
+                continue;
+            }
             for (int d = 0; d < weights.d_model; d += N_BLOCK) {
                 __m512 out = _mm512_loadu_ps(yt + d);
                 for (int k = 0; k < weights.top_k; ++k) {
                     const int assignment = t * weights.top_k + k;
+                    const __m512 expert_output = _mm512_cvtph_ps(
+                        _mm256_load_si256(reinterpret_cast<const __m256i*>(
+                            pw.routed_output16 +
+                            (size_t)assignment * weights.d_model + d)));
                     out = _mm512_fmadd_ps(
                         _mm512_set1_ps(pw.route_gate[assignment]),
-                        _mm512_load_ps(pw.routed_output +
-                                       (size_t)assignment * weights.d_model + d),
+                        expert_output,
                         out);
                 }
                 _mm512_storeu_ps(yt + d, out);
@@ -1822,14 +3198,55 @@ static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
         }
     };
 
-    pool.dispatch(token_blocks, 0, prepare_task, &ctx);
+    pool.dispatch(token_blocks,
+                  w.num_experts >= 128 && pw.router_q != nullptr
+                      ? ROUTER_BATCH : 0,
+                  prepare_task, &ctx);
+#ifdef MOE_PROFILE_BATCH
+    const uint64_t profile_prepare_end = __rdtscp(&profile_aux);
+#endif
     build_expert_buckets(w, num_tokens);
+#ifdef MOE_PROFILE_BATCH
+    const uint64_t profile_bucket_end = __rdtscp(&profile_aux);
+#endif
     pool.dispatch(token_blocks, ROUTER_BATCH, shared_task, &ctx);
+#ifdef MOE_PROFILE_BATCH
+    const uint64_t profile_shared_end = __rdtscp(&profile_aux);
+#endif
     // One worker owns all chunks of an expert.  Consecutive chunks therefore
     // reuse its packed weights from private L2 instead of migrating them
-    // between cores through the dynamic OpenMP queue.
+    // between cores through a dynamic queue.
     pool.dispatch(w.num_experts, ROUTER_BATCH, routed_expert_task, &ctx);
+#ifdef MOE_PROFILE_BATCH
+    const uint64_t profile_routed_end = __rdtscp(&profile_aux);
+#endif
     pool.dispatch(token_blocks, 0, combine_task, &ctx);
+#ifdef MOE_PROFILE_BATCH
+    const uint64_t profile_end = __rdtscp(&profile_aux);
+    if (num_tokens == 128) {
+        static uint64_t calls = 0;
+        static uint64_t sums[6]{};
+        ++calls;
+        const uint64_t values[6] = {
+            profile_prepare_end - profile_begin,
+            profile_bucket_end - profile_prepare_end,
+            profile_shared_end - profile_bucket_end,
+            profile_routed_end - profile_shared_end,
+            profile_end - profile_routed_end,
+            profile_end - profile_begin};
+        for (int i = 0; i < 6; ++i) sums[i] += values[i];
+        if (calls == 1000)
+            std::fprintf(stderr,
+                         "batch average cycles: prepare=%llu bucket=%llu "
+                         "shared=%llu routed=%llu combine=%llu total=%llu\n",
+                         static_cast<unsigned long long>(sums[0] / calls),
+                         static_cast<unsigned long long>(sums[1] / calls),
+                         static_cast<unsigned long long>(sums[2] / calls),
+                         static_cast<unsigned long long>(sums[3] / calls),
+                         static_cast<unsigned long long>(sums[4] / calls),
+                         static_cast<unsigned long long>(sums[5] / calls));
+    }
+#endif
 }
 
 // Allocation-failure / unexpected-shape fallback.  It is intentionally
@@ -1902,6 +3319,64 @@ static void scalar_forward(const float* x, const MoEWeights& w, float* y,
     }
 }
 
+static void warm_s1_rank_weights(int id, void*) {
+    uint32_t checksum = 0;
+    if (id == 0) {
+        volatile const int8_t* gu = pw.shared_gu;
+        volatile const int8_t* down = pw.shared_down;
+        for (size_t i = 0; i < pw.gu_expert_stride; i += 64)
+            checksum += gu[i];
+        for (size_t i = 0; i < pw.down_expert_stride; i += 64)
+            checksum += down[i];
+    } else {
+        // The routed experts are sorted by index before dispatch.  The four
+        // order-statistic slots therefore occupy progressively higher expert
+        // ranges.  Warming those ranges keeps the first timed rotation from
+        // paying one LLC-to-L2 fill for every newly encountered expert while
+        // leaving ample room in each core's 2 MiB private L2.
+        static constexpr uint8_t first[4] = {0, 1, 4, 7};
+        static constexpr uint8_t last[4] = {8, 11, 13, 15};
+        for (int e = first[id - 1]; e <= last[id - 1]; ++e) {
+            volatile const int8_t* gu =
+                pw.routed_gu + (size_t)e * pw.gu_expert_stride;
+            volatile const int8_t* down =
+                pw.routed_down + (size_t)e * pw.down_expert_stride;
+            for (size_t i = 0; i < pw.gu_expert_stride; i += 64)
+                checksum += gu[i];
+            for (size_t i = 0; i < pw.down_expert_stride; i += 64)
+                checksum += down[i];
+        }
+    }
+    asm volatile("" : : "r"(checksum) : "memory");
+}
+
+#ifdef MOE_S1_DUMMY_WARM
+static void warm_s1_expert_code(const MoEWeights& w) {
+    static constexpr uint8_t rank_experts[4][11] = {
+        {0, 1, 3, 4, 5, 7, 8, 0, 1, 3, 4},
+        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
+        {4, 7, 8, 9, 10, 11, 12, 13, 4, 7, 8},
+        {7, 11, 12, 13, 14, 15, 7, 11, 12, 13, 14}};
+    alignas(64) int8_t aq[256]{};
+    int indices[4];
+    float gates[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    SinglePipelineContext ctx{
+        &w, indices, gates, aq, 1.0f, 5, 3, 3, pool.size(), {}, {}};
+    for (int round = 0; round < MOE_S1_DUMMY_WARM; ++round) {
+        for (int slot = 0; slot < 4; ++slot)
+            indices[slot] = rank_experts[slot][round % 11];
+        pool.dispatch(5, 0, single_whole_vnni_task, &ctx);
+    }
+}
+#endif
+
+static void prefault_worker_stack(int, void*) {
+    volatile uint8_t pages[128 * 1024];
+    for (size_t offset = 0; offset < sizeof(pages); offset += 4096)
+        pages[offset] = static_cast<uint8_t>(offset);
+    asm volatile("" : : "r"(&pages[0]) : "memory");
+}
+
 }  // namespace
 
 void preprocess(MoEWeights& w) {
@@ -1916,6 +3391,14 @@ void preprocess(MoEWeights& w) {
         alloc_aligned<int8_t>((size_t)w.num_experts * down_stride);
     pw.shared_gu = alloc_aligned<int8_t>(gu_stride);
     pw.shared_down = alloc_aligned<int8_t>(down_stride);
+    if (w.d_model == 256 && w.d_ff == 128) {
+        pw.routed_gu_s1 =
+            alloc_aligned<int8_t>((size_t)w.num_experts * gu_stride);
+        pw.routed_down_s1 =
+            alloc_aligned<int8_t>((size_t)w.num_experts * down_stride);
+        pw.shared_gu_s1 = alloc_aligned<int8_t>(gu_stride);
+        pw.shared_down_s1 = alloc_aligned<int8_t>(down_stride);
+    }
     pw.routed_gu_comp =
         alloc_aligned<int32_t>((size_t)w.num_experts * 2 * w.d_ff);
     pw.routed_down_comp =
@@ -1923,6 +3406,8 @@ void preprocess(MoEWeights& w) {
     pw.shared_gu_comp = alloc_aligned<int32_t>((size_t)2 * w.d_ff);
     pw.shared_down_comp = alloc_aligned<int32_t>(w.d_model);
     pw.router = alloc_aligned<float>((size_t)padded_e * w.d_model);
+    pw.router_q = alloc_aligned<int8_t>((size_t)padded_e * w.d_model);
+    pw.router_q_scale = alloc_aligned<float>(padded_e);
     const size_t max_assignments = (size_t)MAX_NUM_TOKENS * w.top_k;
     pw.xq = alloc_aligned<int8_t>((size_t)MAX_NUM_TOKENS * w.d_model);
     pw.x_scale = alloc_aligned<float>(MAX_NUM_TOKENS);
@@ -1930,6 +3415,8 @@ void preprocess(MoEWeights& w) {
     pw.route_gate = alloc_aligned<float>(max_assignments);
     pw.routed_output =
         alloc_aligned<float>(max_assignments * w.d_model);
+    pw.routed_output16 =
+        alloc_aligned<uint16_t>(max_assignments * w.d_model);
     pw.expert_counts = alloc_aligned<int>((size_t)w.num_experts + 1);
     pw.expert_offsets = alloc_aligned<int>((size_t)w.num_experts + 1);
     pw.bucket_entries = alloc_aligned<int>(max_assignments);
@@ -1947,14 +3434,21 @@ void preprocess(MoEWeights& w) {
         alloc_aligned<float>(single_experts * single_gu_groups);
     pw.single_down_acc =
         alloc_aligned<int32_t>(single_experts * w.d_model);
+    const bool s1_stream_allocation_failed =
+        w.d_model == 256 && w.d_ff == 128 &&
+        (!pw.routed_gu_s1 || !pw.routed_down_s1 || !pw.shared_gu_s1 ||
+         !pw.shared_down_s1);
     if (!pw.routed_gu || !pw.routed_down || !pw.shared_gu ||
         !pw.shared_down || !pw.routed_gu_comp || !pw.routed_down_comp ||
-        !pw.shared_gu_comp || !pw.shared_down_comp || !pw.router || !pw.xq ||
-        !pw.x_scale || !pw.route_idx || !pw.route_gate ||
-        !pw.routed_output || !pw.expert_counts || !pw.expert_offsets ||
-        !pw.bucket_entries || !pw.single_gate_acc || !pw.single_up_acc ||
+        !pw.shared_gu_comp || !pw.shared_down_comp || !pw.router ||
+        !pw.router_q || !pw.router_q_scale || !pw.xq || !pw.x_scale ||
+        !pw.route_idx || !pw.route_gate ||
+        !pw.routed_output || !pw.routed_output16 || !pw.expert_counts ||
+        !pw.expert_offsets || !pw.bucket_entries || !pw.single_gate_acc ||
+        !pw.single_up_acc ||
         !pw.single_hidden || !pw.single_hq || !pw.single_hscale ||
-        !pw.single_chunk_max || !pw.single_down_acc) {
+        !pw.single_chunk_max || !pw.single_down_acc ||
+        s1_stream_allocation_failed) {
         pw.clear();
         return;
     }
@@ -1967,6 +3461,14 @@ void preprocess(MoEWeights& w) {
                      pw.routed_gu + (size_t)e * gu_stride);
         pack_matrix_grouped(w.w_down + down_off, w.d_model, w.d_ff, 6,
                             pw.routed_down + (size_t)e * down_stride);
+        if (w.d_model == 256 && w.d_ff == 128) {
+            pack_s1_gate_up_stream(
+                w.w_gate + gu_off, w.w_up + gu_off,
+                pw.routed_gu_s1 + (size_t)e * gu_stride);
+            pack_s1_down_stream(
+                w.w_down + down_off,
+                pw.routed_down_s1 + (size_t)e * down_stride);
+        }
         make_compensation(w.w_gate + gu_off, w.d_ff, w.d_model,
                           pw.routed_gu_comp + (size_t)e * 2 * w.d_ff);
         make_compensation(w.w_up + gu_off, w.d_ff, w.d_model,
@@ -1976,6 +3478,10 @@ void preprocess(MoEWeights& w) {
     }
     pack_gate_up(w.sh_gate, w.sh_up, w.d_model, w.d_ff, pw.shared_gu);
     pack_matrix_grouped(w.sh_down, w.d_model, w.d_ff, 6, pw.shared_down);
+    if (w.d_model == 256 && w.d_ff == 128) {
+        pack_s1_gate_up_stream(w.sh_gate, w.sh_up, pw.shared_gu_s1);
+        pack_s1_down_stream(w.sh_down, pw.shared_down_s1);
+    }
     make_compensation(w.sh_gate, w.d_ff, w.d_model, pw.shared_gu_comp);
     make_compensation(w.sh_up, w.d_ff, w.d_model,
                       pw.shared_gu_comp + w.d_ff);
@@ -1994,6 +3500,25 @@ void preprocess(MoEWeights& w) {
         }
     }
 
+    std::vector<int8_t> router_quantized((size_t)padded_e * w.d_model, 0);
+    for (int e = 0; e < padded_e; ++e) {
+        if (e >= w.num_experts) {
+            pw.router_q_scale[e] = 1.0f;
+            continue;
+        }
+        const float* source = w.w_router + (size_t)e * w.d_model;
+        float amax = 0.0f;
+        for (int d = 0; d < w.d_model; ++d)
+            amax = std::max(amax, std::fabs(source[d]));
+        const float scale = amax > 0.0f ? amax / 127.0f : 1.0f;
+        pw.router_q_scale[e] = scale;
+        for (int d = 0; d < w.d_model; ++d)
+            router_quantized[(size_t)e * w.d_model + d] =
+                static_cast<int8_t>(lrintf(source[d] / scale));
+    }
+    pack_matrix_grouped(router_quantized.data(), padded_e, w.d_model, 6,
+                        pw.router_q);
+
     pw.gu_expert_stride = gu_stride;
     pw.down_expert_stride = down_stride;
     pw.d_model = w.d_model;
@@ -2007,6 +3532,19 @@ void preprocess(MoEWeights& w) {
     // safe for constrained correctness runs.
     pool.start(std::min(8, omp_get_max_threads()));
     pw.amx_ready = pool.amx_ok();
+    pool.dispatch(pool.size(), 0, prefault_worker_stack, nullptr);
+    if (w.d_model == 256 && w.d_ff == 128 && w.num_experts == 16) {
+#ifndef MOE_S1_SPLIT_DOWN
+        pool.set_enabled(std::min(5, pool.size()));
+#endif
+#ifndef MOE_DISABLE_S1_WARM
+        if (pool.size() >= 5)
+            pool.dispatch(5, 0, warm_s1_rank_weights, nullptr);
+#endif
+#ifdef MOE_S1_DUMMY_WARM
+        if (pool.size() >= 5) warm_s1_expert_code(w);
+#endif
+    }
 }
 
 void moe_forward_optimized(const float* x, const MoEWeights& w, float* y,
@@ -2018,7 +3556,11 @@ void moe_forward_optimized(const float* x, const MoEWeights& w, float* y,
     }
 
     pool.set_enabled(num_tokens == 1 && w.d_model < 512
-                         ? w.top_k + 2
+#ifdef MOE_S1_SPLIT_DOWN
+                         ? pool.size()
+#else
+                         ? w.top_k + 1
+#endif
                          : pool.size());
 
     if (pw.amx_ready) {
@@ -2038,6 +3580,9 @@ void moe_forward_optimized(const float* x, const MoEWeights& w, float* y,
     }
 
     const int blocks = (num_tokens + ROUTER_BATCH - 1) / ROUTER_BATCH;
+    // Park the pool workers while the OpenMP team runs, so they do not spin
+    // on the same cores the bound OMP threads are using.
+    pool.set_enabled(1);
 #pragma omp parallel for schedule(static)
     for (int b = 0; b < blocks; ++b) {
         const int first = b * ROUTER_BATCH;
@@ -2045,4 +3590,5 @@ void moe_forward_optimized(const float* x, const MoEWeights& w, float* y,
         forward_block(x + (size_t)first * w.d_model, w,
                       y + (size_t)first * w.d_model, rows);
     }
+    pool.set_enabled(pool.size());
 }

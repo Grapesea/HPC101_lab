@@ -1,0 +1,130 @@
+--- student/moe_opt.cpp	2026-08-03 12:12:53.260598370 +0000
++++ student/moe_opt.cpp	2026-08-03 12:17:55.715801502 +0000
+@@ -118,6 +118,7 @@
+     int* expert_counts = nullptr;    // [E+1]
+     int* expert_offsets = nullptr;   // [E+1]
+     int* bucket_entries = nullptr;   // [MAX_NUM_TOKENS*K]
++    int routed_order[MAX_NUM_EXPERTS]{};  // LPT load-balanced expert dispatch
+     int32_t* single_gate_acc = nullptr;  // [K+1][H]
+     int32_t* single_up_acc = nullptr;
+     float* single_hidden = nullptr;
+@@ -2948,6 +2949,29 @@
+             }
+         }
+         pw.expert_offsets[16] = position;
++        // Greedy LPT pairing: largest experts go to the least-loaded workers
++        // so the two tasks each worker receives (round-robin i += active)
++        // balance total rows.  Expert row counts vary widely per iteration
++        // (13..60 in the S3 seed), so the static order leaves a long tail.
++        int order[16];
++        for (int i = 0; i < 16; ++i) order[i] = i;
++        auto rows_of = [&](int e) {
++            return pw.expert_offsets[e + 1] - pw.expert_offsets[e];
++        };
++        std::sort(order, order + 16, [&](int a, int b) {
++            return rows_of(a) > rows_of(b);
++        });
++        int load[8] = {0, 0, 0, 0, 0, 0, 0, 0};
++        int slot[8] = {0, 0, 0, 0, 0, 0, 0, 0};
++        for (int i = 0; i < 16; ++i) {
++            int best = 0;
++            for (int w = 1; w < 8; ++w) {
++                if (load[w] < load[best]) best = w;
++            }
++            pw.routed_order[best + slot[best] * 8] = order[i];
++            load[best] += rows_of(order[i]);
++            ++slot[best];
++        }
+ #ifdef MOE_ROUTER_AUDIT
+         static std::atomic<int> s3_printed{0};
+         if (s3_printed.fetch_add(1) < 26) {
+@@ -3060,27 +3084,19 @@
+         int num_tokens;
+     } ctx{x, &w, y, num_tokens};
+ 
+-    auto prepare_task = [](int b, void* opaque) {
++    auto prepare_shared_task = [](int b, void* opaque) {
+         auto& c = *static_cast<BatchContext*>(opaque);
+         const int first = b * ROUTER_BATCH;
+-        prepare_token_block(c.x, *c.w, c.y, first,
+-                            std::min(ROUTER_BATCH, c.num_tokens - first));
+-    };
+-    auto shared_task = [](int b, void* opaque) {
+-        auto& c = *static_cast<BatchContext*>(opaque);
+-        const int first = b * ROUTER_BATCH;
+-        run_shared_chunk(*c.w, c.y, first,
+-                         std::min(ROUTER_BATCH, c.num_tokens - first));
++        const int rows = std::min(ROUTER_BATCH, c.num_tokens - first);
++        prepare_token_block(c.x, *c.w, c.y, first, rows);
++        run_shared_chunk(*c.w, c.y, first, rows);
+     };
+     auto routed_expert_task = [](int e, void* opaque) {
+         auto& c = *static_cast<BatchContext*>(opaque);
+ #ifndef MOE_DISABLE_S3_PAIR
+         if (c.num_tokens == 128 && c.w->num_experts == 16 &&
+             c.w->d_model == 256 && c.w->d_ff == 128) {
+-            static constexpr uint8_t expert_order[16] = {
+-                10, 4, 13, 11, 3, 6, 12, 5,
+-                15, 0, 14, 8, 1, 7, 2, 9};
+-            e = expert_order[e];
++            e = pw.routed_order[e];
+             const int end = pw.expert_offsets[e + 1];
+             int start = pw.expert_offsets[e];
+             while (end - start >= MOE_S3_PAIR_MIN_ROWS) {
+@@ -3198,10 +3214,7 @@
+         }
+     };
+ 
+-    pool.dispatch(token_blocks,
+-                  w.num_experts >= 128 && pw.router_q != nullptr
+-                      ? ROUTER_BATCH : 0,
+-                  prepare_task, &ctx);
++    pool.dispatch(token_blocks, ROUTER_BATCH, prepare_shared_task, &ctx);
+ #ifdef MOE_PROFILE_BATCH
+     const uint64_t profile_prepare_end = __rdtscp(&profile_aux);
+ #endif
+@@ -3209,10 +3222,6 @@
+ #ifdef MOE_PROFILE_BATCH
+     const uint64_t profile_bucket_end = __rdtscp(&profile_aux);
+ #endif
+-    pool.dispatch(token_blocks, ROUTER_BATCH, shared_task, &ctx);
+-#ifdef MOE_PROFILE_BATCH
+-    const uint64_t profile_shared_end = __rdtscp(&profile_aux);
+-#endif
+     // One worker owns all chunks of an expert.  Consecutive chunks therefore
+     // reuse its packed weights from private L2 instead of migrating them
+     // between cores through a dynamic queue.
+@@ -3225,26 +3234,24 @@
+     const uint64_t profile_end = __rdtscp(&profile_aux);
+     if (num_tokens == 128) {
+         static uint64_t calls = 0;
+-        static uint64_t sums[6]{};
++        static uint64_t sums[5]{};
+         ++calls;
+-        const uint64_t values[6] = {
++        const uint64_t values[5] = {
+             profile_prepare_end - profile_begin,
+             profile_bucket_end - profile_prepare_end,
+-            profile_shared_end - profile_bucket_end,
+-            profile_routed_end - profile_shared_end,
++            profile_routed_end - profile_bucket_end,
+             profile_end - profile_routed_end,
+             profile_end - profile_begin};
+-        for (int i = 0; i < 6; ++i) sums[i] += values[i];
++        for (int i = 0; i < 5; ++i) sums[i] += values[i];
+         if (calls == 1000)
+             std::fprintf(stderr,
+-                         "batch average cycles: prepare=%llu bucket=%llu "
+-                         "shared=%llu routed=%llu combine=%llu total=%llu\n",
++                         "batch average cycles: prepare+shared=%llu "
++                         "bucket=%llu routed=%llu combine=%llu total=%llu\n",
+                          static_cast<unsigned long long>(sums[0] / calls),
+                          static_cast<unsigned long long>(sums[1] / calls),
+                          static_cast<unsigned long long>(sums[2] / calls),
+                          static_cast<unsigned long long>(sums[3] / calls),
+-                         static_cast<unsigned long long>(sums[4] / calls),
+-                         static_cast<unsigned long long>(sums[5] / calls));
++                         static_cast<unsigned long long>(sums[4] / calls));
+     }
+ #endif
+ }

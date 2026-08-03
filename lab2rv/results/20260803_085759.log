@@ -1,0 +1,56 @@
+-- The C compiler identification is GNU 14.2.0
+-- The CXX compiler identification is GNU 14.2.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found OpenMP_C: -fopenmp (found version "4.5")
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5")
+-- Performing Test COMPILER_SUPPORTS_SPR
+-- Performing Test COMPILER_SUPPORTS_SPR - Success
+-- Configuring done (18.8s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab2rv/build
+[ 20%] Building CXX object CMakeFiles/framework.dir/main.cpp.o
+[ 40%] Building CXX object CMakeFiles/framework.dir/src/moe_ref.cpp.o
+[ 60%] Building CXX object CMakeFiles/framework.dir/src/data.cpp.o
+[ 60%] Built target framework
+[ 80%] Building CXX object CMakeFiles/student.dir/student/moe_opt.cpp.o
+[ 80%] Built target student
+[100%] Linking CXX executable lab2
+[100%] Built target lab2
+------------------------------------------- Test 1 -------------------------------------------
+------------------------- N = 1 | D = 256 | H = 128 | E = 16 | K = 4 -------------------------
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (200 iterations)
+Baseline time:  0.0103196 s
+Optimized time: 0.00115475 s
+Result is correct! (rel RMSE: 7.92121e-08, worst token: 7.92121e-08 at 0)
+Speedup: 8.93668
+------------------------------------------- Test 2 -------------------------------------------
+------------------------- N = 1 | D = 1024 | H = 512 | E = 16 | K = 4 ------------------------
+problem size: num_tokens=1 d_model=1024 d_ff=512 num_experts=16 top_k=4 (200 iterations)
+Baseline time:  0.12403 s
+Optimized time: 0.00768326 s
+Result is correct! (rel RMSE: 4.68025e-08, worst token: 4.68025e-08 at 0)
+Speedup: 16.1429
+------------------------------------------- Test 3 -------------------------------------------
+------------------------- N = 128 | D = 256 | H = 128 | E = 16 | K = 4 -----------------------
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (100 iterations)
+Baseline time:  0.663871 s
+Optimized time: 0.00724231 s
+Result is correct! (rel RMSE: 8.99909e-08, worst token: 2.18202e-07 at 125)
+Speedup: 91.6657
+------------------------------------------- Test 4 -------------------------------------------
+------------------------- N = 1024 | D = 512 | H = 128 | E = 512 | K = 2 ---------------------
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (10 iterations)
+Baseline time:  2.3037 s
+Optimized time: 0.0156056 s
+Result is correct! (rel RMSE: 0.000246886, worst token: 0.00843211 at 499)
+Speedup: 147.621
