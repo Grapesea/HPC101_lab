@@ -1,0 +1,50 @@
+submitted job 37799
+CASE               B        T   Hq   Hv  STATE  RESULT   MEDIAN (ms)
+--------------------------------------------------------------------
+2026-08-04 09:12:12  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:133): TileLang begins to compile kernel `kernel` with `out_idx=None`
+2026-08-04 09:12:22  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:141): TileLang completes to compile kernel `kernel`
+short_tail_state   1     1025    2    8    yes    PASS         0.362
+2026-08-04 09:12:24  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:133): TileLang begins to compile kernel `kernel` with `out_idx=None`
+2026-08-04 09:12:33  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:141): TileLang completes to compile kernel `kernel`
+chain_equal        1     8192    4    4     no    PASS         2.790
+parallel_equal     1     2048   16   16     no    PASS         1.474
+parallel_gva       1     2048    4   16     no    PASS         1.459
+long_low_gva       1    32768    2    8     no    PASS        11.122
+batch_split_gva    4     8192    2    8     no    PASS         8.718
+wide_gva_state     1     8192   16   64    yes    PASS        14.776
+deep_gva_state     1    16384    8   32    yes    PASS        17.491
+--------------------------------------------------------------------
+All 8 case(s) passed correctness.
+
+Benchmark device: NVIDIA H800 PCIe MIG 1g.10gb | CC 9.0 | 14 SMs | 9.75 GiB
+Complete forward references (REF/STUDENT = reference / student):
+CASE              IMPLEMENTATION  RESULT   MEDIAN (ms)  REF/STUDENT
+-------------------------------------------------------------------
+short_tail_state  Student           PASS         0.385            —
+short_tail_state  FlashQLA          PASS         0.269       0.700x
+short_tail_state  FLA               PASS         0.456       1.184x
+short_tail_state  FlashInfer        PASS         0.307       0.796x
+chain_equal       Student           PASS         2.906            —
+chain_equal       FlashQLA          PASS         0.453       0.156x
+chain_equal       FLA               PASS         0.936       0.322x
+chain_equal       FlashInfer        PASS         0.789       0.272x
+parallel_equal    Student           PASS         1.593            —
+parallel_equal    FlashQLA          PASS         0.462       0.290x
+parallel_equal    FLA               PASS         0.948       0.595x
+parallel_equal    FlashInfer        PASS         0.472       0.296x
+parallel_gva      Student           PASS         1.511            —
+parallel_gva      FlashQLA          PASS         0.439       0.291x
+parallel_gva      FLA               PASS         0.847       0.560x
+parallel_gva      FlashInfer        PASS         0.437       0.289x
+long_low_gva      Student           PASS        11.608            —
+long_low_gva      FlashQLA          PASS         1.815       0.156x
+long_low_gva      FLA               PASS         6.421       0.553x
+long_low_gva      FlashInfer        PASS         1.789       0.154x
+batch_split_gva   Student           PASS         9.380            —
+batch_split_gva   FlashQLA          PASS         1.844       0.197x
+batch_split_gva   FLA               PASS         6.143       0.655x
+batch_split_gva   FlashInfer        PASS         1.431       0.153x
+wide_gva_state    Student           PASS        15.986            —
+wide_gva_state    FlashQLA          PASS         3.341       0.209x
+wide_gva_state    FLA               PASS        12.561       0.786x
+wide_gva_state    FlashInfer        PASS         2.385       0.149x

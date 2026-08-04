@@ -2191,6 +2191,9 @@ constexpr int RVV_FB = 16;      // output rows per s8 tile (= vector lanes)
 constexpr int RVV_EB = 16;      // router experts per tile
 constexpr int RVV_TLIVE = 8;    // live token accumulators per GEMM sweep
 constexpr size_t RVV_VL = 16;   // active lanes for every RVV kernel
+constexpr int IME_M = 4;         // vmadot tile: 4 tokens
+constexpr int IME_N = 4;         // vmadot tile: 4 output channels
+constexpr int IME_K = 8;         // vmadot tile: 8 reduction elements
 
 template <typename T>
 static T* rvv_alloc(size_t count) {
@@ -2203,6 +2206,8 @@ static T* rvv_alloc(size_t count) {
 struct RvvPacked {
     int8_t* gu = nullptr;         // [E+1][2][d_ff/16][d_model][16]
     int8_t* down = nullptr;       // [E+1][d_model/16][d_ff][16]
+    int8_t* ime_gu = nullptr;     // [E+1][2][d_ff/4][d_model/8][4][8]
+    int8_t* ime_down = nullptr;   // [E+1][d_model/4][d_ff/8][4][8]
     float* router = nullptr;      // [padded_e/16][d_model][16]
     int8_t* xq = nullptr;         // [MAX_NUM_TOKENS][d_model]
     float* x_scale = nullptr;     // [MAX_NUM_TOKENS]
@@ -2215,6 +2220,8 @@ struct RvvPacked {
     float* sh_out = nullptr;         // [MAX_NUM_TOKENS][d_model]
     size_t gu_expert = 0;
     size_t down_expert = 0;
+    size_t ime_gu_expert = 0;
+    size_t ime_down_expert = 0;
     int d_model = 0, d_ff = 0;
     int num_experts = 0, padded_e = 0;
     bool rvv_ok = false;
@@ -2223,6 +2230,8 @@ struct RvvPacked {
     void clear() {
         std::free(gu);
         std::free(down);
+        std::free(ime_gu);
+        std::free(ime_down);
         std::free(router);
         std::free(xq);
         std::free(x_scale);
@@ -2234,6 +2243,7 @@ struct RvvPacked {
         std::free(routed_output);
         std::free(sh_out);
         gu = down = nullptr;
+        ime_gu = ime_down = nullptr;
         router = nullptr;
         xq = nullptr;
         x_scale = nullptr;
@@ -2245,6 +2255,7 @@ struct RvvPacked {
         routed_output = nullptr;
         sh_out = nullptr;
         gu_expert = down_expert = 0;
+        ime_gu_expert = ime_down_expert = 0;
         d_model = d_ff = num_experts = padded_e = 0;
         rvv_ok = false;
         ready = false;
@@ -2261,6 +2272,8 @@ static thread_local int32_t rvv_down_acc[RVV_TB * MAX_D_MODEL];
 static thread_local int8_t rvv_hq[RVV_TB * MAX_D_FF];
 static thread_local float rvv_hscale[RVV_TB];
 static thread_local float rvv_hidden[MAX_D_FF];
+alignas(64) static thread_local int8_t ime_a_pack[RVV_TB * MAX_D_MODEL];
+alignas(64) static thread_local int32_t ime_c_tile[IME_M * IME_N];
 
 // ---------- packing (once, in preprocess) ----------
 
@@ -2290,6 +2303,20 @@ static void pack_down_tiles(const int8_t* w, int rows, int cols, int8_t* dst) {
                     w[(size_t)(b * RVV_FB + l) * cols + k];
 }
 
+// IME's signed-int8 vmadot consumes B as four output rows of eight K values:
+// [output_block][k_block][4][8].  This is deliberately separate from the
+// 16-output RVV layout, which remains available as the portable fallback.
+static void pack_ime_tiles(const int8_t* w, int rows, int cols, int8_t* dst) {
+    for (int ob = 0; ob < rows / IME_N; ++ob)
+        for (int kb = 0; kb < cols / IME_K; ++kb)
+            for (int o = 0; o < IME_N; ++o)
+                std::memcpy(dst + ((size_t)ob * (cols / IME_K) + kb) *
+                                      (IME_N * IME_K) +
+                                      o * IME_K,
+                            w + (size_t)(ob * IME_N + o) * cols + kb * IME_K,
+                            IME_K);
+}
+
 static void pack_router_tiles(const float* src, int rows, int cols, int padded,
                               float* dst) {
     const int eb = padded / RVV_EB;
@@ -2300,6 +2327,80 @@ static void pack_router_tiles(const float* src, int rows, int cols, int padded,
                 dst[((size_t)b * cols + k) * RVV_EB + l] =
                     e < rows ? src[(size_t)e * cols + k] : 0.0f;
             }
+}
+
+// One IME tile is A[4][8] * B[4][8]^T -> C[4][4].  On VLEN=256 the int32
+// result occupies the consecutive register pair v28/v29.  Keeping this in a
+// noinline leaf prevents surrounding RVV intrinsics from having live vector
+// values across the vendor instruction.
+__attribute__((noinline)) static void ime_vmadot_tile(const int8_t* a,
+                                                       const int8_t* b,
+                                                       int k_blocks,
+                                                       int32_t* c) {
+    __asm__ volatile(
+        "vsetvli t0, zero, e32, m2, ta, ma\n\t"
+        "vxor.vv v28, v28, v28\n\t"
+        "vsetvli t0, zero, e8, m1, ta, ma\n\t"
+        "1:\n\t"
+        "vle8.v v0, (%[a])\n\t"
+        "vle8.v v1, (%[b])\n\t"
+        "vmadot v28, v0, v1\n\t"
+        "addi %[a], %[a], 32\n\t"
+        "addi %[b], %[b], 32\n\t"
+        "addi %[count], %[count], -1\n\t"
+        "bnez %[count], 1b\n\t"
+        "vsetvli t0, zero, e32, m2, ta, ma\n\t"
+        "vse32.v v28, (%[c])\n\t"
+        : [a] "+&r"(a), [b] "+&r"(b), [count] "+&r"(k_blocks)
+        : [c] "r"(c)
+        : "t0", "memory");
+}
+
+// Pack up to 16 activation rows into consecutive 4x8 A tiles.  Missing rows
+// in the final token group are zero-filled, so vmadot can retain its fixed
+// matrix shape without changing any valid output.
+static void ime_pack_activations(const int8_t* xq, const int* token_ids,
+                                 int k_dim, int t_count) {
+    const int groups = (t_count + IME_M - 1) / IME_M;
+    const int k_blocks = k_dim / IME_K;
+    for (int g = 0; g < groups; ++g)
+        for (int kb = 0; kb < k_blocks; ++kb)
+            for (int r = 0; r < IME_M; ++r) {
+                int8_t* dst = ime_a_pack +
+                              ((size_t)g * k_blocks + kb) * (IME_M * IME_K) +
+                              r * IME_K;
+                const int idx = g * IME_M + r;
+                if (idx < t_count) {
+                    const int row = token_ids ? token_ids[idx] : idx;
+                    std::memcpy(dst, xq + (size_t)row * k_dim + kb * IME_K,
+                                IME_K);
+                } else {
+                    std::memset(dst, 0, IME_K);
+                }
+            }
+}
+
+static void ime_gemm_packed(const int8_t* weights, int k_dim, int t_count,
+                            int out_dim, int32_t* out) {
+    const int groups = (t_count + IME_M - 1) / IME_M;
+    const int k_blocks = k_dim / IME_K;
+    // Keep a B tile hot while applying it to all token groups.  In the common
+    // 16-token batch this changes four widely separated weight passes into
+    // four immediately adjacent uses of the same packed bytes.
+    for (int ob = 0; ob < out_dim / IME_N; ++ob) {
+        const int8_t* bp = weights + (size_t)ob * k_blocks * IME_N * IME_K;
+        for (int g = 0; g < groups; ++g) {
+            const int live = std::min(IME_M, t_count - g * IME_M);
+            const int8_t* ap =
+                ime_a_pack + (size_t)g * k_blocks * IME_M * IME_K;
+            ime_vmadot_tile(ap, bp, k_blocks, ime_c_tile);
+            for (int r = 0; r < live; ++r)
+                std::memcpy(out + (size_t)(g * IME_M + r) * out_dim +
+                                ob * IME_N,
+                            ime_c_tile + r * IME_N,
+                            IME_N * sizeof(int32_t));
+        }
+    }
 }
 
 // ---------- RVV kernels ----------
@@ -2371,35 +2472,52 @@ static void rvv_quantize_row(const float* x, int n, int8_t* q, float& scale) {
 // The tile bytes are sign-extended to s16 once per K step; vwmacc.vx keeps
 // RVV_TLIVE token accumulators (LMUL=2, 16 int32 lanes each) live, so 16 MACs
 // issue per instruction and the weight vector is reused by all live tokens.
+template <int LIVE>
+static inline void gemm_tile_s8_live(const int8_t* w, const int8_t* xq,
+                                     const int* token_ids, int row_base,
+                                     int k_dim, int32_t* out, int f_off,
+                                     int out_stride) {
+    const size_t vl = RVV_VL;
+    vint32m2_t a0 = __riscv_vmv_v_x_i32m2(0, vl);
+    vint32m2_t a1 = a0, a2 = a0, a3 = a0, a4 = a0, a5 = a0, a6 = a0,
+                a7 = a0;
+    int rows[RVV_TLIVE];
+    for (int t = 0; t < LIVE; ++t)
+        rows[t] = token_ids ? token_ids[row_base + t] : row_base + t;
+    for (int k = 0; k < k_dim; ++k) {
+        vint8mf2_t w8 = __riscv_vle8_v_i8mf2(w + (size_t)k * RVV_FB, vl);
+        vint16m1_t w16 = __riscv_vsext_vf2_i16m1(w8, vl);
+#define RVV_MAC_ONE(N)                                                        \
+        if constexpr (LIVE > N)                                              \
+            a##N = __riscv_vwmacc_vx_i32m2(                                  \
+                a##N, xq[(size_t)rows[N] * k_dim + k], w16, vl)
+        RVV_MAC_ONE(0); RVV_MAC_ONE(1); RVV_MAC_ONE(2); RVV_MAC_ONE(3);
+        RVV_MAC_ONE(4); RVV_MAC_ONE(5); RVV_MAC_ONE(6); RVV_MAC_ONE(7);
+#undef RVV_MAC_ONE
+    }
+#define RVV_STORE_ONE(N)                                                      \
+    if constexpr (LIVE > N)                                                  \
+        __riscv_vse32_v_i32m2(                                               \
+            out + (size_t)(row_base + N) * out_stride + f_off, a##N, vl)
+    RVV_STORE_ONE(0); RVV_STORE_ONE(1); RVV_STORE_ONE(2); RVV_STORE_ONE(3);
+    RVV_STORE_ONE(4); RVV_STORE_ONE(5); RVV_STORE_ONE(6); RVV_STORE_ONE(7);
+#undef RVV_STORE_ONE
+}
+
 static inline void gemm_tile_s8(const int8_t* w, const int8_t* xq,
                                 const int* token_ids, int k_dim, int t_count,
                                 int32_t* out, int f_off, int out_stride) {
-    const size_t vl = RVV_VL;
-    const int groups = (t_count + RVV_TLIVE - 1) / RVV_TLIVE;
-    for (int g = 0; g < groups; ++g) {
-        vint32m2_t a0 = __riscv_vmv_v_x_i32m2(0, vl);
-        vint32m2_t a1 = __riscv_vmv_v_x_i32m2(0, vl);
-        vint32m2_t a2 = __riscv_vmv_v_x_i32m2(0, vl);
-        vint32m2_t a3 = __riscv_vmv_v_x_i32m2(0, vl);
-        vint32m2_t a4 = __riscv_vmv_v_x_i32m2(0, vl);
-        vint32m2_t a5 = __riscv_vmv_v_x_i32m2(0, vl);
-        vint32m2_t a6 = __riscv_vmv_v_x_i32m2(0, vl);
-        vint32m2_t a7 = __riscv_vmv_v_x_i32m2(0, vl);
-        vint32m2_t* acc[RVV_TLIVE] = {&a0, &a1, &a2, &a3, &a4, &a5, &a6, &a7};
-        for (int k = 0; k < k_dim; ++k) {
-            vint8mf2_t w8 = __riscv_vle8_v_i8mf2(w + (size_t)k * RVV_FB, vl);
-            vint16m1_t w16 = __riscv_vsext_vf2_i16m1(w8, vl);
-            for (int t = 0; t < RVV_TLIVE; ++t) {
-                const int idx = std::min(g * RVV_TLIVE + t, t_count - 1);
-                const int row = token_ids ? token_ids[idx] : idx;
-                *acc[t] = __riscv_vwmacc_vx_i32m2(
-                    *acc[t], xq[(size_t)row * k_dim + k], w16, vl);
-            }
+    for (int base = 0; base < t_count; base += RVV_TLIVE) {
+        switch (std::min(RVV_TLIVE, t_count - base)) {
+#define RVV_DISPATCH(N)                                                       \
+    case N:                                                                  \
+        gemm_tile_s8_live<N>(w, xq, token_ids, base, k_dim, out, f_off,       \
+                             out_stride);                                    \
+        break
+            RVV_DISPATCH(1); RVV_DISPATCH(2); RVV_DISPATCH(3); RVV_DISPATCH(4);
+            RVV_DISPATCH(5); RVV_DISPATCH(6); RVV_DISPATCH(7); RVV_DISPATCH(8);
+#undef RVV_DISPATCH
         }
-        for (int t = 0; t < RVV_TLIVE; ++t)
-            __riscv_vse32_v_i32m2(
-                out + (size_t)(g * RVV_TLIVE + t) * out_stride + f_off,
-                *acc[t], vl);
     }
 }
 
@@ -2412,6 +2530,7 @@ static void rvv_router_block(const float* x, int d_model, int num_experts,
     for (int b = 0; b < eb; ++b) {
         const int groups = (t_count + RVV_TLIVE - 1) / RVV_TLIVE;
         for (int g = 0; g < groups; ++g) {
+            const int live = std::min(RVV_TLIVE, t_count - g * RVV_TLIVE);
             vfloat32m2_t a0 = __riscv_vfmv_v_f_f32m2(0.0f, vl);
             vfloat32m2_t a1 = __riscv_vfmv_v_f_f32m2(0.0f, vl);
             vfloat32m2_t a2 = __riscv_vfmv_v_f_f32m2(0.0f, vl);
@@ -2424,14 +2543,26 @@ static void rvv_router_block(const float* x, int d_model, int num_experts,
             for (int d = 0; d < d_model; ++d) {
                 vfloat32m2_t wv = __riscv_vle32_v_f32m2(
                     rv.router + ((size_t)b * d_model + d) * RVV_EB, vl);
-                for (int t = 0; t < RVV_TLIVE; ++t) {
-                    const int idx = std::min(g * RVV_TLIVE + t, t_count - 1);
-                    *acc[t] = __riscv_vfmacc_vf_f32m2(
-                        *acc[t], x[(size_t)idx * d_model + d], wv, vl);
+                if (live == RVV_TLIVE) {
+                    const float* xb = x + (size_t)(g * RVV_TLIVE) * d_model + d;
+                    a0 = __riscv_vfmacc_vf_f32m2(a0, xb[(size_t)0 * d_model], wv, vl);
+                    a1 = __riscv_vfmacc_vf_f32m2(a1, xb[(size_t)1 * d_model], wv, vl);
+                    a2 = __riscv_vfmacc_vf_f32m2(a2, xb[(size_t)2 * d_model], wv, vl);
+                    a3 = __riscv_vfmacc_vf_f32m2(a3, xb[(size_t)3 * d_model], wv, vl);
+                    a4 = __riscv_vfmacc_vf_f32m2(a4, xb[(size_t)4 * d_model], wv, vl);
+                    a5 = __riscv_vfmacc_vf_f32m2(a5, xb[(size_t)5 * d_model], wv, vl);
+                    a6 = __riscv_vfmacc_vf_f32m2(a6, xb[(size_t)6 * d_model], wv, vl);
+                    a7 = __riscv_vfmacc_vf_f32m2(a7, xb[(size_t)7 * d_model], wv, vl);
+                } else {
+                    for (int t = 0; t < live; ++t) {
+                        const int idx = g * RVV_TLIVE + t;
+                        *acc[t] = __riscv_vfmacc_vf_f32m2(
+                            *acc[t], x[(size_t)idx * d_model + d], wv, vl);
+                    }
                 }
             }
-            for (int t = 0; t < RVV_TLIVE; ++t) {
-                const int idx = std::min(g * RVV_TLIVE + t, t_count - 1);
+            for (int t = 0; t < live; ++t) {
+                const int idx = g * RVV_TLIVE + t;
                 vfloat32m2_t s = rvv_sigmoid(*acc[t], vl);
                 __riscv_vse32_v_f32m2(
                     affinity + (size_t)idx * MAX_NUM_EXPERTS + b * RVV_EB,
@@ -2527,29 +2658,42 @@ static void rvv_expert_ffn(const MoEWeights& w, int e, const int* token_ids,
                            int t_count, const float* coeff,
                            float* const* out_rows) {
     const int d_model = w.d_model, d_ff = w.d_ff;
-    const int8_t* gu = rv.gu + (size_t)(e + 1) * rv.gu_expert;
-    const int8_t* down = rv.down + (size_t)(e + 1) * rv.down_expert;
+    const int8_t* gu = rv.ime_gu + (size_t)(e + 1) * rv.ime_gu_expert;
+    const int8_t* down =
+        rv.ime_down + (size_t)(e + 1) * rv.ime_down_expert;
     const float s_gate = e < 0 ? w.sh_s_gate : w.s_gate[e];
     const float s_up = e < 0 ? w.sh_s_up : w.s_up[e];
     const float s_down = e < 0 ? w.sh_s_down : w.s_down[e];
     float sx[RVV_TB];
     for (int t = 0; t < t_count; ++t) sx[t] = rv.x_scale[token_ids[t]];
     const int32_t* up_base = rvv_gu_acc + (size_t)RVV_TB * d_ff;
-    const int fb = d_ff / RVV_FB;
     const int8_t* gate = gu;
-    const int8_t* up = gu + (size_t)fb * d_model * RVV_FB;
-    for (int b = 0; b < fb; ++b) {
-        gemm_tile_s8(gate + (size_t)b * d_model * RVV_FB, rv.xq, token_ids,
-                     d_model, t_count, rvv_gu_acc,
-                     b * RVV_FB, d_ff);
-        gemm_tile_s8(up + (size_t)b * d_model * RVV_FB, rv.xq, token_ids,
-                     d_model, t_count,
-                     const_cast<int32_t*>(up_base), b * RVV_FB, d_ff);
-    }
+    const int8_t* up = gu + (size_t)d_ff * d_model;
+    ime_pack_activations(rv.xq, token_ids, d_model, t_count);
+    ime_gemm_packed(gate, d_model, t_count, d_ff, rvv_gu_acc);
+    ime_gemm_packed(up, d_model, t_count, d_ff,
+                    const_cast<int32_t*>(up_base));
     rvv_swiglu_quantize(rvv_gu_acc, up_base, t_count, d_ff, sx, s_gate, s_up,
                         rvv_hq, rvv_hscale);
-    rvv_down_accumulate(down, rvv_hq, t_count, d_ff, d_model, rvv_hscale,
-                        s_down, coeff, out_rows);
+    ime_pack_activations(rvv_hq, nullptr, d_ff, t_count);
+    ime_gemm_packed(down, d_ff, t_count, d_model, rvv_down_acc);
+
+    const size_t vl = RVV_VL;
+    for (int t = 0; t < t_count; ++t) {
+        const float scale = rvv_hscale[t] * s_down * coeff[t];
+        for (int d = 0; d < d_model; d += RVV_FB) {
+            vfloat32m2_t a = __riscv_vfcvt_f_x_v_f32m2(
+                __riscv_vle32_v_i32m2(rvv_down_acc + (size_t)t * d_model + d,
+                                      vl),
+                vl);
+            vfloat32m2_t o = __riscv_vfmul_vf_f32m2(a, scale, vl);
+            float* yt = out_rows[t] + d;
+            __riscv_vse32_v_f32m2(
+                yt,
+                __riscv_vfadd_vv_f32m2(__riscv_vle32_v_f32m2(yt, vl), o, vl),
+                vl);
+        }
+    }
 }
 
 // Top-K selection + gate normalization: same semantics as the reference
@@ -2659,6 +2803,7 @@ static void rvv_forward(const float* x, const MoEWeights& w, float* y,
     rvv_zero_outputs(w, num_tokens);
 
     // Shared expert: all tokens, in 16-token chunks.
+#pragma omp parallel for schedule(static) if (blocks >= 2)
     for (int b = 0; b < blocks; ++b) {
         const int first = b * RVV_TB;
         const int rows = std::min(RVV_TB, num_tokens - first);
@@ -2673,25 +2818,39 @@ static void rvv_forward(const float* x, const MoEWeights& w, float* y,
         rvv_expert_ffn(w, -1, ids, rows, coeff, rows_ptr);
     }
 
-    // Routed experts: one OpenMP iteration per expert over its prebuilt
-    // bucket.  Each assignment appears in exactly one bucket, so the
-    // routed_output rows are written without any race.
-#pragma omp parallel for schedule(static) if (num_tokens >= 2 * RVV_TB)
-    for (int e = 0; e < w.num_experts; ++e) {
-        const int start = rv.expert_offsets[e];
-        const int end = rv.expert_offsets[e + 1];
-        for (int s = start; s < end; s += RVV_TB) {
-            const int cnt = std::min(RVV_TB, end - s);
-            int ids[RVV_TB];
-            float coeff[RVV_TB];
-            float* rows_ptr[RVV_TB];
-            for (int i = 0; i < cnt; ++i) {
-                const int a = rv.bucket_entries[s + i];
-                ids[i] = a / w.top_k;
-                coeff[i] = rv.route_gate[a];
-                rows_ptr[i] = rv.routed_output + (size_t)a * w.d_model;
+    // For one token, parallelize the K assignments directly.  Iterating over
+    // all E experts with static chunks can place several selected experts on
+    // one worker, while this form gives the four lab routes to four workers.
+    if (num_tokens == 1) {
+#pragma omp parallel for schedule(static)
+        for (int k = 0; k < w.top_k; ++k) {
+            const int ids[1] = {0};
+            const float coeff[1] = {rv.route_gate[k]};
+            float* rows_ptr[1] = {
+                rv.routed_output + (size_t)k * w.d_model};
+            rvv_expert_ffn(w, rv.route_idx[k], ids, 1, coeff, rows_ptr);
+        }
+    } else {
+        // Each assignment appears in exactly one expert bucket, so iterations
+        // write disjoint routed_output rows and require no synchronization.
+#pragma omp parallel for schedule(static)
+        for (int e = 0; e < w.num_experts; ++e) {
+            const int start = rv.expert_offsets[e];
+            const int end = rv.expert_offsets[e + 1];
+            for (int s = start; s < end; s += RVV_TB) {
+                const int cnt = std::min(RVV_TB, end - s);
+                int ids[RVV_TB];
+                float coeff[RVV_TB];
+                float* rows_ptr[RVV_TB];
+                for (int i = 0; i < cnt; ++i) {
+                    const int a = rv.bucket_entries[s + i];
+                    ids[i] = a / w.top_k;
+                    coeff[i] = rv.route_gate[a];
+                    rows_ptr[i] =
+                        rv.routed_output + (size_t)a * w.d_model;
+                }
+                rvv_expert_ffn(w, e, ids, cnt, coeff, rows_ptr);
             }
-            rvv_expert_ffn(w, e, ids, cnt, coeff, rows_ptr);
         }
     }
 
@@ -2707,8 +2866,14 @@ void preprocess(MoEWeights& w) {
     const int padded_e = (num_experts + RVV_EB - 1) & -RVV_EB;
     rv.gu_expert = (size_t)2 * (d_ff / RVV_FB) * d_model * RVV_FB;
     rv.down_expert = (size_t)(d_model / RVV_FB) * d_ff * RVV_FB;
+    rv.ime_gu_expert = (size_t)2 * d_ff * d_model;
+    rv.ime_down_expert = (size_t)d_model * d_ff;
     rv.gu = rvv_alloc<int8_t>((size_t)(num_experts + 1) * rv.gu_expert);
     rv.down = rvv_alloc<int8_t>((size_t)(num_experts + 1) * rv.down_expert);
+    rv.ime_gu =
+        rvv_alloc<int8_t>((size_t)(num_experts + 1) * rv.ime_gu_expert);
+    rv.ime_down =
+        rvv_alloc<int8_t>((size_t)(num_experts + 1) * rv.ime_down_expert);
     rv.router = rvv_alloc<float>((size_t)padded_e * d_model);
     rv.xq = rvv_alloc<int8_t>((size_t)MAX_NUM_TOKENS * d_model);
     rv.x_scale = rvv_alloc<float>(MAX_NUM_TOKENS);
@@ -2720,21 +2885,32 @@ void preprocess(MoEWeights& w) {
     rv.bucket_entries = rvv_alloc<int>(max_assignments);
     rv.routed_output = rvv_alloc<float>(max_assignments * d_model);
     rv.sh_out = rvv_alloc<float>((size_t)MAX_NUM_TOKENS * d_model);
-    if (!rv.gu || !rv.down || !rv.router || !rv.xq || !rv.x_scale ||
-        !rv.route_idx || !rv.route_gate || !rv.expert_counts ||
-        !rv.expert_offsets || !rv.bucket_entries || !rv.routed_output ||
-        !rv.sh_out) {
+    if (!rv.gu || !rv.down || !rv.ime_gu || !rv.ime_down || !rv.router ||
+        !rv.xq || !rv.x_scale || !rv.route_idx || !rv.route_gate ||
+        !rv.expert_counts || !rv.expert_offsets || !rv.bucket_entries ||
+        !rv.routed_output || !rv.sh_out) {
         rv.clear();
         return;
     }
     pack_gu_tiles(w.sh_gate, w.sh_up, d_ff, d_model, rv.gu);
     pack_down_tiles(w.sh_down, d_model, d_ff, rv.down);
+    pack_ime_tiles(w.sh_gate, d_ff, d_model, rv.ime_gu);
+    pack_ime_tiles(w.sh_up, d_ff, d_model,
+                   rv.ime_gu + (size_t)d_ff * d_model);
+    pack_ime_tiles(w.sh_down, d_model, d_ff, rv.ime_down);
     for (int e = 0; e < num_experts; ++e) {
         pack_gu_tiles(w.w_gate + (size_t)e * d_ff * d_model,
                       w.w_up + (size_t)e * d_ff * d_model, d_ff, d_model,
                       rv.gu + (size_t)(e + 1) * rv.gu_expert);
         pack_down_tiles(w.w_down + (size_t)e * d_model * d_ff, d_model, d_ff,
                         rv.down + (size_t)(e + 1) * rv.down_expert);
+        int8_t* ime_gu = rv.ime_gu + (size_t)(e + 1) * rv.ime_gu_expert;
+        pack_ime_tiles(w.w_gate + (size_t)e * d_ff * d_model, d_ff, d_model,
+                       ime_gu);
+        pack_ime_tiles(w.w_up + (size_t)e * d_ff * d_model, d_ff, d_model,
+                       ime_gu + (size_t)d_ff * d_model);
+        pack_ime_tiles(w.w_down + (size_t)e * d_model * d_ff, d_model, d_ff,
+                       rv.ime_down + (size_t)(e + 1) * rv.ime_down_expert);
     }
     pack_router_tiles(w.w_router, num_experts, d_model, padded_e, rv.router);
     rv.d_model = d_model;
