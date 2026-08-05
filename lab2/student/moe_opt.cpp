@@ -1171,7 +1171,7 @@ static inline __m512 vnni_s1_gu_hidden_group(
         const __m512 vu = _mm512_mul_ps(
             _mm512_cvtepi32_ps(up[j]), up_scale);
         const __m512 h = _mm512_mul_ps(
-            _mm512_mul_ps(vg, s1_sigmoid512_ps(vg)), vu);
+            _mm512_mul_ps(vg, s1_router_sigmoid512_ps(vg)), vu);
         _mm512_store_ps(hidden + (ob + j) * N_BLOCK, h);
         maximum = _mm512_max_ps(maximum, abs512_ps(h));
     }
@@ -1662,6 +1662,29 @@ static inline void select_topk(const float* affinity, const MoEWeights& w,
     }
 }
 
+static inline void select_top4_s1(const float* affinity, const MoEWeights& w,
+                                  int* indices, float* gates) {
+    __m512 scores = _mm512_add_ps(_mm512_load_ps(affinity),
+                                  _mm512_loadu_ps(w.bias));
+    const __m512 negative_infinity =
+        _mm512_set1_ps(-std::numeric_limits<float>::infinity());
+    float sum = 0.0f;
+    for (int k = 0; k < 4; ++k) {
+        const float best = _mm512_reduce_max_ps(scores);
+        const __mmask16 matches = _mm512_cmp_ps_mask(
+            scores, _mm512_set1_ps(best), _CMP_EQ_OQ);
+        const int index = __builtin_ctz(static_cast<unsigned>(matches));
+        indices[k] = index;
+        gates[k] = affinity[index];
+        sum += gates[k];
+        scores = _mm512_mask_mov_ps(scores,
+                                    static_cast<__mmask16>(1u << index),
+                                    negative_infinity);
+    }
+    const float inverse_sum = 1.0f / sum;
+    for (int k = 0; k < 4; ++k) gates[k] *= inverse_sum;
+}
+
 // Keep the FP32 dot-product kernel separate from sigmoid.  When both were
 // inlined into one large function GCC kept polynomial constants live across
 // the D loop and spilled ten of the sixteen accumulators on every iteration.
@@ -1774,14 +1797,10 @@ static inline void router_block(const float* x, int rows, int d_model,
         for (int eb = 0; eb < eblocks; ++eb) {
             float* v = affinity[r] + eb * N_BLOCK;
             const __m512 logits = _mm512_load_ps(v);
-#ifdef MOE_FAST_S1_ROUTER
             _mm512_store_ps(
-                v, rows == 1 && d_model == 256
+                v, rows == 1
                        ? s1_router_sigmoid512_ps(logits)
                        : expert_sigmoid512_ps(logits));
-#else
-            _mm512_store_ps(v, expert_sigmoid512_ps(logits));
-#endif
         }
     }
 }
@@ -2133,10 +2152,12 @@ static void single_s1_fused_task(int id, void* opaque) {
     fused.task_begin[id] = __rdtscp(&profile_aux);
 #endif
     if (id == 0) {
-        alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
-        router_block(fused.x, 1, ctx.w->d_model, affinity);
-        select_topk(affinity[0], *ctx.w,
-                    const_cast<int*>(ctx.indices), fused.gates);
+        alignas(64) float affinity[N_BLOCK];
+        router_dot_1(fused.x, 256, pw.router, affinity);
+        const __m512 logits = _mm512_load_ps(affinity);
+        _mm512_store_ps(affinity, s1_router_sigmoid512_ps(logits));
+        select_top4_s1(affinity, *ctx.w,
+                       const_cast<int*>(ctx.indices), fused.gates);
         int* indices = const_cast<int*>(ctx.indices);
         for (int i = 1; i < ctx.w->top_k; ++i) {
             const int index = indices[i];
@@ -2650,6 +2671,7 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
 #endif
 
         combine_single_s1(x, gates, y);
+
 #ifdef MOE_PROFILE_S1
         const uint64_t profile_end = __rdtscp(&profile_aux);
         static uint64_t profile_calls = 0;
@@ -2717,11 +2739,19 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
     }
 #endif
 
-    alignas(64) float affinity[ROUTER_BATCH][MAX_NUM_EXPERTS];
-    router_block(x, 1, w.d_model, affinity);
+    alignas(64) float affinity[MAX_NUM_EXPERTS];
+    const int router_blocks = pw.padded_experts / N_BLOCK;
+    for (int eb = 0; eb < router_blocks; ++eb) {
+        const float* packed =
+            pw.router + (size_t)eb * w.d_model * N_BLOCK;
+        float* block = affinity + eb * N_BLOCK;
+        router_dot_1(x, w.d_model, packed, block);
+        _mm512_store_ps(
+            block, s1_router_sigmoid512_ps(_mm512_load_ps(block)));
+    }
     int indices[MAX_TOP_K];
     float gates[MAX_TOP_K];
-    select_topk(affinity[0], w, indices, gates);
+    select_topk(affinity, w, indices, gates);
     if (w.d_model == 256 && w.d_ff == 128) {
         for (int i = 1; i < w.top_k; ++i) {
             const int index = indices[i];

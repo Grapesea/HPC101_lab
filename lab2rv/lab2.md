@@ -407,3 +407,113 @@ expert很多、每个桶内token较少的Test 4也不会引入动态循环的寄
 多token路径仍保持40x以上，Test 4则保持接近29x。最终最重要的结论是：RVV优化不只是
 “把标量循环换成向量指令”，还要同时考虑权重布局、跨token复用、寄存器预算、尾块
 特化和并行粒度；其中任何一项处理不当，都可能出现指令数减少但实际性能下降的情况。
+
+### 继续优化：使用SpaceMiT IME的`vmadot`
+
+前面的RVV微内核已经把一条标量乘法扩展到16个输出lane，但是每个K仍然需要
+`vle8 + vsext + vwmacc`，而且最终是矩阵乘法，却没有直接利用K60上的矩阵扩展。
+SpaceMiT IME的设计和AMX不一样：它复用了RVV的32个向量寄存器保存输入和累加器，
+这里的Integrated就是“矩阵扩展集成在向量寄存器文件中”的含义。因此不需要像AMX
+一样先配置tile，也不需要`tileloadd/tilezero`，只要先设置RVV的SEW/LMUL，就可以直接
+让`vmadot`读写`v0...v31`。
+
+本机binutils版本早于厂商助记符，assembler不能识别：
+
+```asm
+vmadot v28, v0, v1
+```
+
+但是K60硬件支持这条指令，所以我按指令编码写成：
+
+```asm
+.word 0xe2103e2b       # vmadot v28, v0, v1
+```
+
+一条指令完成$A_{4\times8}B_{4\times8}^{T}$并累加到$C_{4\times4}$。权重在
+`preprocess`中重新打包为：
+
+```text
+[output_block][k_block][4 output rows][8 K elements]
+```
+
+activation则打包为`[token_group][k_block][4][8]`。`v0`和`v1`分别装A/B，
+`v28:v29`作为m2的16个int32累加lane。所有实验维度都是64的倍数，所以把K循环每8个
+`vmadot`展开一次，分支数降为原来的$1/8$。这一步也说明IME复用RVV寄存器的实际好处：
+矩阵结果可以马上用`vse32.v`交给后续RVV SwiGLU，而不需要在两套寄存器文件之间搬运。
+
+### IME之后重新做热点分析
+
+使用当前代码重新以1000轮Test 3运行`-pg + gprof`，得到的主要热点如下：
+
+| 热点 | self time占比 | 说明 |
+| ---- | ------------ | ---- |
+| `vmadot` tile指令流 | 63.92% | gprof把内联汇编地址归到相邻的本地符号，实际是IME leaf |
+| `rvv_expert_ffn`外围 | 18.56% | SwiGLU、再量化、反量化写回 |
+| `ime_gemm_packed` | 5.69% | tile调度和4行结果scatter |
+| `rvv_prepare_block` | 4.94% | Router、输入量化和Top-K |
+
+也就是说切换到IME以后，热点已经从RVV的`vwmacc`和Router明确转移到矩阵指令流。
+因此后续没有再花很多代码优化只占几个百分点的分桶，而是围绕`vmadot`的寄存器复用、
+小桶和写回进行实验。
+
+### 单/双输出IME内核分开，而不是在一个函数里动态分支
+
+我先尝试让同一份A同时服务两个相邻B tile，使用`v28:v29`和`v26:v27`两组m2累加器。
+多token的Test 3从约`0.460 s / 200`降到约`0.415 s / 200`，说明减少A load确实有效；
+但直接让所有形状使用双累加链时，Test 2退化到约`1.20 s / 150`。小token场景没有足够
+复用，第二条矩阵累加链反而降低了IME流水线吞吐。
+
+最初我只在同一个`ime_gemm_packed`中写`if (t_count < 8)`，结果即使分支没有执行，
+单token路径也因为wrapper代码体积和I-cache布局从约`0.037 s`退化到`0.066 s`。
+最终将其拆成两个完全独立的函数：小桶调用紧凑的single内核，至少4个token时调用dual
+内核，并只在`rvv_expert_ffn`顶层选择一次。这样Test 1/2恢复原吞吐，Test 3保留收益。
+
+单token还有两个可以直接删除的浪费：
+
+1. A tile的另外3行结果从不写回，因此activation pack不需要反复清零3个无效行；
+2. `vmadot`结束时把VL设为4，只写`v28`的首行到最终scratch，不再先写16个int32到
+   临时tile再拷贝首行；单token也不建立后续不会使用的expert bucket。
+
+### sigmoid的精度和速度折中
+
+SwiGLU和Router都改为$[7/6]$ Padé tanh，并把输入$z=x/2$限制在$[-4.5,4.5]$。
+Router必须保留精确`vfdiv`：我尝试把它也换成`vfrec7`时，Test 4有一个token发生Top-K
+翻转，global RMSE变成`1.89e-2`。SwiGLU的输出会立即量化到int8，可以使用
+`vfrec7 + 1次Newton`；Newton中的$2-den\cdot inv$再用`vfnmsac`融合为一条指令。
+只使用7-bit estimate虽然更快，但Test 1 RMSE为`5.83e-3`，超过阈值，所以没有保留。
+
+最终四组验证RMSE分别约为`2.46e-5`、`3.13e-4`、`7.67e-4`和`1.06e-3`，均通过
+global `2e-3`和per-token `2e-2`检查。
+
+### 没有保留的尝试
+
+这轮有几项看起来合理但实测为负优化：
+
+- 用RVV indexed store把16个tile结果直接散写到4行输出：`0.460935 s / 200`，与临时
+  tile+连续拷贝持平，说明K60非连续store抵消了搬运收益；
+- 强制inline IME leaf导致I-cache回退，所以最终保留`noinline`；
+- 同时保留4组矩阵累加器，或者同时处理“两token组×两输出”：寄存器压力增加，Test 3
+  约`0.228--0.238 s / 100`，不如两输出内核；
+- 将routed和combine融合进一个OpenMP region、`schedule(dynamic,1)`、按桶大小贪心
+  分配4个线程，都没有稳定优于简单的`schedule(static)`；
+- 把`RVV_TB`从32提高到64没有降低中位时间，反而扩大thread-local scratch；
+- 只用`vfrec7`不做Newton修正不能满足正确性。
+
+### IME版本重复结果
+
+下面是同一`riscv-rv03`节点上的完整baseline+optimized结果。Test 1使用1000轮、
+Test 2使用200轮、Test 3使用150轮；Test 4使用5轮。为了观察抖动，前三组重复3次：
+
+| 测试 | 三轮Speedup（或单轮） | 中位数 | 目标 | rel RMSE |
+| ---- | ---------------------- | ------ | ---- | -------- |
+| 1 | 16.74x / 17.04x / 15.77x | 16.74x | 16.0x | 2.46e-5 |
+| 2 | 19.33x / 19.60x / 18.48x | 19.33x | 18.5x | 3.13e-4 |
+| 3 | 119.96x / 117.55x / 116.41x | 117.55x | 114.5x | 7.67e-4 |
+| 4 | 62.80x | 62.80x | 27.0x | 1.06e-3 |
+
+Test 3已经连续三轮高于目标；Test 4有很大余量。Test 1和Test 2的中位数达到目标，
+但在共享集群上仍各出现一次并行段调度尖峰（分别低0.23x和0.025x）。把迭代拉长以及
+连续运行时，正常值集中在Test 1的`16.7--17.0x`和Test 2的`19.3--19.6x`。因此这里
+同时报告三轮原始值和中位数，而不是只挑最快的一次。IME带来的核心收益仍然很清楚：
+相比上一阶段的`12.68/14.50/48.39/28.73x`，矩阵热点被真正交给`vmadot`，尤其
+Test 3从48.39x提高到稳定116x以上。

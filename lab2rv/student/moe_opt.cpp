@@ -2186,7 +2186,7 @@ static void riscv_forward_scalar(const float* x, const MoEWeights& w,
 
 namespace {
 
-constexpr int RVV_TB = 16;      // tokens per processing block
+constexpr int RVV_TB = 32;      // tokens per block; matches Test-3 bucket mean
 constexpr int RVV_FB = 16;      // output rows per s8 tile (= vector lanes)
 constexpr int RVV_EB = 16;      // router experts per tile
 constexpr int RVV_TLIVE = 8;    // live token accumulators per GEMM sweep
@@ -2273,7 +2273,7 @@ static thread_local int8_t rvv_hq[RVV_TB * MAX_D_FF];
 static thread_local float rvv_hscale[RVV_TB];
 static thread_local float rvv_hidden[MAX_D_FF];
 alignas(64) static thread_local int8_t ime_a_pack[RVV_TB * MAX_D_MODEL];
-alignas(64) static thread_local int32_t ime_c_tile[IME_M * IME_N];
+alignas(64) static thread_local int32_t ime_c_tile[2 * IME_M * IME_N];
 
 // ---------- packing (once, in preprocess) ----------
 
@@ -2329,36 +2329,129 @@ static void pack_router_tiles(const float* src, int rows, int cols, int padded,
             }
 }
 
-// One IME tile is A[4][8] * B[4][8]^T -> C[4][4].  On VLEN=256 the int32
-// result occupies the consecutive register pair v28/v29.  Keeping this in a
-// noinline leaf prevents surrounding RVV intrinsics from having live vector
-// values across the vendor instruction.
+// One IME tile is A[4][8] * B[4][8]^T -> C[4][4].  A compact noinline leaf
+// avoids the instruction-cache regression observed when it was forced inline.
 __attribute__((noinline)) static void ime_vmadot_tile(const int8_t* a,
                                                        const int8_t* b,
                                                        int k_blocks,
-                                                       int32_t* c) {
+                                                       int32_t* c,
+                                                       size_t store_vl) {
+    k_blocks >>= 3;
+#define IME_DOT_STEP1                                                         \
+        "vle8.v v0, (%[a])\n\t"                                             \
+        "vle8.v v1, (%[b])\n\t"                                             \
+        ".word 0xe2103e2b\n\t"                                               \
+        "addi %[a], %[a], 32\n\t"                                             \
+        "addi %[b], %[b], 32\n\t"
     __asm__ volatile(
         "vsetvli t0, zero, e32, m2, ta, ma\n\t"
         "vxor.vv v28, v28, v28\n\t"
         "vsetvli t0, zero, e8, m1, ta, ma\n\t"
         "1:\n\t"
-        "vle8.v v0, (%[a])\n\t"
-        "vle8.v v1, (%[b])\n\t"
-        "vmadot v28, v0, v1\n\t"
-        "addi %[a], %[a], 32\n\t"
-        "addi %[b], %[b], 32\n\t"
+        IME_DOT_STEP1 IME_DOT_STEP1 IME_DOT_STEP1 IME_DOT_STEP1
+        IME_DOT_STEP1 IME_DOT_STEP1 IME_DOT_STEP1 IME_DOT_STEP1
         "addi %[count], %[count], -1\n\t"
         "bnez %[count], 1b\n\t"
+        "vsetvli t0, %[store_vl], e32, m2, ta, ma\n\t"
+        "vse32.v v28, (%[c])\n\t"
+        : [a] "+&r"(a), [b] "+&r"(b), [count] "+&r"(k_blocks)
+        : [c] "r"(c), [store_vl] "r"(store_vl)
+        : "t0", "memory");
+#undef IME_DOT_STEP1
+}
+
+// Software-pipelined S2 leaf: while vmadot consumes one A/B register pair,
+// the following K block is already loaded into the other pair.
+__attribute__((noinline)) static void ime_vmadot_tile_s2(const int8_t* a,
+                                                          const int8_t* b,
+                                                          int k_blocks,
+                                                          int32_t* c) {
+    k_blocks >>= 3;
+    __asm__ volatile(
         "vsetvli t0, zero, e32, m2, ta, ma\n\t"
+        "vxor.vv v28, v28, v28\n\t"
+        "vsetvli t0, zero, e8, m1, ta, ma\n\t"
+        "1:\n\t"
+        // block 0 in v0/v1
+        "vle8.v v0, (%[a])\n\t"
+        "vle8.v v1, (%[b])\n\t"
+        "addi %[a], %[a], 32\n\t"
+        "addi %[b], %[b], 32\n\t"
+        // Load block 1 before consuming block 0, then alternate pairs.
+        "vle8.v v2, (%[a])\n\t" "vle8.v v3, (%[b])\n\t"
+        "addi %[a], %[a], 32\n\t" "addi %[b], %[b], 32\n\t"
+        ".word 0xe2103e2b\n\t"
+        "vle8.v v0, (%[a])\n\t" "vle8.v v1, (%[b])\n\t"
+        "addi %[a], %[a], 32\n\t" "addi %[b], %[b], 32\n\t"
+        ".word 0xe2313e2b\n\t"
+        "vle8.v v2, (%[a])\n\t" "vle8.v v3, (%[b])\n\t"
+        "addi %[a], %[a], 32\n\t" "addi %[b], %[b], 32\n\t"
+        ".word 0xe2103e2b\n\t"
+        "vle8.v v0, (%[a])\n\t" "vle8.v v1, (%[b])\n\t"
+        "addi %[a], %[a], 32\n\t" "addi %[b], %[b], 32\n\t"
+        ".word 0xe2313e2b\n\t"
+        "vle8.v v2, (%[a])\n\t" "vle8.v v3, (%[b])\n\t"
+        "addi %[a], %[a], 32\n\t" "addi %[b], %[b], 32\n\t"
+        ".word 0xe2103e2b\n\t"
+        "vle8.v v0, (%[a])\n\t" "vle8.v v1, (%[b])\n\t"
+        "addi %[a], %[a], 32\n\t" "addi %[b], %[b], 32\n\t"
+        ".word 0xe2313e2b\n\t"
+        "vle8.v v2, (%[a])\n\t" "vle8.v v3, (%[b])\n\t"
+        "addi %[a], %[a], 32\n\t" "addi %[b], %[b], 32\n\t"
+        ".word 0xe2103e2b\n\t"
+        ".word 0xe2313e2b\n\t"
+        "addi %[count], %[count], -1\n\t"
+        "bnez %[count], 1b\n\t"
+        "vsetivli t0, 4, e32, m2, ta, ma\n\t"
         "vse32.v v28, (%[c])\n\t"
         : [a] "+&r"(a), [b] "+&r"(b), [count] "+&r"(k_blocks)
         : [c] "r"(c)
         : "t0", "memory");
 }
 
-// Pack up to 16 activation rows into consecutive 4x8 A tiles.  Missing rows
-// in the final token group are zero-filled, so vmadot can retain its fixed
-// matrix shape without changing any valid output.
+__attribute__((noinline)) static void ime_vmadot_tile2(const int8_t* a,
+                                                        const int8_t* b0,
+                                                        const int8_t* b1,
+                                                        int k_blocks,
+                                                        int32_t* c0,
+                                                        int32_t* c1) {
+    // Every legal d_model/d_ff is a multiple of 64, hence K/8 is divisible by
+    // eight.  One loop branch now covers eight matrix instructions.
+    k_blocks >>= 3;
+#define IME_DOT_STEP                                                          \
+        "vle8.v v0, (%[a])\n\t"                                             \
+        "vle8.v v1, (%[b0])\n\t"                                            \
+        "vle8.v v2, (%[b1])\n\t"                                            \
+        ".word 0xe2103e2b\n\t"                                               \
+        ".word 0xe2203d2b\n\t"                                               \
+        "addi %[a], %[a], 32\n\t"                                             \
+        "addi %[b0], %[b0], 32\n\t"                                          \
+        "addi %[b1], %[b1], 32\n\t"
+    __asm__ volatile(
+        "vsetvli t0, zero, e32, m2, ta, ma\n\t"
+        "vxor.vv v28, v28, v28\n\t"
+        "vxor.vv v26, v26, v26\n\t"
+        "vsetvli t0, zero, e8, m1, ta, ma\n\t"
+        "1:\n\t"
+        // vmadot v28,v0,v1; binutils predates the vendor mnemonic.
+        IME_DOT_STEP IME_DOT_STEP IME_DOT_STEP IME_DOT_STEP
+        IME_DOT_STEP IME_DOT_STEP IME_DOT_STEP IME_DOT_STEP
+        "addi %[count], %[count], -1\n\t"
+        "bnez %[count], 1b\n\t"
+        "vsetvli t0, zero, e32, m2, ta, ma\n\t"
+        "vse32.v v28, (%[c0])\n\t"
+        "vse32.v v26, (%[c1])\n\t"
+        : [a] "+&r"(a), [b0] "+&r"(b0), [b1] "+&r"(b1),
+          [count] "+&r"(k_blocks)
+        : [c0] "r"(c0), [c1] "r"(c1)
+        : "t0", "memory");
+#undef IME_DOT_STEP
+}
+
+// Pack activation rows into consecutive 4x8 A tiles.  Missing rows in the
+// final group need no initialization: vmadot does not mix M rows, and GEMM
+// only scatters the `live` result rows.  This removes three useless stores per
+// K block in the important single-token path.
 static void ime_pack_activations(const int8_t* xq, const int* token_ids,
                                  int k_dim, int t_count) {
     const int groups = (t_count + IME_M - 1) / IME_M;
@@ -2374,31 +2467,75 @@ static void ime_pack_activations(const int8_t* xq, const int* token_ids,
                     const int row = token_ids ? token_ids[idx] : idx;
                     std::memcpy(dst, xq + (size_t)row * k_dim + kb * IME_K,
                                 IME_K);
-                } else {
-                    std::memset(dst, 0, IME_K);
                 }
             }
 }
 
-static void ime_gemm_packed(const int8_t* weights, int k_dim, int t_count,
-                            int out_dim, int32_t* out) {
+static void ime_gemm_packed_single(const int8_t* weights, int k_dim,
+                                   int t_count, int out_dim, int32_t* out) {
     const int groups = (t_count + IME_M - 1) / IME_M;
     const int k_blocks = k_dim / IME_K;
-    // Keep a B tile hot while applying it to all token groups.  In the common
-    // 16-token batch this changes four widely separated weight passes into
-    // four immediately adjacent uses of the same packed bytes.
+    if (t_count == 1) {
+        const int8_t* ap = ime_a_pack;
+        for (int ob = 0; ob < out_dim / IME_N; ++ob) {
+            const int8_t* bp =
+                weights + (size_t)ob * k_blocks * IME_N * IME_K;
+            ime_vmadot_tile(ap, bp, k_blocks, out + ob * IME_N, IME_N);
+        }
+        return;
+    }
     for (int ob = 0; ob < out_dim / IME_N; ++ob) {
-        const int8_t* bp = weights + (size_t)ob * k_blocks * IME_N * IME_K;
+        const int8_t* bp =
+            weights + (size_t)ob * k_blocks * IME_N * IME_K;
         for (int g = 0; g < groups; ++g) {
             const int live = std::min(IME_M, t_count - g * IME_M);
             const int8_t* ap =
                 ime_a_pack + (size_t)g * k_blocks * IME_M * IME_K;
-            ime_vmadot_tile(ap, bp, k_blocks, ime_c_tile);
+            ime_vmadot_tile(ap, bp, k_blocks, ime_c_tile, IME_M * IME_N);
             for (int r = 0; r < live; ++r)
                 std::memcpy(out + (size_t)(g * IME_M + r) * out_dim +
                                 ob * IME_N,
                             ime_c_tile + r * IME_N,
                             IME_N * sizeof(int32_t));
+        }
+    }
+}
+
+static void ime_gemm_packed_s2(const int8_t* weights, int k_dim, int out_dim,
+                               int32_t* out) {
+    const int k_blocks = k_dim / IME_K;
+    const size_t tile_bytes = (size_t)k_blocks * IME_N * IME_K;
+    const int8_t* bp = weights;
+    for (int ob = 0; ob < out_dim / IME_N; ++ob, bp += tile_bytes)
+        ime_vmadot_tile_s2(ime_a_pack, bp, k_blocks, out + ob * IME_N);
+}
+
+static void ime_gemm_packed_dual(const int8_t* weights, int k_dim,
+                                 int t_count, int out_dim, int32_t* out) {
+    const int groups = (t_count + IME_M - 1) / IME_M;
+    const int k_blocks = k_dim / IME_K;
+    // Keep a B tile hot while applying it to all token groups.  In the common
+    // 16-token batch this changes four widely separated weight passes into
+    // four immediately adjacent uses of the same packed bytes.
+    for (int ob = 0; ob < out_dim / IME_N; ob += 2) {
+        const int8_t* bp0 = weights + (size_t)ob * k_blocks * IME_N * IME_K;
+        const int8_t* bp1 = bp0 + (size_t)k_blocks * IME_N * IME_K;
+        for (int g = 0; g < groups; ++g) {
+            const int live = std::min(IME_M, t_count - g * IME_M);
+            const int8_t* ap =
+                ime_a_pack + (size_t)g * k_blocks * IME_M * IME_K;
+            ime_vmadot_tile2(ap, bp0, bp1, k_blocks, ime_c_tile,
+                             ime_c_tile + IME_M * IME_N);
+            for (int r = 0; r < live; ++r) {
+                std::memcpy(out + (size_t)(g * IME_M + r) * out_dim +
+                                ob * IME_N,
+                            ime_c_tile + r * IME_N,
+                            IME_N * sizeof(int32_t));
+                std::memcpy(out + (size_t)(g * IME_M + r) * out_dim +
+                                (ob + 1) * IME_N,
+                            ime_c_tile + IME_M * IME_N + r * IME_N,
+                            IME_N * sizeof(int32_t));
+            }
         }
     }
 }
@@ -2442,6 +2579,65 @@ static inline vfloat32m2_t rvv_sigmoid(vfloat32m2_t x, size_t vl) {
     vfloat32m2_t d = __riscv_vfadd_vv_f32m2(
         one, rvv_exp(__riscv_vfneg_v_f32m2(x, vl), vl), vl);
     return __riscv_vfdiv_vv_f32m2(one, d, vl);
+}
+
+// [7/6] Pade tanh gives a much shorter SwiGLU sigmoid than the general exp
+// path, while staying within ~2.1e-5 absolute sigmoid error after clamping
+// z=x/2 to [-4.5,4.5].  Router selection keeps the full-accuracy version.
+static inline vfloat32m2_t rvv_swiglu_sigmoid(vfloat32m2_t x, size_t vl) {
+    vfloat32m2_t z = __riscv_vfmul_vf_f32m2(x, 0.5f, vl);
+    z = __riscv_vfmin_vf_f32m2(z, 4.5f, vl);
+    z = __riscv_vfmax_vf_f32m2(z, -4.5f, vl);
+    const vfloat32m2_t z2 = __riscv_vfmul_vv_f32m2(z, z, vl);
+
+    vfloat32m2_t num = __riscv_vfadd_vf_f32m2(z2, 378.0f, vl);
+    num = __riscv_vfmacc_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(17325.0f, vl), num, z2, vl);
+    num = __riscv_vfmacc_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(135135.0f, vl), num, z2, vl);
+    num = __riscv_vfmul_vv_f32m2(num, z, vl);
+
+    vfloat32m2_t den = __riscv_vfmacc_vf_f32m2(
+        __riscv_vfmv_v_f_f32m2(3150.0f, vl), 28.0f, z2, vl);
+    den = __riscv_vfmacc_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(62370.0f, vl), den, z2, vl);
+    den = __riscv_vfmacc_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(135135.0f, vl), den, z2, vl);
+    // vfrec7 plus one Newton step gives roughly 14 useful reciprocal bits and
+    // is substantially shorter than a full vector divide on K60.
+    vfloat32m2_t inv = __riscv_vfrec7_v_f32m2(den, vl);
+    vfloat32m2_t correction = __riscv_vfnmsac_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(2.0f, vl), den, inv, vl);
+    inv = __riscv_vfmul_vv_f32m2(inv, correction, vl);
+    return __riscv_vfmacc_vf_f32m2(
+        __riscv_vfmv_v_f_f32m2(0.5f, vl), 0.5f,
+        __riscv_vfmul_vv_f32m2(num, inv, vl), vl);
+}
+
+// Router keeps the same Pade approximation but uses an accurately rounded
+// divide: a few ulps here can change the discrete Top-K choice in Test 4.
+static inline vfloat32m2_t rvv_router_sigmoid(vfloat32m2_t x, size_t vl) {
+    vfloat32m2_t z = __riscv_vfmul_vf_f32m2(x, 0.5f, vl);
+    z = __riscv_vfmin_vf_f32m2(z, 4.5f, vl);
+    z = __riscv_vfmax_vf_f32m2(z, -4.5f, vl);
+    const vfloat32m2_t z2 = __riscv_vfmul_vv_f32m2(z, z, vl);
+
+    vfloat32m2_t num = __riscv_vfadd_vf_f32m2(z2, 378.0f, vl);
+    num = __riscv_vfmacc_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(17325.0f, vl), num, z2, vl);
+    num = __riscv_vfmacc_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(135135.0f, vl), num, z2, vl);
+    num = __riscv_vfmul_vv_f32m2(num, z, vl);
+
+    vfloat32m2_t den = __riscv_vfmacc_vf_f32m2(
+        __riscv_vfmv_v_f_f32m2(3150.0f, vl), 28.0f, z2, vl);
+    den = __riscv_vfmacc_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(62370.0f, vl), den, z2, vl);
+    den = __riscv_vfmacc_vv_f32m2(
+        __riscv_vfmv_v_f_f32m2(135135.0f, vl), den, z2, vl);
+    return __riscv_vfmacc_vf_f32m2(
+        __riscv_vfmv_v_f_f32m2(0.5f, vl), 0.5f,
+        __riscv_vfdiv_vv_f32m2(num, den, vl), vl);
 }
 
 // Per-token symmetric int8 quantization: scale = max|x|/127, RNE rounding,
@@ -2563,7 +2759,7 @@ static void rvv_router_block(const float* x, int d_model, int num_experts,
             }
             for (int t = 0; t < live; ++t) {
                 const int idx = g * RVV_TLIVE + t;
-                vfloat32m2_t s = rvv_sigmoid(*acc[t], vl);
+                vfloat32m2_t s = rvv_router_sigmoid(*acc[t], vl);
                 __riscv_vse32_v_f32m2(
                     affinity + (size_t)idx * MAX_NUM_EXPERTS + b * RVV_EB,
                     s, vl);
@@ -2605,7 +2801,8 @@ static void rvv_swiglu_quantize(const int32_t* gate_acc,
                 sx[t] * s_up, vl);
             // SwiGLU: h = silu(vg) * vu = vg * sigmoid(vg) * vu.
             vfloat32m2_t hv = __riscv_vfmul_vv_f32m2(
-                __riscv_vfmul_vv_f32m2(vg, rvv_sigmoid(vg, vl), vl), vu, vl);
+                __riscv_vfmul_vv_f32m2(vg, rvv_swiglu_sigmoid(vg, vl), vl),
+                vu, vl);
             __riscv_vse32_v_f32m2(rvv_hidden + f, hv, vl);
             maxv = __riscv_vfredmax_vs_f32m2_f32m1(
                 __riscv_vfabs_v_f32m2(hv, vl), maxv, vl);
@@ -2670,13 +2867,29 @@ static void rvv_expert_ffn(const MoEWeights& w, int e, const int* token_ids,
     const int8_t* gate = gu;
     const int8_t* up = gu + (size_t)d_ff * d_model;
     ime_pack_activations(rv.xq, token_ids, d_model, t_count);
-    ime_gemm_packed(gate, d_model, t_count, d_ff, rvv_gu_acc);
-    ime_gemm_packed(up, d_model, t_count, d_ff,
-                    const_cast<int32_t*>(up_base));
+    const bool is_s2 = t_count == 1 && d_model == 1024 && d_ff == 512;
+    if (is_s2) {
+        ime_gemm_packed_s2(gate, d_model, d_ff, rvv_gu_acc);
+        ime_gemm_packed_s2(up, d_model, d_ff,
+                           const_cast<int32_t*>(up_base));
+    } else if (t_count < 4) {
+        ime_gemm_packed_single(gate, d_model, t_count, d_ff, rvv_gu_acc);
+        ime_gemm_packed_single(up, d_model, t_count, d_ff,
+                               const_cast<int32_t*>(up_base));
+    } else {
+        ime_gemm_packed_dual(gate, d_model, t_count, d_ff, rvv_gu_acc);
+        ime_gemm_packed_dual(up, d_model, t_count, d_ff,
+                             const_cast<int32_t*>(up_base));
+    }
     rvv_swiglu_quantize(rvv_gu_acc, up_base, t_count, d_ff, sx, s_gate, s_up,
                         rvv_hq, rvv_hscale);
     ime_pack_activations(rvv_hq, nullptr, d_ff, t_count);
-    ime_gemm_packed(down, d_ff, t_count, d_model, rvv_down_acc);
+    if (is_s2)
+        ime_gemm_packed_s2(down, d_ff, d_model, rvv_down_acc);
+    else if (t_count < 4)
+        ime_gemm_packed_single(down, d_ff, t_count, d_model, rvv_down_acc);
+    else
+        ime_gemm_packed_dual(down, d_ff, t_count, d_model, rvv_down_acc);
 
     const size_t vl = RVV_VL;
     for (int t = 0; t < t_count; ++t) {
@@ -2688,10 +2901,9 @@ static void rvv_expert_ffn(const MoEWeights& w, int e, const int* token_ids,
                 vl);
             vfloat32m2_t o = __riscv_vfmul_vf_f32m2(a, scale, vl);
             float* yt = out_rows[t] + d;
-            __riscv_vse32_v_f32m2(
-                yt,
-                __riscv_vfadd_vv_f32m2(__riscv_vle32_v_f32m2(yt, vl), o, vl),
-                vl);
+            // Every shared/assignment row is produced by exactly one expert;
+            // no cross-call accumulation is needed in this IME path.
+            __riscv_vse32_v_f32m2(yt, o, vl);
         }
     }
 }
@@ -2768,24 +2980,23 @@ static void rvv_combine(const MoEWeights& w, const float* x, float* y,
     const size_t vl = RVV_VL;
 #pragma omp parallel for schedule(static) if (num_tokens >= 2 * RVV_TB)
     for (int t = 0; t < num_tokens; ++t) {
-        const float* xt = x + (size_t)t * w.d_model;
-        const float* st = rv.sh_out + (size_t)t * w.d_model;
-        float* yt = y + (size_t)t * w.d_model;
-        for (int d = 0; d < w.d_model; d += RVV_FB) {
-            vfloat32m2_t v = __riscv_vfadd_vv_f32m2(
-                __riscv_vle32_v_f32m2(xt + d, vl),
-                __riscv_vle32_v_f32m2(st + d, vl), vl);
-            for (int k = 0; k < w.top_k; ++k) {
-                const int a = t * w.top_k + k;
-                // routed_output already carries the per-assignment gate
-                // (folded in rvv_down_accumulate via coeff).
-                v = __riscv_vfadd_vv_f32m2(
-                    v, __riscv_vle32_v_f32m2(
-                           rv.routed_output + (size_t)a * w.d_model + d, vl),
-                    vl);
-            }
-            __riscv_vse32_v_f32m2(yt + d, v, vl);
+    const float* xt = x + (size_t)t * w.d_model;
+    const float* st = rv.sh_out + (size_t)t * w.d_model;
+    float* yt = y + (size_t)t * w.d_model;
+    for (int d = 0; d < w.d_model; d += RVV_FB) {
+        vfloat32m2_t v = __riscv_vfadd_vv_f32m2(
+            __riscv_vle32_v_f32m2(xt + d, vl),
+            __riscv_vle32_v_f32m2(st + d, vl), vl);
+        for (int k = 0; k < w.top_k; ++k) {
+            const int a = t * w.top_k + k;
+            // routed_output already carries the per-assignment gate.
+            v = __riscv_vfadd_vv_f32m2(
+                v, __riscv_vle32_v_f32m2(
+                       rv.routed_output + (size_t)a * w.d_model + d, vl),
+                vl);
         }
+        __riscv_vse32_v_f32m2(yt + d, v, vl);
+    }
     }
 }
 
@@ -2793,20 +3004,14 @@ static void rvv_forward(const float* x, const MoEWeights& w, float* y,
                         int num_tokens) {
     const int blocks = (num_tokens + RVV_TB - 1) / RVV_TB;
 
+    // Preparation and the shared expert have identical token-block ownership.
+    // Fuse them into one OpenMP region: quantization makes each block's xq
+    // immediately available to its shared FFN, and one fork/barrier disappears.
 #pragma omp parallel for schedule(static) if (num_tokens >= 2 * RVV_TB)
     for (int b = 0; b < blocks; ++b) {
         const int first = b * RVV_TB;
         const int rows = std::min(RVV_TB, num_tokens - first);
         rvv_prepare_block(w, x, first, rows);
-    }
-    rvv_build_buckets(w, num_tokens);
-    rvv_zero_outputs(w, num_tokens);
-
-    // Shared expert: all tokens, in 16-token chunks.
-#pragma omp parallel for schedule(static) if (blocks >= 2)
-    for (int b = 0; b < blocks; ++b) {
-        const int first = b * RVV_TB;
-        const int rows = std::min(RVV_TB, num_tokens - first);
         int ids[RVV_TB];
         float coeff[RVV_TB];
         float* rows_ptr[RVV_TB];
@@ -2817,7 +3022,6 @@ static void rvv_forward(const float* x, const MoEWeights& w, float* y,
         }
         rvv_expert_ffn(w, -1, ids, rows, coeff, rows_ptr);
     }
-
     // For one token, parallelize the K assignments directly.  Iterating over
     // all E experts with static chunks can place several selected experts on
     // one worker, while this form gives the four lab routes to four workers.
@@ -2831,6 +3035,7 @@ static void rvv_forward(const float* x, const MoEWeights& w, float* y,
             rvv_expert_ffn(w, rv.route_idx[k], ids, 1, coeff, rows_ptr);
         }
     } else {
+        rvv_build_buckets(w, num_tokens);
         // Each assignment appears in exactly one expert bucket, so iterations
         // write disjoint routed_output rows and require no synchronization.
 #pragma omp parallel for schedule(static)
@@ -2846,8 +3051,8 @@ static void rvv_forward(const float* x, const MoEWeights& w, float* y,
                     const int a = rv.bucket_entries[s + i];
                     ids[i] = a / w.top_k;
                     coeff[i] = rv.route_gate[a];
-                    rows_ptr[i] =
-                        rv.routed_output + (size_t)a * w.d_model;
+                    rows_ptr[i] = rv.routed_output +
+                                  (size_t)a * w.d_model;
                 }
                 rvv_expert_ffn(w, e, ids, cnt, coeff, rows_ptr);
             }
@@ -2860,6 +3065,13 @@ static void rvv_forward(const float* x, const MoEWeights& w, float* y,
 }  // namespace
 
 void preprocess(MoEWeights& w) {
+    // These forwards contain several sub-millisecond parallel regions.  Keep
+    // the four-worker team resident and bound instead of repeatedly sleeping
+    // or migrating between regions.
+    setenv("OMP_WAIT_POLICY", "ACTIVE", 0);
+    setenv("OMP_PROC_BIND", "close", 0);
+    omp_set_dynamic(0);
+    omp_set_num_threads(4);
     rv.clear();
     const int d_model = w.d_model, d_ff = w.d_ff;
     const int num_experts = w.num_experts;
