@@ -3,6 +3,8 @@ build-*/
 vtune-*/
 core.*
 perf.*
+!perf.C
+!perf.h
 *.pdf:Zone.Identifier
 .vscode/
 *.pyc
