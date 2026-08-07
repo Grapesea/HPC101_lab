@@ -1,14 +1,42 @@
 # 想理解测试在测什么，可以从 main() 依次读到 _run_core_case()
 import argparse
+import contextlib
+import ctypes
+import ctypes.util
 import os
 import statistics
 import sys
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-import torch
 
+_PROCESS_START = time.perf_counter()
+_PROFILE_PHASES = os.environ.get("GDN_PROFILE_PHASES") == "1"
+_IMPORT_TIMINGS: list[tuple[str, float]] = []
+
+
+def _set_cuda_blocking_sync_before_init() -> None:
+    """Select blocking host waits before PyTorch creates a CUDA context."""
+
+    if os.environ.get("GDN_CUDA_BLOCKING_SYNC") != "1":
+        return
+    cudart_name = ctypes.util.find_library("cudart") or "libcudart.so"
+    cudart = ctypes.CDLL(cudart_name)
+    cuda_device_schedule_blocking_sync = 0x04
+    result = cudart.cudaSetDeviceFlags(cuda_device_schedule_blocking_sync)
+    if result != 0:
+        raise RuntimeError(f"cudaSetDeviceFlags(blocking sync) failed: {result}")
+
+
+_set_cuda_blocking_sync_before_init()
+
+_import_start = time.perf_counter()
+import torch
+_IMPORT_TIMINGS.append(("import_torch", time.perf_counter() - _import_start))
+
+_import_start = time.perf_counter()
 from evaluation.support import (
     DEFAULT_REPETITIONS,
     DEFAULT_WARMUP,
@@ -18,10 +46,20 @@ from evaluation.support import (
     load_cases,
     make_inputs,
 )
+_IMPORT_TIMINGS.append(("import_evaluation", time.perf_counter() - _import_start))
+
+_import_start = time.perf_counter()
 from preprocessing.tilelang_cumsum import chunk_local_cumsum
 from preprocessing.tilelang_kkt_solve import kkt_solve
+_IMPORT_TIMINGS.append(("import_preprocessing", time.perf_counter() - _import_start))
+
+_import_start = time.perf_counter()
 from references.torch_gdr import ref_chunk_gated_delta_rule
+_IMPORT_TIMINGS.append(("import_reference", time.perf_counter() - _import_start))
+
+_import_start = time.perf_counter()
 from student.tilelang_fwd import gdn_prefill_forward
+_IMPORT_TIMINGS.append(("import_student", time.perf_counter() - _import_start))
 
 
 
@@ -50,6 +88,23 @@ class Measurement:
     median_ms: float | None = None
 
 
+@contextlib.contextmanager
+def _profile_range(name: str):
+    """Add an opt-in NVTX range and a matching host wall-time record."""
+
+    if not _PROFILE_PHASES:
+        yield
+        return
+    start = time.perf_counter()
+    torch.cuda.nvtx.range_push(name)
+    try:
+        yield
+    finally:
+        torch.cuda.nvtx.range_pop()
+        elapsed_ms = (time.perf_counter() - start) * 1e3
+        print(f"PROFILE_PHASE {name} {elapsed_ms:.3f} ms", file=sys.stderr)
+
+
 def chunk_gated_delta_rule(
     q: torch.Tensor,
     k: torch.Tensor,
@@ -59,9 +114,12 @@ def chunk_gated_delta_rule(
     initial_state: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     # 一个完整 forward 会先准备 g_cumsum 和 A，再进入你实现的 W/U/S/O。
-    g_cumsum = chunk_local_cumsum(raw_g)
-    A = kkt_solve(k, g_cumsum, beta)
-    return gdn_prefill_forward(q, k, v, g_cumsum, beta, A, initial_state)
+    with _profile_range("full_forward/chunk_local_cumsum"):
+        g_cumsum = chunk_local_cumsum(raw_g)
+    with _profile_range("full_forward/kkt_solve"):
+        A = kkt_solve(k, g_cumsum, beta)
+    with _profile_range("full_forward/student_forward"):
+        return gdn_prefill_forward(q, k, v, g_cumsum, beta, A, initial_state)
 
 
 def _call_full_forward(
@@ -114,20 +172,35 @@ def _benchmark(
     warmup: int,
     repetitions: int,
 ) -> float:
+    with _profile_range(f"benchmark/warmup_{warmup}"):
+        for _ in range(warmup):
+            function()
+        torch.cuda.synchronize()
 
-    for _ in range(warmup):
-        function()
-    torch.cuda.synchronize()
+    profile_after_warmup = os.environ.get("GDN_PROFILE_AFTER_WARMUP") == "1"
+    if profile_after_warmup:
+        torch.cuda.cudart().cudaProfilerStart()
 
+    batch_event_sync = os.environ.get("GDN_BATCH_EVENT_SYNC") == "1"
+    event_pairs = []
     durations = []
-    for _ in range(repetitions):
-        start = torch.cuda.Event(enable_timing=True)
-        end = torch.cuda.Event(enable_timing=True)
-        start.record()
-        function()
-        end.record()
-        end.synchronize()
-        durations.append(start.elapsed_time(end))
+    with _profile_range(f"benchmark/timed_{repetitions}"):
+        for _ in range(repetitions):
+            start = torch.cuda.Event(enable_timing=True)
+            end = torch.cuda.Event(enable_timing=True)
+            start.record()
+            function()
+            end.record()
+            if batch_event_sync:
+                event_pairs.append((start, end))
+            else:
+                end.synchronize()
+                durations.append(start.elapsed_time(end))
+        if batch_event_sync:
+            torch.cuda.synchronize()
+            durations.extend(start.elapsed_time(end) for start, end in event_pairs)
+    if profile_after_warmup:
+        torch.cuda.cudart().cudaProfilerStop()
     return statistics.median(durations)
 
 
@@ -265,23 +338,26 @@ def _run_core_case(
     warmup: int,
     repetitions: int,
 ) -> Measurement:
-
     # initiate inputs
-    inputs = make_inputs(case)
+    with _profile_range(f"{case.name}/make_inputs"):
+        inputs = make_inputs(case)
 
     # get correctness reference
-    expected_output, expected_state = ref_chunk_gated_delta_rule(
-        inputs.q,
-        inputs.k,
-        inputs.v,
-        inputs.g,
-        inputs.beta,
-        inputs.initial_state,
-    )
+    with _profile_range(f"{case.name}/reference_forward"):
+        expected_output, expected_state = ref_chunk_gated_delta_rule(
+            inputs.q,
+            inputs.k,
+            inputs.v,
+            inputs.g,
+            inputs.beta,
+            inputs.initial_state,
+        )
 
     # precompute
-    g_cumsum = chunk_local_cumsum(inputs.g)
-    A = kkt_solve(inputs.k, g_cumsum, inputs.beta)
+    with _profile_range(f"{case.name}/preprocess_cumsum"):
+        g_cumsum = chunk_local_cumsum(inputs.g)
+    with _profile_range(f"{case.name}/preprocess_kkt"):
+        A = kkt_solve(inputs.k, g_cumsum, inputs.beta)
 
     def call_student() -> tuple[torch.Tensor, torch.Tensor]:
         return gdn_prefill_forward(
@@ -296,8 +372,10 @@ def _run_core_case(
 
     # check correctness of your implementations
     try:
-        output, state = call_student()
-        _check_result("student", output, state, expected_output, expected_state)
+        with _profile_range(f"{case.name}/first_student_call_compile"):
+            output, state = call_student()
+        with _profile_range(f"{case.name}/correctness_check"):
+            _check_result("student", output, state, expected_output, expected_state)
     except AssertionError as error:
         print(f"{case.name}: {error}", file=sys.stderr)
         return Measurement(status="FAIL")
@@ -305,7 +383,8 @@ def _run_core_case(
     # timing your implementations
     if case.purpose == "correctness":
         return Measurement(status="PASS")
-    median_ms = _benchmark(call_student, warmup, repetitions)
+    with _profile_range(f"{case.name}/benchmark"):
+        median_ms = _benchmark(call_student, warmup, repetitions)
     return Measurement(status="PASS", median_ms=median_ms)
 
 # 完整forward计时
@@ -426,7 +505,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
-    cases = _select_cases(load_cases(args.cases), args.case)
+    with _profile_range("main/load_cases"):
+        cases = _select_cases(load_cases(args.cases), args.case)
 
     if args.output_format == "csv":
         if args.reference_benchmarks:
@@ -446,11 +526,12 @@ def main(argv: list[str] | None = None) -> None:
     )
     core_failed = 0
     for case in cases:
-        measurement = _run_core_case(
-            case,
-            warmup=args.warmup,
-            repetitions=args.repetitions,
-        )
+        with _profile_range(f"core_case/{case.name}"):
+            measurement = _run_core_case(
+                case,
+                warmup=args.warmup,
+                repetitions=args.repetitions,
+            )
         if measurement.status != "PASS":
             core_failed += 1
         if args.output_format == "csv":
@@ -535,4 +616,18 @@ def main(argv: list[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if _PROFILE_PHASES:
+        for import_name, elapsed in _IMPORT_TIMINGS:
+            print(
+                f"PROFILE_IMPORT {import_name} {elapsed * 1e3:.3f} ms",
+                file=sys.stderr,
+            )
+        print(
+            f"PROFILE_IMPORT startup_to_main "
+            f"{(time.perf_counter() - _PROCESS_START) * 1e3:.3f} ms",
+            file=sys.stderr,
+        )
+        with _profile_range("main"):
+            main()
+    else:
+        main()

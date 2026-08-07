@@ -1,0 +1,133 @@
+CASE               B        T   Hq   Hv  STATE  RESULT   MEDIAN (ms)
+--------------------------------------------------------------------
+2026-08-07 04:17:56  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:133): TileLang begins to compile kernel `kernel` with `out_idx=None`
+2026-08-07 04:18:04  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:141): TileLang completes to compile kernel `kernel`
+short_tail_state   1     1025    2    8    yes    PASS         0.233
+2026-08-07 04:18:05  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:133): TileLang begins to compile kernel `kernel` with `out_idx=None`
+2026-08-07 04:18:13  [TileLang:tilelang.jit.kernel:INFO] (kernel.py:141): TileLang completes to compile kernel `kernel`
+chain_equal        1     8192    4    4     no    PASS         1.522
+parallel_equal     1     2048   16   16     no    PASS         0.826
+parallel_gva       1     2048    4   16     no    PASS         0.826
+long_low_gva       1    32768    2    8     no    PASS         6.228
+batch_split_gva    4     8192    2    8     no    PASS         4.720
+wide_gva_state     1     8192   16   64    yes    PASS         8.177
+deep_gva_state     1    16384    8   32    yes    PASS         9.617
+--------------------------------------------------------------------
+All 8 case(s) passed correctness.
+
+Benchmark device: NVIDIA H800 PCIe MIG 1g.10gb | CC 9.0 | 14 SMs | 9.75 GiB
+Complete forward references (REF/STUDENT = reference / student):
+CASE              IMPLEMENTATION  RESULT   MEDIAN (ms)  REF/STUDENT
+-------------------------------------------------------------------
+short_tail_state  Student           PASS         0.249            —
+short_tail_state  FlashQLA          PASS         0.270       1.085x
+short_tail_state  FLA               PASS         0.460       1.846x
+short_tail_state  FlashInfer        PASS         0.300       1.207x
+chain_equal       Student           PASS         1.662            —
+chain_equal       FlashQLA          PASS         0.450       0.271x
+chain_equal       FLA               PASS         0.931       0.560x
+chain_equal       FlashInfer        PASS         0.775       0.466x
+parallel_equal    Student           PASS         0.932            —
+parallel_equal    FlashQLA          PASS         0.459       0.492x
+parallel_equal    FLA               PASS         0.944       1.013x
+parallel_equal    FlashInfer        PASS         0.466       0.500x
+parallel_gva      Student           PASS         0.926            —
+parallel_gva      FlashQLA          PASS         0.434       0.468x
+parallel_gva      FLA               PASS         0.837       0.903x
+parallel_gva      FlashInfer        PASS         0.434       0.468x
+long_low_gva      Student           PASS         6.842            —
+long_low_gva      FlashQLA          PASS         1.826       0.267x
+long_low_gva      FLA               PASS         6.431       0.940x
+long_low_gva      FlashInfer        PASS         1.793       0.262x
+batch_split_gva   Student           PASS         5.377            —
+batch_split_gva   FlashQLA          PASS         1.823       0.339x
+batch_split_gva   FLA               PASS         6.145       1.143x
+batch_split_gva   FlashInfer        PASS         1.436       0.267x
+wide_gva_state    Student           PASS         9.479            —
+wide_gva_state    FlashQLA          PASS         3.355       0.354x
+wide_gva_state    FLA               PASS        12.562       1.325x
+wide_gva_state    FlashInfer        PASS         2.357       0.249x
+deep_gva_state    Student           PASS        10.919            —
+deep_gva_state    FlashQLA          PASS         3.636       0.333x
+deep_gva_state    FLA               PASS        12.846       1.177x
+deep_gva_state    FlashInfer        PASS         2.693       0.247x
+-------------------------------------------------------------------
+All 32 complete-forward result(s) passed.
+CASE           B        T   Hq   Hv  STATE  RESULT   MEDIAN (ms)
+----------------------------------------------------------------
+Capture range started in the application.
+Capture range ended in the application.
+Generating '/tmp/nsys-report-79d9.qdstrm'
+[1/8] [0%                          ] warmup.nsys-repProcessing events...
+[1/8] [0%                          ] warmup.nsys-rep[1/8] [==========49%               ] warmup.nsys-rep[1/8] [========================100%] warmup.nsys-rep[1/8] [========================100%] warmup.nsys-rep
+[2/8] [0%                          ] warmup.sqlite[2/8] [1%                          ] warmup.sqlite[2/8] [2%                          ] warmup.sqlite[2/8] [3%                          ] warmup.sqlite[2/8] [4%                          ] warmup.sqlite[2/8] [5%                          ] warmup.sqlite[2/8] [6%                          ] warmup.sqlite[2/8] [7%                          ] warmup.sqlite[2/8] [8%                          ] warmup.sqlite[2/8] [9%                          ] warmup.sqlite[2/8] [10%                         ] warmup.sqlite[2/8] [11%                         ] warmup.sqlite[2/8] [12%                         ] warmup.sqlite[2/8] [13%                         ] warmup.sqlite[2/8] [14%                         ] warmup.sqlite[2/8] [=15%                        ] warmup.sqlite[2/8] [=16%                        ] warmup.sqlite[2/8] [=17%                        ] warmup.sqlite[2/8] [==18%                       ] warmup.sqlite[2/8] [==19%                       ] warmup.sqlite[2/8] [==20%                       ] warmup.sqlite[2/8] [==21%                       ] warmup.sqlite[2/8] [===22%                      ] warmup.sqlite[2/8] [===23%                      ] warmup.sqlite[2/8] [===24%                      ] warmup.sqlite[2/8] [====25%                     ] warmup.sqlite[2/8] [====26%                     ] warmup.sqlite[2/8] [====27%                     ] warmup.sqlite[2/8] [====28%                     ] warmup.sqlite[2/8] [=====29%                    ] warmup.sqlite[2/8] [=====30%                    ] warmup.sqlite[2/8] [=====31%                    ] warmup.sqlite[2/8] [=====32%                    ] warmup.sqlite[2/8] [======33%                   ] warmup.sqlite[2/8] [======34%                   ] warmup.sqlite[2/8] [======35%                   ] warmup.sqlite[2/8] [=======36%                  ] warmup.sqlite[2/8] [=======37%                  ] warmup.sqlite[2/8] [=======38%                  ] warmup.sqlite[2/8] [=======39%                  ] warmup.sqlite[2/8] [========40%                 ] warmup.sqlite[2/8] [========41%                 ] warmup.sqlite[2/8] [========42%                 ] warmup.sqlite[2/8] [=========43%                ] warmup.sqlite[2/8] [=========44%                ] warmup.sqlite[2/8] [=========45%                ] warmup.sqlite[2/8] [=========46%                ] warmup.sqlite[2/8] [==========47%               ] warmup.sqlite[2/8] [==========48%               ] warmup.sqlite[2/8] [==========49%               ] warmup.sqlite[2/8] [===========50%              ] warmup.sqlite[2/8] [===========51%              ] warmup.sqlite[2/8] [===========52%              ] warmup.sqlite[2/8] [===========53%              ] warmup.sqlite[2/8] [============54%             ] warmup.sqlite[2/8] [============55%             ] warmup.sqlite[2/8] [============56%             ] warmup.sqlite[2/8] [============57%             ] warmup.sqlite[2/8] [=============58%            ] warmup.sqlite[2/8] [=============59%            ] warmup.sqlite[2/8] [=============60%            ] warmup.sqlite[2/8] [==============61%           ] warmup.sqlite[2/8] [==============62%           ] warmup.sqlite[2/8] [==============63%           ] warmup.sqlite[2/8] [==============64%           ] warmup.sqlite[2/8] [===============65%          ] warmup.sqlite[2/8] [===============66%          ] warmup.sqlite[2/8] [===============67%          ] warmup.sqlite[2/8] [================68%         ] warmup.sqlite[2/8] [================69%         ] warmup.sqlite[2/8] [================70%         ] warmup.sqlite[2/8] [================71%         ] warmup.sqlite[2/8] [=================72%        ] warmup.sqlite[2/8] [=================73%        ] warmup.sqlite[2/8] [=================74%        ] warmup.sqlite[2/8] [==================75%       ] warmup.sqlite[2/8] [==================76%       ] warmup.sqlite[2/8] [==================77%       ] warmup.sqlite[2/8] [==================78%       ] warmup.sqlite[2/8] [===================79%      ] warmup.sqlite[2/8] [===================80%      ] warmup.sqlite[2/8] [===================81%      ] warmup.sqlite[2/8] [===================82%      ] warmup.sqlite[2/8] [====================83%     ] warmup.sqlite[2/8] [====================84%     ] warmup.sqlite[2/8] [====================85%     ] warmup.sqlite[2/8] [=====================86%    ] warmup.sqlite[2/8] [=====================87%    ] warmup.sqlite[2/8] [=====================88%    ] warmup.sqlite[2/8] [=====================89%    ] warmup.sqlite[2/8] [======================90%   ] warmup.sqlite[2/8] [======================91%   ] warmup.sqlite[2/8] [======================92%   ] warmup.sqlite[2/8] [=======================93%  ] warmup.sqlite[2/8] [=======================94%  ] warmup.sqlite[2/8] [=======================95%  ] warmup.sqlite[2/8] [=======================96%  ] warmup.sqlite[2/8] [========================97% ] warmup.sqlite[2/8] [========================98% ] warmup.sqlite[2/8] [========================99% ] warmup.sqlite[2/8] [========================100%] warmup.sqlite[2/8] [========================100%] warmup.sqlite
+SKIPPED: /home/h3240104505/HPC101_lab/lab3/warmup.sqlite does not contain NV Tools Extension (NVTX) data.
+SKIPPED: /home/h3240104505/HPC101_lab/lab3/warmup.sqlite does not contain GPU memory data.
+SKIPPED: /home/h3240104505/HPC101_lab/lab3/warmup.sqlite does not contain GPU memory data.
+parallel_gva   1     2048    4   16     no    PASS         0.833
+----------------------------------------------------------------
+All 1 case(s) passed correctness.
+[3/8] Executing 'nvtx_sum' stats report
+[4/8] Executing 'osrt_sum' stats report
+
+ Time (%)  Total Time (ns)  Num Calls   Avg (ns)     Med (ns)    Min (ns)   Max (ns)   StdDev (ns)         Name        
+ --------  ---------------  ---------  -----------  -----------  ---------  ---------  -----------  -------------------
+    100.0        200242821          2  100121410.5  100121410.5  100117638  100125183       5335.1  poll               
+      0.0            72100          1      72100.0      72100.0      72100      72100          0.0  ioctl              
+      0.0             1068          1       1068.0       1068.0       1068       1068          0.0  pthread_cond_signal
+
+[5/8] Executing 'cuda_api_sum' stats report
+
+ Time (%)  Total Time (ns)  Num Calls  Avg (ns)  Med (ns)  Min (ns)  Max (ns)  StdDev (ns)            Name          
+ --------  ---------------  ---------  --------  --------  --------  --------  -----------  ------------------------
+     98.0         78753279        100  787532.8  792280.5    648537    799813      17970.1  cudaEventSynchronize    
+      0.7           545503        200    2727.5    2346.5      1706     28130       2225.7  cudaEventRecordWithFlags
+      0.7           541646        100    5416.5    4159.0      3479     62661       6525.9  cuLaunchKernel          
+      0.2           160149        200     800.7     644.5       515     14290       1075.2  cudaEventCreateWithFlags
+      0.2           136591        200     683.0     603.0       508      4975        397.7  cudaEventQuery          
+      0.2           122909        198     620.8     491.0       423      4991        460.9  cudaEventDestroy        
+      0.1            81378        200     406.9     346.0       316      4701        362.8  cudaStreamIsCapturing   
+      0.0            10826          1   10826.0   10826.0     10826     10826          0.0  cuProfilerStart         
+
+[6/8] Executing 'cuda_gpu_kern_sum' stats report
+
+ Time (%)  Total Time (ns)  Instances  Avg (ns)  Med (ns)  Min (ns)  Max (ns)  StdDev (ns)      Name     
+ --------  ---------------  ---------  --------  --------  --------  --------  -----------  -------------
+    100.0         80149818        100  801498.2  803108.5    785509    808709       5787.1  kernel_kernel
+
+[7/8] Executing 'cuda_gpu_mem_time_sum' stats report
+[8/8] Executing 'cuda_gpu_mem_size_sum' stats report
+Generated:
+	/home/h3240104505/HPC101_lab/lab3/warmup.nsys-rep
+	/home/h3240104505/HPC101_lab/lab3/warmup.sqlite
+Generating SQLite file warmup.sqlite from warmup.nsys-rep
+Processing [warmup.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/cuda_gpu_kern_sum.py]... 
+
+ ** CUDA GPU Kernel Summary (cuda_gpu_kern_sum):
+
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+---------------+
+| Time (%) | Total Time (ns) | Instances | Avg (ns) | Med (ns) | Min (ns) | Max (ns) | StdDev (ns) |     Name      |
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+---------------+
+|    100.0 |        80149818 |       100 | 801498.2 | 803108.5 |   785509 |   808709 |      5787.1 | kernel_kernel |
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+---------------+
+
+Processing [warmup.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/cuda_api_sum.py]... 
+
+ ** CUDA API Summary (cuda_api_sum):
+
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+--------------------------+
+| Time (%) | Total Time (ns) | Num Calls | Avg (ns) | Med (ns) | Min (ns) | Max (ns) | StdDev (ns) |           Name           |
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+--------------------------+
+|     98.0 |        78753279 |       100 | 787532.8 | 792280.5 |   648537 |   799813 |     17970.1 | cudaEventSynchronize     |
+|      0.7 |          545503 |       200 |   2727.5 |   2346.5 |     1706 |    28130 |      2225.7 | cudaEventRecordWithFlags |
+|      0.7 |          541646 |       100 |   5416.5 |   4159.0 |     3479 |    62661 |      6525.9 | cuLaunchKernel           |
+|      0.2 |          160149 |       200 |    800.7 |    644.5 |      515 |    14290 |      1075.2 | cudaEventCreateWithFlags |
+|      0.2 |          136591 |       200 |    683.0 |    603.0 |      508 |     4975 |       397.7 | cudaEventQuery           |
+|      0.2 |          122909 |       198 |    620.8 |    491.0 |      423 |     4991 |       460.9 | cudaEventDestroy         |
+|      0.1 |           81378 |       200 |    406.9 |    346.0 |      316 |     4701 |       362.8 | cudaStreamIsCapturing    |
+|      0.0 |           10826 |         1 |  10826.0 |  10826.0 |    10826 |    10826 |         0.0 | cuProfilerStart          |
++----------+-----------------+-----------+----------+----------+----------+----------+-------------+--------------------------+
+
+Processing [warmup.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/cuda_gpu_mem_time_sum.py]... 
+SKIPPED: warmup.sqlite does not contain GPU memory data.
+
