@@ -65,7 +65,7 @@ def _tilelang_fused_forward(
         with T.Kernel(
             HEAD_DIM_V // BLOCK_DIM,
             batch_size * H,
-            threads=256,
+            threads=512,
         ) as (bv, bbh):
             bb = bbh // H
             bh = bbh % H

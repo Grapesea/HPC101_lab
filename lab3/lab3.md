@@ -403,9 +403,50 @@ shared memory本身也不能无脑分配，否则会压低occupancy. 这里利�
 
 ### ping-pong buffer / multi-buffering
 
+这里没有直接加完整的double buffer. 当前一个CTA已经用了大约89 KiB shared memory，如果把下一chunk的$K,V,A$全部再缓存一份，还要增加约40 KiB. 而且chunk之间有
+
+$$
+S_{[c]}\longrightarrow S_{[c+1]}
+$$
+
+这个真正的数据依赖，下一chunk的GEMM不能提前执行. 从现有profile估算的逻辑带宽也只有约28 GB/s，所以现在的hotspot更像是GEMM和寄存器/warp资源，而不是HBM带宽. 因此这里先不增加pipeline stage，避免shared memory继续膨胀.
 
 
 ### warp specialization
 
+fusion之后每个CTA同时有几个比较大的FP32 fragment：`state_fragment[128,128]`、`value_fragment[64,128]`、`output_fragment[64,128]`和`scores_fragment[64,64]`. 在256 threads下，粗略平均到每个线程分别是64、32、32和16个FP32值，还没有算编译器临时变量，所以寄存器压力比较大.
+
+先把$QS_{[c]}$向后移动，在score写进shared memory以后再计算：
+
+$$
+KS_{[c]}\rightarrow\hat W\rightarrow QK^T\rightarrow QS_{[c]}\rightarrow O_{[c]}\rightarrow S_{[c+1]}.
+$$
+
+这不改变
+
+$$
+O_{[c]}=\mathrm{scale}\left(\Gamma QS_{[c]}+\Gamma\mathrm{Lower}(QK^T)\Gamma^{-1}\hat W\right),
+$$
+
+因为$QS_{[c]}$仍然在state update以前计算，只是让`scores_fragment`和`output_fragment`的生命周期不再重叠. 这个版本正确，但是`parallel_gva`仍为1.036 ms，说明只改变代码顺序还不够.
+
+接着把一个CTA的线程数从256增加到512. 这里没有手写producer/consumer warp group，所以严格来说不是完整的warp-specialized pipeline；它的直接作用是把fragment分摊给更多线程，并把单CTA从8 warps增加到16 warps. shared memory仍然约89 KiB，没有增加新的buffer.
+
+所有case均通过. `warmup=1,repetitions=2`的结果如下：
+
+| Case | 256 threads (ms) | 512 threads (ms) | 延迟下降 |
+|---|---:|---:|---:|
+| `short_tail_state` | 0.301 | 0.252 | 16.3% |
+| `chain_equal` | 1.992 | 1.577 | 20.8% |
+| `parallel_equal` | 1.043 | 0.836 | 19.8% |
+| `parallel_gva` | 1.039 | 0.831 | 20.0% |
+| `long_low_gva` | 8.049 | 6.393 | 20.6% |
+| `batch_split_gva` | 6.199 | 4.885 | 21.2% |
+| `wide_gva_state` | 10.615 | 8.426 | 20.6% |
+| `deep_gva_state` | 12.560 | 9.909 | 21.1% |
+
+`parallel_gva`在`warmup=10,repetitions=100`下复测两次为0.815 ms和0.822 ms，相比256-thread版本的1.036 ms大约降低20.9%，即约1.26倍加速.
+
+另外逐个试了几种组合：1024 threads为0.925 ms，额外warp的同步开销反而更大；384 threads因为fragment布局不满足要求而编译失败；BF16 $\hat W$回载、`gate_last` shared复用和warp-specialization pass都没有稳定收益. 所以最后保留512 threads，不保留这些组合.
 
 
