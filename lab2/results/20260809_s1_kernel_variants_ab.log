@@ -1,0 +1,60 @@
+avx512_1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0259485 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+avx256_1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0261857 s
+Result is correct! (rel RMSE: 2.25339e-05, worst token: 2.25339e-05 at 0)
+preweight_1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.026294 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+avx512_2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0269077 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+avx256_2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0281658 s
+Result is correct! (rel RMSE: 2.25339e-05, worst token: 2.25339e-05 at 0)
+preweight_2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0250361 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+avx512_3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0248071 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+avx256_3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0280632 s
+Result is correct! (rel RMSE: 2.25339e-05, worst token: 2.25339e-05 at 0)
+preweight_3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0240077 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+avx512_4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0252009 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+avx256_4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0284895 s
+Result is correct! (rel RMSE: 2.25339e-05, worst token: 2.25339e-05 at 0)
+preweight_4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0239196 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+avx512_5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0258996 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+avx256_5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0274692 s
+Result is correct! (rel RMSE: 2.25339e-05, worst token: 2.25339e-05 at 0)
+preweight_5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0256391 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)

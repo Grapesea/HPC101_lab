@@ -1,0 +1,52 @@
+baseline run 1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0241879 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+sliced run 1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0347186 s
+Result is correct! (rel RMSE: 5.94424e-05, worst token: 5.94424e-05 at 0)
+baseline run 2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0251357 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+sliced run 2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0345474 s
+Result is correct! (rel RMSE: 5.94424e-05, worst token: 5.94424e-05 at 0)
+baseline run 3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0252739 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+sliced run 3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0347199 s
+Result is correct! (rel RMSE: 5.94424e-05, worst token: 5.94424e-05 at 0)
+baseline run 4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0252353 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+sliced run 4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0347281 s
+Result is correct! (rel RMSE: 5.94424e-05, worst token: 5.94424e-05 at 0)
+baseline run 5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0261152 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+sliced run 5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0356518 s
+Result is correct! (rel RMSE: 5.94424e-05, worst token: 5.94424e-05 at 0)
+baseline full standard
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0513583 s
+Optimized time: 0.00347785 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 14.7672
+sliced full standard
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.052646 s
+Optimized time: 0.00405384 s
+Result is correct! (rel RMSE: 5.94424e-05, worst token: 5.94424e-05 at 0)
+Speedup: 12.9867

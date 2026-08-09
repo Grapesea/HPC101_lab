@@ -1,0 +1,40 @@
+s4_original_1
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.54921 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s4_all_fast_1
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.51024 s
+Result is correct! (rel RMSE: 0.000707258, worst token: 0.00843466 at 499)
+s4_original_2
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.54417 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s4_all_fast_2
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.51363 s
+Result is correct! (rel RMSE: 0.000707258, worst token: 0.00843466 at 499)
+s4_original_3
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.54349 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s4_all_fast_3
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.55157 s
+Result is correct! (rel RMSE: 0.000707258, worst token: 0.00843466 at 499)
+s4_original_4
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.5466 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s4_all_fast_4
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.51623 s
+Result is correct! (rel RMSE: 0.000707258, worst token: 0.00843466 at 499)
+s4_original_5
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.52312 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s4_all_fast_5
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.49962 s
+Result is correct! (rel RMSE: 0.000707258, worst token: 0.00843466 at 499)

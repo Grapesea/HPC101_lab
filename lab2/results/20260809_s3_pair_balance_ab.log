@@ -1,0 +1,29 @@
+baseline_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.205923 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+balanced_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.20926 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+baseline_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.23184 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+balanced_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.210189 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+baseline_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.217515 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+balanced_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.211399 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+balanced_profile
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+batch average cycles: prepare=14207 bucket=2163 shared=13387 routed=47485 combine=8128 total=85372
+Optimized time: 0.208013 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)

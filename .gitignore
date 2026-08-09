@@ -9,5 +9,8 @@ perf.*
 .vscode/
 *.pyc
 __pycache__/
-lab2.md
-lab3.md
+lab2.*
+lab3.*
+lab4.*
+lab5.*
+report.pdf

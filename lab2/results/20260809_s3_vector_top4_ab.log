@@ -1,0 +1,29 @@
+scalar_top4_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.188991 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316628 at 109)
+vector_top4_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.17708 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+scalar_top4_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.191973 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316628 at 109)
+vector_top4_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.181343 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+scalar_top4_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.193495 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316628 at 109)
+vector_top4_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.194243 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+vector_top4_profile
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+batch average cycles: prepare=20930 bucket=1819 shared=32 routed=43297 combine=8713 total=74793
+Optimized time: 0.17999 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)

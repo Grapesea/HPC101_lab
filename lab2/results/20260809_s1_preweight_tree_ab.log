@@ -1,0 +1,124 @@
+warm16_1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0516704 s
+Optimized time: 0.00374004 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 13.8155
+preweight_tree_1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0507018 s
+Optimized time: 0.00392272 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+Speedup: 12.9252
+warm16_2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0513424 s
+Optimized time: 0.00352936 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 14.5472
+preweight_tree_2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0507499 s
+Optimized time: 0.00339122 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+Speedup: 14.9651
+warm16_3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0514427 s
+Optimized time: 0.00323974 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 15.8787
+preweight_tree_3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0507744 s
+Optimized time: 0.00381782 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+Speedup: 13.2993
+warm16_4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0515142 s
+Optimized time: 0.00324774 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 15.8615
+preweight_tree_4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.051433 s
+Optimized time: 0.00412828 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+Speedup: 12.4587
+warm16_5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0506423 s
+Optimized time: 0.0039484 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 12.8261
+preweight_tree_5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0514685 s
+Optimized time: 0.00381961 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+Speedup: 13.4748
+warm16_6
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.050577 s
+Optimized time: 0.00391364 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 12.9233
+preweight_tree_6
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0513998 s
+Optimized time: 0.0032997 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+Speedup: 15.5771
+warm16_7
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0517076 s
+Optimized time: 0.00294457 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 17.5603
+preweight_tree_7
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0517791 s
+Optimized time: 0.00406402 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+Speedup: 12.7409
+warm16_long_1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0251222 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+preweight_tree_long_1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0258511 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+warm16_long_2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0253722 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+preweight_tree_long_2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0262326 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+warm16_long_3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0252273 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+preweight_tree_long_3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0265025 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+warm16_long_4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0254475 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+preweight_tree_long_4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0253707 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)
+warm16_long_5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0252517 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+preweight_tree_long_5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0274004 s
+Result is correct! (rel RMSE: 5.94386e-05, worst token: 5.94386e-05 at 0)

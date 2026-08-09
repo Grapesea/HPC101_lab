@@ -1,0 +1,4 @@
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+batch average cycles: prepare=14466 bucket=1865 shared=13885 routed=48727 combine=8558 total=87503
+Optimized time: 0.214559 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)

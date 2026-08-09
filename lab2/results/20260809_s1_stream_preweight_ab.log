@@ -1,0 +1,78 @@
+baseline run 1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0238712 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream run 1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0263232 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream preweight run 1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0268067 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+baseline run 2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0256441 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream run 2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0252411 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream preweight run 2
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.026304 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+baseline run 3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0298177 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream run 3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.026615 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream preweight run 3
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0257596 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+baseline run 4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0248163 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream run 4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0263311 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream preweight run 4
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0263573 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+baseline run 5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0252421 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream run 5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.026535 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+stream preweight run 5
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+Optimized time: 0.0262535 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+baseline full standard
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.052051 s
+Optimized time: 0.00439255 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 11.8499
+stream full standard
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0516368 s
+Optimized time: 0.00401375 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 12.865
+stream preweight full standard
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0515924 s
+Optimized time: 0.00311402 s
+Result is correct! (rel RMSE: 5.94407e-05, worst token: 5.94407e-05 at 0)
+Speedup: 16.5678

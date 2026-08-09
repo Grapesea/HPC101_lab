@@ -1,0 +1,29 @@
+fused_shared_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.20866 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+fast_sigmoid_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.194056 s
+Result is correct! (rel RMSE: 0.000824514, worst token: 0.00439286 at 28)
+fused_shared_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.209739 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+fast_sigmoid_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.196238 s
+Result is correct! (rel RMSE: 0.000824514, worst token: 0.00439286 at 28)
+fused_shared_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.212312 s
+Result is correct! (rel RMSE: 0.000792517, worst token: 0.0043961 at 28)
+fast_sigmoid_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.193454 s
+Result is correct! (rel RMSE: 0.000824514, worst token: 0.00439286 at 28)
+fast_sigmoid_profile
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+batch average cycles: prepare=25632 bucket=2061 shared=32 routed=43103 combine=8340 total=79169
+Optimized time: 0.194788 s
+Result is correct! (rel RMSE: 0.000824514, worst token: 0.00439286 at 28)

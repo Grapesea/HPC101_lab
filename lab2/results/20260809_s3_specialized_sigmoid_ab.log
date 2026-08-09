@@ -1,0 +1,48 @@
+s3_all_fast_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.177029 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+s3_specialized_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.179559 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+s4_original_1
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.55419 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s4_specialized_1
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.54164 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s3_all_fast_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.181056 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+s3_specialized_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.191504 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+s4_original_2
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.60054 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s4_specialized_2
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.64823 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s3_all_fast_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.190666 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+s3_specialized_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (5000 iterations)
+Optimized time: 0.189033 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+s4_original_3
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.71714 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)
+s4_specialized_3
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (2000 iterations)
+Optimized time: 1.62562 s
+Result is correct! (rel RMSE: 0.000662405, worst token: 0.00844424 at 499)

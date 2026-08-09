@@ -1,0 +1,24 @@
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (12000 iterations)
+S1 cycles 1: quant=1412 route=5870 dispatch=31960 combine=1358 expert0=24758 shared=25148 expert1=10092 total=34730 tasks=30718/25218/14970/10888/21652
+S1 cycles 2: quant=1060 route=2030 dispatch=21220 combine=1390 expert0=18592 shared=5510 expert1=16436 total=23670 tasks=20720/5586/17786/8956/9350
+S1 cycles 3: quant=1038 route=1908 dispatch=20762 combine=1330 expert0=18300 shared=6256 expert1=8280 total=23130 tasks=20300/6328/9540/6098/11042
+S1 cycles 4: quant=1120 route=2118 dispatch=25688 combine=1522 expert0=6560 shared=5312 expert1=21338 total=28330 tasks=8770/5384/22560/9144/9070
+S1 cycles 5: quant=1030 route=2058 dispatch=10868 combine=1300 expert0=6668 shared=5000 expert1=7190 total=13198 tasks=8818/5074/8280/6208/5954
+S1 cycles 6: quant=1052 route=2100 dispatch=20830 combine=1320 expert0=17882 shared=5306 expert1=16132 total=23202 tasks=20080/5376/17622/8660/6634
+S1 cycles 7: quant=1026 route=2000 dispatch=13722 combine=1450 expert0=6512 shared=6364 expert1=9262 total=16198 tasks=8610/6434/10690/6310/11634
+S1 cycles 8: quant=1058 route=1940 dispatch=11092 combine=1270 expert0=6498 shared=8244 expert1=7060 total=13420 tasks=8528/8324/8482/5972/5844
+S1 cycles 9: quant=1036 route=1978 dispatch=11610 combine=1132 expert0=6432 shared=5922 expert1=7102 total=13778 tasks=8500/5996/8462/9478/5630
+S1 cycles 10: quant=1088 route=1990 dispatch=10642 combine=1328 expert0=6590 shared=5040 expert1=6688 total=13058 tasks=8680/5110/8018/6134/5860
+S1 cycles 11: quant=1100 route=2210 dispatch=10832 combine=1298 expert0=6810 shared=5016 expert1=6558 total=13230 tasks=9118/5084/8240/6398/7910
+S1 cycles 12: quant=1052 route=2028 dispatch=10478 combine=1460 expert0=6680 shared=4914 expert1=6702 total=12990 tasks=8798/4982/7842/5752/5576
+S1 cycles 13: quant=1052 route=1970 dispatch=10400 combine=1408 expert0=6442 shared=6204 expert1=6680 total=12860 tasks=8510/6276/8380/6216/5508
+S1 cycles 14: quant=1078 route=2168 dispatch=10372 combine=1330 expert0=6620 shared=5112 expert1=6730 total=12780 tasks=8880/5180/7970/6048/6036
+S1 cycles 15: quant=1080 route=2020 dispatch=10148 combine=1320 expert0=6528 shared=5102 expert1=6530 total=12548 tasks=8638/5172/7978/5736/5154
+S1 cycles 16: quant=1080 route=2230 dispatch=11420 combine=1298 expert0=6356 shared=4888 expert1=7404 total=13798 tasks=8676/4958/9246/6532/5996
+S1 cycles 17: quant=1060 route=1868 dispatch=10348 combine=1292 expert0=6510 shared=5062 expert1=6648 total=12700 tasks=8470/5132/8000/5938/5892
+S1 cycles 18: quant=1100 route=1930 dispatch=12248 combine=2960 expert0=6198 shared=4892 expert1=8200 total=16308 tasks=8220/4960/10038/5822/5926
+S1 cycles 19: quant=1088 route=1890 dispatch=12532 combine=1390 expert0=6480 shared=4940 expert1=8968 total=15010 tasks=8468/5006/10418/6238/6614
+S1 cycles 20: quant=618 route=1882 dispatch=12932 combine=1738 expert0=6592 shared=6440 expert1=9292 total=15288 tasks=8572/6516/10500/6044/5406
+S1 average cycles: quant=162 route=683 dispatch=4054 combine=540 expert0=2053 shared=2123 expert1=2119 total=4758
+Optimized time: 0.0299724 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)

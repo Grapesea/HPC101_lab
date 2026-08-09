@@ -1,0 +1,30 @@
+S3_repeat_1
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  6.65645 s
+Optimized time: 0.0360737 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+Speedup: 184.524
+S3_repeat_2
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  6.58207 s
+Optimized time: 0.0370253 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+Speedup: 177.772
+S3_repeat_3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  6.62654 s
+Optimized time: 0.0367167 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+Speedup: 180.477
+S3_repeat_4
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  6.65239 s
+Optimized time: 0.0376189 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+Speedup: 176.836
+S3_repeat_5
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  6.67299 s
+Optimized time: 0.0369491 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+Speedup: 180.6

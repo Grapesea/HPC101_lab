@@ -1,0 +1,24 @@
+S1
+problem size: num_tokens=1 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.0523742 s
+Optimized time: 0.00384771 s
+Result is correct! (rel RMSE: 5.94398e-05, worst token: 5.94398e-05 at 0)
+Speedup: 13.6118
+S2
+problem size: num_tokens=1 d_model=1024 d_ff=512 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  0.638851 s
+Optimized time: 0.0337281 s
+Result is correct! (rel RMSE: 3.21296e-06, worst token: 3.21296e-06 at 0)
+Speedup: 18.9412
+S3
+problem size: num_tokens=128 d_model=256 d_ff=128 num_experts=16 top_k=4 (1000 iterations)
+Baseline time:  6.61642 s
+Optimized time: 0.0369924 s
+Result is correct! (rel RMSE: 0.000807423, worst token: 0.00316627 at 109)
+Speedup: 178.859
+S4
+problem size: num_tokens=1024 d_model=512 d_ff=128 num_experts=512 top_k=2 (1000 iterations)
+Baseline time:  231.241 s
+Optimized time: 0.786079 s
+Result is correct! (rel RMSE: 0.000707258, worst token: 0.00843466 at 499)
+Speedup: 294.17
