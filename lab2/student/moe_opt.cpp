@@ -198,10 +198,6 @@ struct PackedWeights {
 
 PackedWeights pw;
 alignas(64) uint64_t s3_route_masks[64 * 16];
-alignas(64) uint8_t s3_routed_order[16];
-#ifdef MOE_S1_BF16_ROUTER
-alignas(64) uint16_t s1_router_bf16[128 * 32];
-#endif
 
 class PersistentPool {
 public:
@@ -712,7 +708,7 @@ static __attribute__((noinline)) void expert_amx(
                 _mm512_cvtepi32_ps(_mm512_load_si512(
                     up_acc + (size_t)r * d_ff + f)), us);
             const __m512 hv = _mm512_mul_ps(
-                _mm512_mul_ps(vg, s1_router_sigmoid512_ps(vg)), vu);
+                _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
             _mm512_store_ps(hidden + (size_t)r * d_ff + f, hv);
             vmax = _mm512_max_ps(vmax, abs512_ps(hv));
         }
@@ -883,7 +879,7 @@ static __attribute__((noinline)) void expert_amx_pair_s3(
                 _mm512_cvtepi32_ps(_mm512_load_si512(
                     up_acc + (size_t)r * d_ff + f)), us);
             const __m512 hv = _mm512_mul_ps(
-                _mm512_mul_ps(vg, s1_router_sigmoid512_ps(vg)), vu);
+                _mm512_mul_ps(vg, expert_sigmoid512_ps(vg)), vu);
             _mm512_store_ps(hidden + (size_t)r * d_ff + f, hv);
             vmax = _mm512_max_ps(vmax, abs512_ps(hv));
         }
@@ -1613,23 +1609,6 @@ static inline void expert_vnni_s1(
     vmax = _mm512_max_ps(
         vmax, vnni_s1_gu_hidden_group<2>(
                   gu, gu_comp, xq, 6, gs, us, hidden));
-#ifdef MOE_S1_PREFETCH_DOWN_LINES
-    // Seed every packed Down tile while the reduction and hidden
-    // requantization below are still executing. This gives the L2 streamer a
-    // head start without competing with the Gate/Up weight stream itself.
-    for (int group_start = 0; group_start < 16; group_start += 6) {
-        const int group = std::min(6, 16 - group_start);
-        const int8_t* group_base = down + (size_t)group_start * 2 * TILE_BYTES;
-        for (int kb = 0; kb < 2; ++kb) {
-            const int8_t* kb_base =
-                group_base + (size_t)kb * group * TILE_BYTES;
-            for (int j = 0; j < group; ++j)
-                for (int line = 0; line < MOE_S1_PREFETCH_DOWN_LINES; ++line)
-                    _mm_prefetch(kb_base + (size_t)j * TILE_BYTES + line * 64,
-                                 _MM_HINT_T0);
-        }
-    }
-#endif
     const float amax = _mm512_reduce_max_ps(vmax);
     const float sh = amax > 0.0f ? amax / 127.0f : 1.0f;
     const __m512 inverse = _mm512_set1_ps(1.0f / sh);
@@ -1649,58 +1628,6 @@ static inline void expert_vnni_s1(
     vnni_s1_down_output_group<6>(down, down_comp, hq, 6, scale, output);
     vnni_s1_down_output_group<4>(down, down_comp, hq, 12, scale, output);
 }
-
-#ifdef MOE_S1_STREAM_KERNEL
-// S1-only full-width stream kernel. Keeping all eight gate/up blocks live
-// removes the repeated activation broadcasts and loop setup of the 3/3/2
-// grouped kernel. The temporary accumulators stay in the private L1.
-static inline void expert_vnni_s1_stream(
-    const int8_t* gu, const int8_t* down, const int32_t* gu_comp,
-    const int32_t* down_comp, float s_gate, float s_up, float s_down,
-    const int8_t* xq, float s_x, float coeff, float* output) {
-    alignas(64) int32_t gate_acc[128];
-    alignas(64) int32_t up_acc[128];
-    alignas(64) int32_t down_acc[256];
-    alignas(64) float hidden[128];
-    alignas(64) int8_t hq[128];
-
-    vnni_s1_gu_dot_stream(gu, gu_comp, xq, gate_acc, up_acc);
-    const __m512 gs = _mm512_set1_ps(s_x * s_gate);
-    const __m512 us = _mm512_set1_ps(s_x * s_up);
-    __m512 vmax = _mm512_setzero_ps();
-    for (int f = 0; f < 128; f += N_BLOCK) {
-        const __m512 vg = _mm512_mul_ps(
-            _mm512_cvtepi32_ps(_mm512_load_si512(gate_acc + f)), gs);
-        const __m512 vu = _mm512_mul_ps(
-            _mm512_cvtepi32_ps(_mm512_load_si512(up_acc + f)), us);
-        const __m512 h = _mm512_mul_ps(
-            _mm512_mul_ps(vg, s1_router_sigmoid512_ps(vg)), vu);
-        _mm512_store_ps(hidden + f, h);
-        vmax = _mm512_max_ps(vmax, abs512_ps(h));
-    }
-    const float amax = _mm512_reduce_max_ps(vmax);
-    const float sh = amax > 0.0f ? amax / 127.0f : 1.0f;
-    const __m512 inverse = _mm512_set1_ps(1.0f / sh);
-    for (int f = 0; f < 128; f += N_BLOCK) {
-        const __m512 q = _mm512_mul_ps(_mm512_load_ps(hidden + f), inverse);
-        _mm_store_si128(reinterpret_cast<__m128i*>(hq + f),
-                        _mm512_cvtsepi32_epi8(_mm512_cvtps_epi32(q)));
-    }
-    vnni_s1_down_dot_stream(down, down_comp, hq, down_acc);
-    const __m512 scale = _mm512_set1_ps(
-        sh * s_down
-#ifdef MOE_S1_PREWEIGHT_OUTPUT
-        * coeff
-#endif
-    );
-    for (int d = 0; d < 256; d += N_BLOCK)
-        _mm512_store_ps(
-            output + d,
-            _mm512_mul_ps(
-                _mm512_cvtepi32_ps(_mm512_load_si512(down_acc + d)),
-                scale));
-}
-#endif
 
 static inline void select_topk(const float* affinity, const MoEWeights& w,
                                int* indices, float* gates) {
@@ -1849,42 +1776,6 @@ static __attribute__((noinline)) void router_dot_1(
     a4 = _mm512_add_ps(a4, a6);
     _mm512_store_ps(out, _mm512_add_ps(a0, a4));
 }
-
-#ifdef MOE_S1_BF16_ROUTER
-static __attribute__((noinline)) void router_dot_bf16_s1(
-    const uint16_t* x, float* out) {
-    __m512 acc0 = _mm512_setzero_ps();
-    __m512 acc1 = acc0;
-    __m512 acc2 = acc0;
-    __m512 acc3 = acc0;
-    for (int pair = 0; pair < 128; pair += 4) {
-        uint32_t x01, x23, x45, x67;
-        std::memcpy(&x01, x + 2 * (pair + 0), sizeof(x01));
-        std::memcpy(&x23, x + 2 * (pair + 1), sizeof(x23));
-        std::memcpy(&x45, x + 2 * (pair + 2), sizeof(x45));
-        std::memcpy(&x67, x + 2 * (pair + 3), sizeof(x67));
-        const __m512bh a0 = (__m512bh)_mm512_set1_epi32(x01);
-        const __m512bh a1 = (__m512bh)_mm512_set1_epi32(x23);
-        const __m512bh a2 = (__m512bh)_mm512_set1_epi32(x45);
-        const __m512bh a3 = (__m512bh)_mm512_set1_epi32(x67);
-        acc0 = _mm512_dpbf16_ps(
-            acc0, a0, (__m512bh)_mm512_load_si512(
-                          s1_router_bf16 + (size_t)(pair + 0) * 32));
-        acc1 = _mm512_dpbf16_ps(
-            acc1, a1, (__m512bh)_mm512_load_si512(
-                          s1_router_bf16 + (size_t)(pair + 1) * 32));
-        acc2 = _mm512_dpbf16_ps(
-            acc2, a2, (__m512bh)_mm512_load_si512(
-                          s1_router_bf16 + (size_t)(pair + 2) * 32));
-        acc3 = _mm512_dpbf16_ps(
-            acc3, a3, (__m512bh)_mm512_load_si512(
-                          s1_router_bf16 + (size_t)(pair + 3) * 32));
-    }
-    acc0 = _mm512_add_ps(acc0, acc1);
-    acc2 = _mm512_add_ps(acc2, acc3);
-    _mm512_store_ps(out, _mm512_add_ps(acc0, acc2));
-}
-#endif
 
 // Router for up to sixteen tokens.  The same 16-expert weight vector is
 // reused across all rows before advancing D, i.e. a 16x16 register-blocked
@@ -2205,19 +2096,11 @@ static void single_whole_vnni_task(int slot, void* opaque) {
     const MoEWeights& w = *ctx.w;
     const int e = slot == 0 ? -1 : ctx.indices[slot - 1];
     const int8_t* gu = slot == 0
-#ifdef MOE_S1_STREAM_KERNEL
-        ? pw.shared_gu_s1
-        : pw.routed_gu_s1 + (size_t)e * pw.gu_expert_stride;
-    const int8_t* down = slot == 0
-        ? pw.shared_down_s1
-        : pw.routed_down_s1 + (size_t)e * pw.down_expert_stride;
-#else
         ? pw.shared_gu
         : pw.routed_gu + (size_t)e * pw.gu_expert_stride;
     const int8_t* down = slot == 0
         ? pw.shared_down
         : pw.routed_down + (size_t)e * pw.down_expert_stride;
-#endif
     const int32_t* gu_comp = slot == 0
         ? pw.shared_gu_comp
         : pw.routed_gu_comp + (size_t)e * 2 * w.d_ff;
@@ -2233,9 +2116,6 @@ static void single_whole_vnni_task(int slot, void* opaque) {
 #ifdef MOE_S1_256BIT
         expert_vnni_s1_256(gu, down, gu_comp, down_comp, sg, su, sd, ctx.aq,
                            ctx.sx, output);
-#elif defined(MOE_S1_STREAM_KERNEL)
-        expert_vnni_s1_stream(gu, down, gu_comp, down_comp, sg, su, sd,
-                              ctx.aq, ctx.sx, coeff, output);
 #else
         expert_vnni_s1(gu, down, gu_comp, down_comp, sg, su, sd, ctx.aq,
                        ctx.sx, coeff, output);
@@ -2250,9 +2130,6 @@ static void single_whole_vnni_task(int slot, void* opaque) {
 struct SingleS1FusedContext {
     SinglePipelineContext* pipeline = nullptr;
     const float* x = nullptr;
-#ifdef MOE_S1_BF16_ROUTER
-    const uint16_t* xbf16 = nullptr;
-#endif
     float* gates = nullptr;
     alignas(64) std::atomic<int> route_ready{0};
 #ifdef MOE_PROFILE_S1
@@ -2276,11 +2153,7 @@ static void single_s1_fused_task(int id, void* opaque) {
 #endif
     if (id == 0) {
         alignas(64) float affinity[N_BLOCK];
-#ifdef MOE_S1_BF16_ROUTER
-        router_dot_bf16_s1(fused.xbf16, affinity);
-#else
         router_dot_1(fused.x, 256, pw.router, affinity);
-#endif
         const __m512 logits = _mm512_load_ps(affinity);
         _mm512_store_ps(affinity, s1_router_sigmoid512_ps(logits));
         select_top4_s1(affinity, *ctx.w,
@@ -2331,94 +2204,6 @@ static void single_s1_fused_task(int id, void* opaque) {
     fused.task_end[id] = __rdtscp(&profile_aux);
 #endif
 }
-
-#ifdef MOE_S1_SLICED_DOWN
-static void single_vnni_gu_whole_s1(int slot, SinglePipelineContext& ctx);
-template <int START, int GROUP>
-static inline void single_vnni_down_slice_accumulate_s1(
-    int slot, const SinglePipelineContext& ctx, float* y);
-
-struct SingleS1SlicedContext {
-    SinglePipelineContext* pipeline = nullptr;
-    const float* x = nullptr;
-    float* y = nullptr;
-    alignas(64) std::atomic<int> route_ready{0};
-    alignas(64) std::atomic<int> gu_ready{0};
-};
-
-// Each core first owns one expert's Gate/Up stage.  After all five hidden
-// vectors are ready, each core owns a disjoint output slice and reduces all
-// experts directly into y.  The latter avoids transferring five complete
-// expert outputs back to the main core for a separate combine pass.
-static void single_s1_sliced_task(int id, void* opaque) {
-    auto& sliced = *static_cast<SingleS1SlicedContext*>(opaque);
-    SinglePipelineContext& ctx = *sliced.pipeline;
-    int own_slot;
-    if (id == 0) {
-        alignas(64) float affinity[N_BLOCK];
-        router_dot_1(sliced.x, 256, pw.router, affinity);
-        _mm512_store_ps(
-            affinity,
-            s1_router_sigmoid512_ps(_mm512_load_ps(affinity)));
-        select_top4_s1(affinity, *ctx.w,
-                       const_cast<int*>(ctx.indices),
-                       const_cast<float*>(ctx.gates));
-        int* indices = const_cast<int*>(ctx.indices);
-        float* gates = const_cast<float*>(ctx.gates);
-        for (int i = 1; i < ctx.w->top_k; ++i) {
-            const int index = indices[i];
-            const float gate = gates[i];
-            int j = i;
-            while (j != 0 && indices[j - 1] > index) {
-                indices[j] = indices[j - 1];
-                gates[j] = gates[j - 1];
-                --j;
-            }
-            indices[j] = index;
-            gates[j] = gate;
-        }
-        sliced.route_ready.store(1, std::memory_order_release);
-        own_slot = ctx.experts - 1;
-    } else {
-        own_slot = id - 1;
-        if (own_slot != 0) {
-            while (sliced.route_ready.load(std::memory_order_acquire) == 0)
-                _mm_pause();
-        }
-    }
-
-    single_vnni_gu_whole_s1(own_slot, ctx);
-    sliced.gu_ready.fetch_add(1, std::memory_order_release);
-    while (sliced.gu_ready.load(std::memory_order_acquire) != ctx.experts)
-        _mm_pause();
-
-    constexpr int starts[5] = {0, 4, 7, 10, 13};
-    constexpr int groups[5] = {4, 3, 3, 3, 3};
-    const int start = starts[id];
-    const int group = groups[id];
-    for (int j = 0; j < group; ++j) {
-        const int d = (start + j) * N_BLOCK;
-        _mm512_storeu_ps(sliced.y + d, _mm512_loadu_ps(sliced.x + d));
-    }
-    for (int slot = 0; slot < ctx.experts; ++slot) {
-        if (id == 0)
-            single_vnni_down_slice_accumulate_s1<0, 4>(slot, ctx,
-                                                        sliced.y);
-        else if (id == 1)
-            single_vnni_down_slice_accumulate_s1<4, 3>(slot, ctx,
-                                                        sliced.y);
-        else if (id == 2)
-            single_vnni_down_slice_accumulate_s1<7, 3>(slot, ctx,
-                                                        sliced.y);
-        else if (id == 3)
-            single_vnni_down_slice_accumulate_s1<10, 3>(slot, ctx,
-                                                         sliced.y);
-        else
-            single_vnni_down_slice_accumulate_s1<13, 3>(slot, ctx,
-                                                         sliced.y);
-    }
-}
-#endif
 
 static void single_gu_task(int task, void* opaque) {
     const auto& ctx = *static_cast<SinglePipelineContext*>(opaque);
@@ -2673,8 +2458,7 @@ static void single_vnni_down_s1_task(int task, void* opaque) {
     }
 }
 
-#if defined(MOE_S1_SPLIT_DOWN) || defined(MOE_S1_SLICED_DOWN) || \
-    defined(MOE_S1_FUSED_SPLIT_DOWN)
+#ifdef MOE_S1_SPLIT_DOWN
 static void single_vnni_gu_whole_s1(int slot, SinglePipelineContext& ctx) {
     const MoEWeights& w = *ctx.w;
     const int e = slot == 0 ? -1 : ctx.indices[slot - 1];
@@ -2711,51 +2495,6 @@ static void single_vnni_gu_whole_s1(int slot, SinglePipelineContext& ctx) {
     }
 }
 
-#ifdef MOE_S1_SLICED_DOWN
-template <int START, int GROUP>
-static inline void single_vnni_down_slice_accumulate_s1(
-    int slot, const SinglePipelineContext& ctx, float* y) {
-    const MoEWeights& w = *ctx.w;
-    const int e = slot == 0 ? -1 : ctx.indices[slot - 1];
-    const int8_t* down = slot == 0
-        ? pw.shared_down_s1
-        : pw.routed_down_s1 + (size_t)e * pw.down_expert_stride;
-    const int32_t* comp = slot == 0
-        ? pw.shared_down_comp
-        : pw.routed_down_comp + (size_t)e * 256;
-    const float sd = slot == 0 ? w.sh_s_down : w.s_down[e];
-    const float coeff = slot == 0 ? 1.0f : ctx.gates[slot - 1];
-    const int8_t* hq = pw.single_hq + (size_t)slot * 128;
-    __m512i acc[GROUP];
-#pragma GCC unroll 4
-    for (int j = 0; j < GROUP; ++j)
-        acc[j] = _mm512_load_si512(comp + (START + j) * N_BLOCK);
-    const int8_t* stream = down;
-    for (int input = 0; input < 128; input += 4, stream += 16 * 64) {
-        int32_t x4;
-        std::memcpy(&x4, hq + input, sizeof(x4));
-        const __m512i activation = _mm512_set1_epi32(
-            x4 ^ static_cast<int32_t>(0x80808080u));
-#pragma GCC unroll 4
-        for (int j = 0; j < GROUP; ++j)
-            acc[j] = _mm512_dpbusd_epi32(
-                acc[j], activation,
-                _mm512_load_si512(stream + (START + j) * 64));
-    }
-    const __m512 scale = _mm512_set1_ps(
-        pw.single_hscale[slot] * sd * coeff);
-#pragma GCC unroll 4
-    for (int j = 0; j < GROUP; ++j) {
-        float* destination = y + (START + j) * N_BLOCK;
-        _mm512_storeu_ps(
-            destination,
-            _mm512_fmadd_ps(
-                _mm512_cvtepi32_ps(acc[j]), scale,
-                _mm512_loadu_ps(destination)));
-    }
-}
-#endif
-
 struct SingleS1SplitDownContext {
     SinglePipelineContext* pipeline = nullptr;
     int team = 1;
@@ -2772,67 +2511,6 @@ static void single_s1_split_down_worker(int id, void* opaque) {
     const int tasks = ctx.experts * 3;
     for (int task = id; task < tasks; task += shared.team)
         single_vnni_down_s1_task(task, &ctx);
-}
-#endif
-
-#ifdef MOE_S1_FUSED_SPLIT_DOWN
-struct SingleS1FusedSplitContext {
-    SinglePipelineContext* pipeline = nullptr;
-    const float* x = nullptr;
-    alignas(64) std::atomic<int> route_ready{0};
-    alignas(64) std::atomic<int> gu_ready{0};
-};
-
-static void single_s1_fused_split_down_worker(int id, void* opaque) {
-    auto& split = *static_cast<SingleS1FusedSplitContext*>(opaque);
-    SinglePipelineContext& ctx = *split.pipeline;
-    int own_slot = -1;
-    if (id == 0) {
-        alignas(64) float affinity[N_BLOCK];
-        router_dot_1(split.x, 256, pw.router, affinity);
-        _mm512_store_ps(
-            affinity,
-            s1_router_sigmoid512_ps(_mm512_load_ps(affinity)));
-        select_top4_s1(affinity, *ctx.w,
-                       const_cast<int*>(ctx.indices),
-                       const_cast<float*>(ctx.gates));
-        int* indices = const_cast<int*>(ctx.indices);
-        float* gates = const_cast<float*>(ctx.gates);
-        for (int i = 1; i < ctx.w->top_k; ++i) {
-            const int index = indices[i];
-            const float gate = gates[i];
-            int j = i;
-            while (j != 0 && indices[j - 1] > index) {
-                indices[j] = indices[j - 1];
-                gates[j] = gates[j - 1];
-                --j;
-            }
-            indices[j] = index;
-            gates[j] = gate;
-        }
-        split.route_ready.store(1, std::memory_order_release);
-        own_slot = ctx.experts - 1;
-    } else if (id < ctx.experts) {
-        own_slot = id - 1;
-        if (own_slot != 0) {
-            while (split.route_ready.load(std::memory_order_acquire) == 0)
-                _mm_pause();
-        }
-    }
-    if (own_slot >= 0) single_vnni_gu_whole_s1(own_slot, ctx);
-    split.gu_ready.fetch_add(1, std::memory_order_release);
-    while (split.gu_ready.load(std::memory_order_acquire) != 8)
-        _mm_pause();
-
-    // Five 10-block bins and two 12-block bins keep the largest Down load at
-    // 75% of a complete 16-block expert.  Worker 7 consumes the final six
-    // blocks; its shorter bin also absorbs wake-up skew from the parked team.
-    static constexpr int task_offsets[9] = {0, 2, 4, 6, 8, 10, 12, 14, 15};
-    static constexpr uint8_t tasks[15] = {
-        0, 2, 3, 5, 6, 8, 9, 11, 12, 14,
-        1, 4, 7, 10, 13};
-    for (int p = task_offsets[id]; p < task_offsets[id + 1]; ++p)
-        single_vnni_down_s1_task(tasks[p], &ctx);
 }
 #endif
 
@@ -2977,15 +2655,6 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
         alignas(64) int8_t aq[256];
         float sx;
         quantize_row(x, 256, aq, sx);
-#ifdef MOE_S1_BF16_ROUTER
-        alignas(64) uint16_t xbf16[256];
-        for (int d = 0; d < 256; d += 16) {
-            const __m256bh packed =
-                _mm512_cvtneps_pbh(_mm512_loadu_ps(x + d));
-            _mm256_store_si256(
-                reinterpret_cast<__m256i*>(xbf16 + d), (__m256i)packed);
-        }
-#endif
 #ifdef MOE_PROFILE_S1
         const uint64_t profile_quant_end = __rdtscp(&profile_aux);
 #endif
@@ -2995,31 +2664,13 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
         SingleS1FusedContext fused;
         fused.pipeline = &ctx;
         fused.x = x;
-#ifdef MOE_S1_BF16_ROUTER
-        fused.xbf16 = xbf16;
-#endif
         fused.gates = gates;
-#ifdef MOE_S1_SLICED_DOWN
-        SingleS1SlicedContext sliced;
-        sliced.pipeline = &ctx;
-        sliced.x = x;
-        sliced.y = y;
-        pool.dispatch(w.top_k + 1, 0, single_s1_sliced_task, &sliced);
-#elif defined(MOE_S1_FUSED_SPLIT_DOWN)
-        SingleS1FusedSplitContext split;
-        split.pipeline = &ctx;
-        split.x = x;
-        pool.dispatch(8, 0, single_s1_fused_split_down_worker, &split);
-#else
         pool.dispatch(w.top_k + 1, 0, single_s1_fused_task, &fused);
-#endif
 #ifdef MOE_PROFILE_S1
         const uint64_t profile_dispatch_end = __rdtscp(&profile_aux);
 #endif
 
-#ifndef MOE_S1_SLICED_DOWN
         combine_single_s1(x, gates, y);
-#endif
 
 #ifdef MOE_PROFILE_S1
         const uint64_t profile_end = __rdtscp(&profile_aux);
@@ -3035,14 +2686,7 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
             fused.task_end[1] - fused.task_expert_begin[1],
             fused.task_end[2] - fused.task_expert_begin[2],
             profile_end - profile_begin};
-        // The first calls may fault code/data into cache or be descheduled by
-        // the shared runner.  Exclude them from the steady-state average so
-        // one millisecond-scale outlier does not hide a two-thousand-cycle
-        // S1 expert.
-        constexpr uint64_t profile_warmup_calls = 100;
-        constexpr uint64_t profile_report_calls = 10000;
-        if (profile_calls > profile_warmup_calls)
-            for (int i = 0; i < 8; ++i) profile_total[i] += values[i];
+        for (int i = 0; i < 8; ++i) profile_total[i] += values[i];
         if (profile_calls <= 20) {
             std::fprintf(stderr,
                          "S1 cycles %llu: quant=%llu route=%llu dispatch=%llu "
@@ -3068,29 +2712,27 @@ static void forward_single_amx(const float* x, const MoEWeights& w, float* y) {
                          static_cast<unsigned long long>(
                              fused.task_end[4] - fused.task_begin[4]));
         }
-        if (profile_calls == profile_report_calls) {
-            const uint64_t samples =
-                profile_report_calls - profile_warmup_calls;
+        if (profile_calls == 1000) {
             std::fprintf(stderr,
                          "S1 average cycles: quant=%llu route=%llu "
                          "dispatch=%llu combine=%llu expert0=%llu shared=%llu "
                          "expert1=%llu total=%llu\n",
                          static_cast<unsigned long long>(profile_total[0] /
-                                                         samples),
+                                                         profile_calls),
                          static_cast<unsigned long long>(profile_total[1] /
-                                                         samples),
+                                                         profile_calls),
                          static_cast<unsigned long long>(profile_total[2] /
-                                                         samples),
+                                                         profile_calls),
                          static_cast<unsigned long long>(profile_total[3] /
-                                                         samples),
+                                                         profile_calls),
                          static_cast<unsigned long long>(profile_total[4] /
-                                                         samples),
+                                                         profile_calls),
                          static_cast<unsigned long long>(profile_total[5] /
-                                                         samples),
+                                                         profile_calls),
                          static_cast<unsigned long long>(profile_total[6] /
-                                                         samples),
+                                                         profile_calls),
                          static_cast<unsigned long long>(profile_total[7] /
-                                                         samples));
+                                                         profile_calls));
         }
 #endif
         return;
@@ -3228,13 +2870,8 @@ static inline void prepare_token_block(const float* x, const MoEWeights& w,
     for (int r = 0; r < rows; ++r) {
         const int t = first + r;
         int* indices = pw.route_idx + (size_t)t * w.top_k;
-        if (record_s3_masks) {
-            select_top4_s1(affinity[r], w, indices,
-                           pw.route_gate + (size_t)t * w.top_k);
-        } else {
-            select_topk(affinity[r], w, indices,
-                        pw.route_gate + (size_t)t * w.top_k);
-        }
+        select_topk(affinity[r], w, indices,
+                    pw.route_gate + (size_t)t * w.top_k);
         if (record_s3_masks) {
             for (int k = 0; k < 4; ++k)
                 local_masks[indices[k]] |= UINT64_C(1) << (r * 4 + k);
@@ -3341,32 +2978,6 @@ static void build_expert_buckets(const MoEWeights& w, int num_tokens) {
             }
         }
         pw.expert_offsets[16] = position;
-
-        // The 16 rotating input batches do not put the largest bucket on a
-        // fixed expert.  Sort by row count and pair the largest bucket with
-        // the smallest, the second largest with the second smallest, and so
-        // on.  The two experts owned by each of the eight workers then have
-        // similar total work, without a dynamic queue on the AMX hot path.
-        uint8_t order[16];
-        for (int i = 0; i < 16; ++i) {
-            order[i] = static_cast<uint8_t>(i);
-            int j = i;
-            while (j != 0) {
-                const int current_rows =
-                    pw.expert_offsets[order[j] + 1] -
-                    pw.expert_offsets[order[j]];
-                const int previous_rows =
-                    pw.expert_offsets[order[j - 1] + 1] -
-                    pw.expert_offsets[order[j - 1]];
-                if (previous_rows >= current_rows) break;
-                std::swap(order[j], order[j - 1]);
-                --j;
-            }
-        }
-        for (int worker = 0; worker < 8; ++worker) {
-            s3_routed_order[worker] = order[worker];
-            s3_routed_order[worker + 8] = order[15 - worker];
-        }
 #ifdef MOE_ROUTER_AUDIT
         static std::atomic<int> s3_printed{0};
         if (s3_printed.fetch_add(1) < 26) {
@@ -3485,13 +3096,6 @@ static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
         prepare_token_block(c.x, *c.w, c.y, first,
                             std::min(ROUTER_BATCH, c.num_tokens - first));
     };
-    auto prepare_shared_task = [](int b, void* opaque) {
-        auto& c = *static_cast<BatchContext*>(opaque);
-        const int first = b * ROUTER_BATCH;
-        const int rows = std::min(ROUTER_BATCH, c.num_tokens - first);
-        prepare_token_block(c.x, *c.w, c.y, first, rows);
-        run_shared_chunk(*c.w, c.y, first, rows);
-    };
     auto shared_task = [](int b, void* opaque) {
         auto& c = *static_cast<BatchContext*>(opaque);
         const int first = b * ROUTER_BATCH;
@@ -3503,7 +3107,10 @@ static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
 #ifndef MOE_DISABLE_S3_PAIR
         if (c.num_tokens == 128 && c.w->num_experts == 16 &&
             c.w->d_model == 256 && c.w->d_ff == 128) {
-            e = s3_routed_order[e];
+            static constexpr uint8_t expert_order[16] = {
+                10, 4, 13, 11, 3, 6, 12, 5,
+                15, 0, 14, 8, 1, 7, 2, 9};
+            e = expert_order[e];
             const int end = pw.expert_offsets[e + 1];
             int start = pw.expert_offsets[e];
             while (end - start >= MOE_S3_PAIR_MIN_ROWS) {
@@ -3621,17 +3228,10 @@ static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
         }
     };
 
-    const bool fuse_s3_shared =
-        num_tokens == 128 && w.d_model == 256 && w.d_ff == 128 &&
-        w.num_experts == 16 && w.top_k == 4;
-    if (fuse_s3_shared) {
-        pool.dispatch(token_blocks, ROUTER_BATCH, prepare_shared_task, &ctx);
-    } else {
-        pool.dispatch(token_blocks,
-                      w.num_experts >= 128 && pw.router_q != nullptr
-                          ? ROUTER_BATCH : 0,
-                      prepare_task, &ctx);
-    }
+    pool.dispatch(token_blocks,
+                  w.num_experts >= 128 && pw.router_q != nullptr
+                      ? ROUTER_BATCH : 0,
+                  prepare_task, &ctx);
 #ifdef MOE_PROFILE_BATCH
     const uint64_t profile_prepare_end = __rdtscp(&profile_aux);
 #endif
@@ -3639,8 +3239,7 @@ static void forward_batch_amx(const float* x, const MoEWeights& w, float* y,
 #ifdef MOE_PROFILE_BATCH
     const uint64_t profile_bucket_end = __rdtscp(&profile_aux);
 #endif
-    if (!fuse_s3_shared)
-        pool.dispatch(token_blocks, ROUTER_BATCH, shared_task, &ctx);
+    pool.dispatch(token_blocks, ROUTER_BATCH, shared_task, &ctx);
 #ifdef MOE_PROFILE_BATCH
     const uint64_t profile_shared_end = __rdtscp(&profile_aux);
 #endif
@@ -3931,24 +3530,6 @@ void preprocess(MoEWeights& w) {
         }
     }
 
-#ifdef MOE_S1_BF16_ROUTER
-    if (w.d_model == 256 && w.num_experts == 16) {
-        for (int pair = 0; pair < 128; ++pair) {
-            for (int e = 0; e < 16; ++e) {
-                for (int lane = 0; lane < 2; ++lane) {
-                    uint32_t bits;
-                    const float value =
-                        w.w_router[(size_t)e * 256 + pair * 2 + lane];
-                    std::memcpy(&bits, &value, sizeof(bits));
-                    bits += UINT32_C(0x7fff) + ((bits >> 16) & 1u);
-                    s1_router_bf16[(size_t)pair * 32 + e * 2 + lane] =
-                        static_cast<uint16_t>(bits >> 16);
-                }
-            }
-        }
-    }
-#endif
-
     std::vector<int8_t> router_quantized((size_t)padded_e * w.d_model, 0);
     for (int e = 0; e < padded_e; ++e) {
         if (e >= w.num_experts) {
@@ -3983,7 +3564,7 @@ void preprocess(MoEWeights& w) {
     pw.amx_ready = pool.amx_ok();
     pool.dispatch(pool.size(), 0, prefault_worker_stack, nullptr);
     if (w.d_model == 256 && w.d_ff == 128 && w.num_experts == 16) {
-#if !defined(MOE_S1_SPLIT_DOWN) && !defined(MOE_S1_FUSED_SPLIT_DOWN)
+#ifndef MOE_S1_SPLIT_DOWN
         pool.set_enabled(std::min(5, pool.size()));
 #endif
 #ifndef MOE_DISABLE_S1_WARM
@@ -4005,7 +3586,7 @@ void moe_forward_optimized(const float* x, const MoEWeights& w, float* y,
     }
 
     pool.set_enabled(num_tokens == 1 && w.d_model < 512
-#if defined(MOE_S1_SPLIT_DOWN) || defined(MOE_S1_FUSED_SPLIT_DOWN)
+#ifdef MOE_S1_SPLIT_DOWN
                          ? pool.size()
 #else
                          ? w.top_k + 1
