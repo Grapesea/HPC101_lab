@@ -1,0 +1,585 @@
+PWD=/home/h3240104505/HPC101_lab/lab4
+Start GPU host perf: Thu Aug 13 08:22:52 AM UTC 2026
+GPU 0: NVIDIA A100 80GB PCIe (UUID: GPU-846ad3af-1130-d346-13bb-e3d8d9b8378b)
+  MIG 1g.10gb     Device  0: (UUID: MIG-7f8384fe-c071-54ab-a95a-fd970d19ff28)
+Mode=GPU host perf (ABEGPU), MPI ranks=1, OMP threads=1
+Evolution steps=1
+Final evolution time=1.0
+Build=/home/h3240104505/HPC101_lab/lab4/build_gpu_perf
+Perf output=/home/h3240104505/HPC101_lab/lab4/results/perf_gpu-%j
+Nsight Systems output=/home/h3240104505/HPC101_lab/lab4/results/perf_gpu-%j/nsys_gpu-%j.nsys-rep
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4" -B "/home/h3240104505/HPC101_lab/lab4/build_gpu_perf" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DAMSS_ENABLE_GPU=ON -DCMAKE_CUDA_ARCHITECTURES=80 -DAMSS_OPT=-O3 -g -DAMSS_ENABLE_OPENMP=OFF -DAMSS_MPI_CUDA_AWARE=0 
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : ON, CUDA=/usr/local/cuda/bin/nvcc, arch=80
+-- AMSS_OPT=-O3 -g ARCH_FLAGS= OPENMP=OFF MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (10.4s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4/build_gpu_perf
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4/build_gpu_perf" -j 16
+[  1%] Linking CXX executable TwoPunctureABE
+[  2%] Linking CXX executable ABE
+[  3%] Linking CUDA device code CMakeFiles/ABEGPU.dir/cmake_device_link.o
+[  6%] Built target TwoPunctureABE
+[ 40%] Built target ABE
+[ 42%] Linking CXX executable ABEGPU
+[100%] Built target ABEGPU
+==> Built executables:
+-rwxr-xr-x 1 root root 4.9M Aug 13 08:23 /home/h3240104505/HPC101_lab/lab4/build_gpu_perf/ABE
+-rwxr-xr-x 1 root root 919K Aug 13 08:23 /home/h3240104505/HPC101_lab/lab4/build_gpu_perf/TwoPunctureABE
+-rwxr-xr-x 1 root root 7.8M Aug 13 08:23 /home/h3240104505/HPC101_lab/lab4/build_gpu_perf/ABEGPU
+==> Build    : /home/h3240104505/HPC101_lab/lab4/build_gpu_perf
+==> Output   : /home/h3240104505/HPC101_lab/lab4/gpu_perf_output
+==> Cache    : /home/h3240104505/HPC101_lab/lab4/twopuncture_cache
+==> MPI exec : mpiexec
+
+ /////////////////////////////////////////////////////////////// 
+ AMSS-NCKU Begin !!! 
+ /////////////////////////////////////////////////////////////// 
+
+                                 new run
+   simulation with cpu numbers = 1
+               simulation time = (0, 1)
+ simulation steps for this run = 1
+                Courant number = 0.5
+            Initial Data Type: Numerical Ansorg TwoPuncture
+             Symmetry setting: Equatorial
+ Courant = 0.5
+ artificial dissipation for shell patches = 0.15
+ artificial dissipation for fixed levels = 0.15
+ artificial dissipation for moving levels = 0.15
+ Dumpt Time = 1000
+ Check Time = 1000
+ Analysis Time = 0.1
+ Analysis level = 0
+ checkfile = bssn.chk
+ fourth order finite difference is used
+///////////////////////////////////////////////////////////////
+-----------------------------------------------------------------------
+ spherical integration for wave form extraction with Gauss method      
+ N_phi   = 384
+ N_theta = 192
+-----------------------------------------------------------------------
+chitiny = 1e-05
+time refinement start from level #3
+ checkpoint class created 
+you have setted 167 grid functions.
+
+ cgh has levels: 9
+
+ level #0 has boxes: 1
+ #0 box is  (-320:320,-320:320,0:320).
+ level #1 has boxes: 1
+ #0 box is  (-160:160,-160:160,0:160).
+ level #2 has boxes: 1
+ #0 box is  (-80:80,-80:80,0:80).
+ level #3 has boxes: 1
+ #0 box is  (-40:40,-40:40,0:40).
+ level #4 has boxes: 1
+ #0 box is  (-20:20,-20:20,0:20).
+ level #5 has boxes: 2
+ #0 box is  (-12:12,-9.5:14.5,0:12).
+ #1 box is  (-12:12,-15.5:8.5,0:12).
+ level #6 has boxes: 2
+ #0 box is  (-6:6,-3.5:8.5,0:6).
+ #1 box is  (-6:6,-9.5:2.5,0:6).
+ level #7 has boxes: 2
+ #0 box is  (-3:3,-0.625:5.375,0:3).
+ #1 box is  (-3:3,-6.625:-0.625,0:3).
+ level #8 has boxes: 2
+ #0 box is  (-1.5:1.5,0.9375:3.9375,0:1.5).
+ #1 box is  (-1.5:1.5,-5.0625:-2.0625,0:1.5).
+
+ moving levels are lev #5--8
+
+ belong to level 0
+ shape: [40,40,20] resolution: [16,16,16]
+ range:(-320:320,-320:320,0:320)
+ belong to level 1
+ shape: [40,40,20] resolution: [8,8,8]
+ range:(-160:160,-160:160,0:160)
+ belong to level 2
+ shape: [40,40,20] resolution: [4,4,4]
+ range:(-80:80,-80:80,0:80)
+ belong to level 3
+ shape: [40,40,20] resolution: [2,2,2]
+ range:(-40:40,-40:40,0:40)
+ belong to level 4
+ shape: [40,40,20] resolution: [1,1,1]
+ range:(-20:20,-20:20,0:20)
+ belong to level 5
+ shape: [48,60,24] resolution: [0.5,0.5,0.5]
+ range:(-12:12,-15.5:14.5,0:12)
+ belong to level 6
+ shape: [48,72,24] resolution: [0.25,0.25,0.25]
+ range:(-6:6,-9.5:8.5,0:6)
+ belong to level 7
+ shape: [48,96,24] resolution: [0.125,0.125,0.125]
+ range:(-3:3,-6.625:5.375,0:3)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,0.9375:3.9375,0:1.5)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,-5.0625:-2.0625,0:1.5)
+initial information of 2 Black Hole(s)
+            Mass               x               y               z              Px              Py              Pz              Sx              Sy              Sz
+        0.576976               0         2.40698               0         -0.1275     -0.00514081               0               0               0               0
+        0.378578               0        -3.59302               0          0.1275      0.00514081               0               0               0               0
+Read initial data from Ansorg's solver, please be sure the input parameters for black holes are puncture parameters!!
+  reading data from Ansorg.psid
+  found data with dimensions 50 x 50 x 26 = 65000
+  bhx1 = 0
+  bhy1 = 2.40698
+  bhz1 = 0
+  bhx2 = 0
+  bhy2 = -3.59302
+  bhz2 = 0
+  read 65000 data lines
+
+
+ Before Evolve, it takes 3.80459 seconds
+
+Before Step: 1 My Rank: 0 takes 0.241137 seconds!
+After Step: 1 My Rank: 0 takes 16.8984 seconds!
+Timestep # 1: integrating to time: 1
+used 17.4346 seconds!
+
+ Total Evolve Time: 17.4347 seconds!
+ Total Running Time: 21.2393 seconds!
+
+
+ =============================================================== 
+ Simulation is successfully done!! 
+ =============================================================== 
+
+ This run used 21.3069 seconds! 
+
+==> Build    : /home/h3240104505/HPC101_lab/lab4/build_gpu_perf
+==> Output   : /home/h3240104505/HPC101_lab/lab4/gpu_perf_output/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4/twopuncture_cache
+ Output directory has been generated
+
+------------------------------------------------------------------------------------------
+
+ Printing the basic parameter and setting in the AMSS-NCKU simulation 
+
+ The number of MPI processes in the AMSS-NCKU simulation =  1
+
+ The form of computational equation  =  BSSN
+ The initial data in this simulation =  Ansorg-TwoPuncture
+
+ Starting evolution time   =  0.0
+ Final evolution time      =  1.0
+ Maximal iteration number  =  1
+ Courant factor            =  0.5
+ Strength of dissipation   =  0.15
+ Symmetry of system        =  equatorial-symmetry
+ The Runge-Kutta scheme in the time evolution   =  runge-kutta-45
+ The finite-difference scheme in the simulation =  4th-order
+
+ The static AMR grid type =  Linear
+ The moving AMR grid type =  Linear
+
+ The number of static AMR grid levels =  5
+ The number of moving AMR grid levels =  4
+ The number of total  AMR grid levels =  9
+
+ The grid number of each static AMR grid level =  40
+ The grid number of each moving AMR grid level =  48
+
+ The scale for largest  static AMR grid in X direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Y direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Z direction =  [-320.  320.]
+ The scale for smallest static AMR grid in X direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Y direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Z direction =  [-20.  20.]
+
+ The scale for largest  moving AMR grid =  [-12.  12.]
+ The scale for smallest moving AMR grid =  [-1.5  1.5]
+
+ The coarest resolution for static AMR grid =  16.0
+ The finest  resolution for static AMR grid =  1.0
+ The coarest resolution for moving AMR grid =  0.5
+ The finest  resolution for moving AMR grid =  0.0625
+
+ The time refinement starts from AMR grid level =  4
+ The time interval in each step for coarest AMR grid during time evaluation =  1.0
+
+ This simulation uses the Patch AMR grid structure 
+
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+ Printing the puncture information 
+
+ The information for 1 puncture 
+ Mass(1) =   0.598837,  Charge(1) =   0.000000,  a(1)  =   0.000000
+ X(1)    =   0.000000,  Y(1)      =   2.406977,  Z(1)  =   0.000000
+ Px(1)   =  -0.127500,  Py(1)     =  -0.005141,  Pz(1) =   0.000000
+ Jx(1)   =   0.000000,  Jy(1)     =   0.000000,  Jz(1) =   0.000000
+
+ The information for 2 puncture 
+ Mass(2) =   0.401163,  Charge(2) =   0.000000,  a(2)  =   0.000000
+ X(2)    =   0.000000,  Y(2)      =  -3.593023,  Z(2)  =   0.000000
+ Px(2)   =   0.127500,  Py(2)     =   0.005141,  Pz(2) =   0.000000
+ Jx(2)   =   0.000000,  Jy(2)     =   0.000000,  Jz(2) =   0.000000
+
+------------------------------------------------------------------------------------------
+
+ Generating the AMSS-NCKU input parfile for the ABE executable.
+
+
+ Setting Puncture's position and momentum 
+
+
+ Wirte Down The Grid Information 
+
+ Number of Total Grid Level =  9
+ Number of Static Grid Level =  5
+ Number of Moving Grid Level =  4
+
+
+ Setting the demanded numerical grid 
+
+ adjusting the static gird points, making the original point (0,0,0) to the static gird points 
+
+
+ adjusting the moving gird points, ensuring the alliance of moving grids points and static grids points 
+
+ adjust_puncture[5,0,0] = 0.0 
+ adjust_puncture[5,0,1] = 2.5 
+ adjust_puncture[5,0,2] = 0.0 
+ adjust_puncture[5,1,0] = 0.0 
+ adjust_puncture[5,1,1] = -3.5 
+ adjust_puncture[5,1,2] = 0.0 
+ adjust_puncture[6,0,0] = 0.0 
+ adjust_puncture[6,0,1] = 2.5 
+ adjust_puncture[6,0,2] = 0.0 
+ adjust_puncture[6,1,0] = 0.0 
+ adjust_puncture[6,1,1] = -3.5 
+ adjust_puncture[6,1,2] = 0.0 
+ adjust_puncture[7,0,0] = 0.0 
+ adjust_puncture[7,0,1] = 2.375 
+ adjust_puncture[7,0,2] = 0.0 
+ adjust_puncture[7,1,0] = 0.0 
+ adjust_puncture[7,1,1] = -3.625 
+ adjust_puncture[7,1,2] = 0.0 
+ adjust_puncture[8,0,0] = 0.0 
+ adjust_puncture[8,0,1] = 2.4375 
+ adjust_puncture[8,0,2] = 0.0 
+ adjust_puncture[8,1,0] = 0.0 
+ adjust_puncture[8,1,1] = -3.5625 
+ adjust_puncture[8,1,2] = 0.0 
+
+ The moving grid puncture position adjustment is done 
+
+
+ Initial data method: Ansorg-TwoPuncture
+
+ TwoPuncture cache hit (912e370b84cec7cb); reusing cached initial data
+
+ Running ./ABEGPU with 1 MPI ranks and OMP_NUM_THREADS=1
+
+
+ The ./ABEGPU simulation is finished
+
+
+ Plotting the AMSS-NCKU simulation results
+
+
+ Plotting the black holes' trajectory (2D plot)
+
+ Corresponding data file =  /home/h3240104505/HPC101_lab/lab4/gpu_perf_output/GW250118/AMSS_NCKU_output/binary_output/bssn_BH.dat
+ WARNING: plotting failed (IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed)
+ The simulation result files are still available under /home/h3240104505/HPC101_lab/lab4/gpu_perf_output/GW250118/AMSS_NCKU_output
+
+ This Program Cost = 21.8788959980011 Seconds
+
+ The AMSS-NCKU-Python simulation is successfully finished.
+
+[ perf record: Woken up 1 times to write data ]
+[ perf record: Captured and wrote 0.039 MB /home/h3240104505/HPC101_lab/lab4/results/perf_gpu-%j/perf.data (109 samples) ]
+==> Build    : /home/h3240104505/HPC101_lab/lab4/build_gpu_perf
+==> Output   : /home/h3240104505/HPC101_lab/lab4/gpu_perf_output
+==> Cache    : /home/h3240104505/HPC101_lab/lab4/twopuncture_cache
+==> MPI exec : mpiexec
+
+ /////////////////////////////////////////////////////////////// 
+ AMSS-NCKU Begin !!! 
+ /////////////////////////////////////////////////////////////// 
+
+                                 new run
+   simulation with cpu numbers = 1
+               simulation time = (0, 1)
+ simulation steps for this run = 1
+                Courant number = 0.5
+            Initial Data Type: Numerical Ansorg TwoPuncture
+             Symmetry setting: Equatorial
+ Courant = 0.5
+ artificial dissipation for shell patches = 0.15
+ artificial dissipation for fixed levels = 0.15
+ artificial dissipation for moving levels = 0.15
+ Dumpt Time = 1000
+ Check Time = 1000
+ Analysis Time = 0.1
+ Analysis level = 0
+ checkfile = bssn.chk
+ fourth order finite difference is used
+///////////////////////////////////////////////////////////////
+-----------------------------------------------------------------------
+ spherical integration for wave form extraction with Gauss method      
+ N_phi   = 384
+ N_theta = 192
+-----------------------------------------------------------------------
+chitiny = 1e-05
+time refinement start from level #3
+ checkpoint class created 
+you have setted 167 grid functions.
+
+ cgh has levels: 9
+
+ level #0 has boxes: 1
+ #0 box is  (-320:320,-320:320,0:320).
+ level #1 has boxes: 1
+ #0 box is  (-160:160,-160:160,0:160).
+ level #2 has boxes: 1
+ #0 box is  (-80:80,-80:80,0:80).
+ level #3 has boxes: 1
+ #0 box is  (-40:40,-40:40,0:40).
+ level #4 has boxes: 1
+ #0 box is  (-20:20,-20:20,0:20).
+ level #5 has boxes: 2
+ #0 box is  (-12:12,-9.5:14.5,0:12).
+ #1 box is  (-12:12,-15.5:8.5,0:12).
+ level #6 has boxes: 2
+ #0 box is  (-6:6,-3.5:8.5,0:6).
+ #1 box is  (-6:6,-9.5:2.5,0:6).
+ level #7 has boxes: 2
+ #0 box is  (-3:3,-0.625:5.375,0:3).
+ #1 box is  (-3:3,-6.625:-0.625,0:3).
+ level #8 has boxes: 2
+ #0 box is  (-1.5:1.5,0.9375:3.9375,0:1.5).
+ #1 box is  (-1.5:1.5,-5.0625:-2.0625,0:1.5).
+
+ moving levels are lev #5--8
+
+ belong to level 0
+ shape: [40,40,20] resolution: [16,16,16]
+ range:(-320:320,-320:320,0:320)
+ belong to level 1
+ shape: [40,40,20] resolution: [8,8,8]
+ range:(-160:160,-160:160,0:160)
+ belong to level 2
+ shape: [40,40,20] resolution: [4,4,4]
+ range:(-80:80,-80:80,0:80)
+ belong to level 3
+ shape: [40,40,20] resolution: [2,2,2]
+ range:(-40:40,-40:40,0:40)
+ belong to level 4
+ shape: [40,40,20] resolution: [1,1,1]
+ range:(-20:20,-20:20,0:20)
+ belong to level 5
+ shape: [48,60,24] resolution: [0.5,0.5,0.5]
+ range:(-12:12,-15.5:14.5,0:12)
+ belong to level 6
+ shape: [48,72,24] resolution: [0.25,0.25,0.25]
+ range:(-6:6,-9.5:8.5,0:6)
+ belong to level 7
+ shape: [48,96,24] resolution: [0.125,0.125,0.125]
+ range:(-3:3,-6.625:5.375,0:3)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,0.9375:3.9375,0:1.5)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,-5.0625:-2.0625,0:1.5)
+initial information of 2 Black Hole(s)
+            Mass               x               y               z              Px              Py              Pz              Sx              Sy              Sz
+        0.576976               0         2.40698               0         -0.1275     -0.00514081               0               0               0               0
+        0.378578               0        -3.59302               0          0.1275      0.00514081               0               0               0               0
+Read initial data from Ansorg's solver, please be sure the input parameters for black holes are puncture parameters!!
+  reading data from Ansorg.psid
+  found data with dimensions 50 x 50 x 26 = 65000
+  bhx1 = 0
+  bhy1 = 2.40698
+  bhz1 = 0
+  bhx2 = 0
+  bhy2 = -3.59302
+  bhz2 = 0
+  read 65000 data lines
+
+
+ Before Evolve, it takes 3.68276 seconds
+
+Before Step: 1 My Rank: 0 takes 0.241023 seconds!
+After Step: 1 My Rank: 0 takes 16.9344 seconds!
+Timestep # 1: integrating to time: 1
+used 17.4718 seconds!
+
+ Total Evolve Time: 17.4719 seconds!
+ Total Running Time: 21.1546 seconds!
+
+
+ =============================================================== 
+ Simulation is successfully done!! 
+ =============================================================== 
+
+ This run used 21.2232 seconds! 
+
+==> Build    : /home/h3240104505/HPC101_lab/lab4/build_gpu_perf
+==> Output   : /home/h3240104505/HPC101_lab/lab4/gpu_perf_output/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4/twopuncture_cache
+ Output directory has been generated
+
+------------------------------------------------------------------------------------------
+
+ Printing the basic parameter and setting in the AMSS-NCKU simulation 
+
+ The number of MPI processes in the AMSS-NCKU simulation =  1
+
+ The form of computational equation  =  BSSN
+ The initial data in this simulation =  Ansorg-TwoPuncture
+
+ Starting evolution time   =  0.0
+ Final evolution time      =  1.0
+ Maximal iteration number  =  1
+ Courant factor            =  0.5
+ Strength of dissipation   =  0.15
+ Symmetry of system        =  equatorial-symmetry
+ The Runge-Kutta scheme in the time evolution   =  runge-kutta-45
+ The finite-difference scheme in the simulation =  4th-order
+
+ The static AMR grid type =  Linear
+ The moving AMR grid type =  Linear
+
+ The number of static AMR grid levels =  5
+ The number of moving AMR grid levels =  4
+ The number of total  AMR grid levels =  9
+
+ The grid number of each static AMR grid level =  40
+ The grid number of each moving AMR grid level =  48
+
+ The scale for largest  static AMR grid in X direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Y direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Z direction =  [-320.  320.]
+ The scale for smallest static AMR grid in X direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Y direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Z direction =  [-20.  20.]
+
+ The scale for largest  moving AMR grid =  [-12.  12.]
+ The scale for smallest moving AMR grid =  [-1.5  1.5]
+
+ The coarest resolution for static AMR grid =  16.0
+ The finest  resolution for static AMR grid =  1.0
+ The coarest resolution for moving AMR grid =  0.5
+ The finest  resolution for moving AMR grid =  0.0625
+
+ The time refinement starts from AMR grid level =  4
+ The time interval in each step for coarest AMR grid during time evaluation =  1.0
+
+ This simulation uses the Patch AMR grid structure 
+
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+ Printing the puncture information 
+
+ The information for 1 puncture 
+ Mass(1) =   0.598837,  Charge(1) =   0.000000,  a(1)  =   0.000000
+ X(1)    =   0.000000,  Y(1)      =   2.406977,  Z(1)  =   0.000000
+ Px(1)   =  -0.127500,  Py(1)     =  -0.005141,  Pz(1) =   0.000000
+ Jx(1)   =   0.000000,  Jy(1)     =   0.000000,  Jz(1) =   0.000000
+
+ The information for 2 puncture 
+ Mass(2) =   0.401163,  Charge(2) =   0.000000,  a(2)  =   0.000000
+ X(2)    =   0.000000,  Y(2)      =  -3.593023,  Z(2)  =   0.000000
+ Px(2)   =   0.127500,  Py(2)     =   0.005141,  Pz(2) =   0.000000
+ Jx(2)   =   0.000000,  Jy(2)     =   0.000000,  Jz(2) =   0.000000
+
+------------------------------------------------------------------------------------------
+
+ Generating the AMSS-NCKU input parfile for the ABE executable.
+
+
+ Setting Puncture's position and momentum 
+
+
+ Wirte Down The Grid Information 
+
+ Number of Total Grid Level =  9
+ Number of Static Grid Level =  5
+ Number of Moving Grid Level =  4
+
+
+ Setting the demanded numerical grid 
+
+ adjusting the static gird points, making the original point (0,0,0) to the static gird points 
+
+
+ adjusting the moving gird points, ensuring the alliance of moving grids points and static grids points 
+
+ adjust_puncture[5,0,0] = 0.0 
+ adjust_puncture[5,0,1] = 2.5 
+ adjust_puncture[5,0,2] = 0.0 
+ adjust_puncture[5,1,0] = 0.0 
+ adjust_puncture[5,1,1] = -3.5 
+ adjust_puncture[5,1,2] = 0.0 
+ adjust_puncture[6,0,0] = 0.0 
+ adjust_puncture[6,0,1] = 2.5 
+ adjust_puncture[6,0,2] = 0.0 
+ adjust_puncture[6,1,0] = 0.0 
+ adjust_puncture[6,1,1] = -3.5 
+ adjust_puncture[6,1,2] = 0.0 
+ adjust_puncture[7,0,0] = 0.0 
+ adjust_puncture[7,0,1] = 2.375 
+ adjust_puncture[7,0,2] = 0.0 
+ adjust_puncture[7,1,0] = 0.0 
+ adjust_puncture[7,1,1] = -3.625 
+ adjust_puncture[7,1,2] = 0.0 
+ adjust_puncture[8,0,0] = 0.0 
+ adjust_puncture[8,0,1] = 2.4375 
+ adjust_puncture[8,0,2] = 0.0 
+ adjust_puncture[8,1,0] = 0.0 
+ adjust_puncture[8,1,1] = -3.5625 
+ adjust_puncture[8,1,2] = 0.0 
+
+ The moving grid puncture position adjustment is done 
+
+
+ Initial data method: Ansorg-TwoPuncture
+
+ TwoPuncture cache hit (912e370b84cec7cb); reusing cached initial data
+
+ Running ./ABEGPU with 1 MPI ranks and OMP_NUM_THREADS=1
+
+
+ The ./ABEGPU simulation is finished
+
+
+ Plotting the AMSS-NCKU simulation results
+
+
+ Plotting the black holes' trajectory (2D plot)
+
+ Corresponding data file =  /home/h3240104505/HPC101_lab/lab4/gpu_perf_output/GW250118/AMSS_NCKU_output/binary_output/bssn_BH.dat
+ WARNING: plotting failed (IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed)
+ The simulation result files are still available under /home/h3240104505/HPC101_lab/lab4/gpu_perf_output/GW250118/AMSS_NCKU_output
+
+ This Program Cost = 22.397433042526245 Seconds
+
+ The AMSS-NCKU-Python simulation is successfully finished.
+
+Substitution errors in '/home/h3240104505/HPC101_lab/lab4/results/perf_gpu-%j/nsys_gpu-%j':
+	- Unknown expression `%j`
+	- Unknown expression `%j`
+Collecting data...
+Generating '/tmp/nsys-report-c71c.qdstrm'
+[1/1] [0%                          ] nsys_gpu-%j.nsys-rep[1/1] [0%                          ] nsys_gpu-%j.nsys-rep[1/1] [7%                          ] nsys_gpu-%j.nsys-rep[1/1] [8%                          ] nsys_gpu-%j.nsys-rep[1/1] [9%                          ] nsys_gpu-%j.nsys-rep[1/1] [10%                         ] nsys_gpu-%j.nsys-rep[1/1] [11%                         ] nsys_gpu-%j.nsys-rep[1/1] [12%                         ] nsys_gpu-%j.nsys-rep[1/1] [13%                         ] nsys_gpu-%j.nsys-rep[1/1] [14%                         ] nsys_gpu-%j.nsys-rep[1/1] [=15%                        ] nsys_gpu-%j.nsys-rep[1/1] [=16%                        ] nsys_gpu-%j.nsys-rep[1/1] [=17%                        ] nsys_gpu-%j.nsys-rep[1/1] [==21%                       ] nsys_gpu-%j.nsys-rep[1/1] [===24%                      ] nsys_gpu-%j.nsys-rep[1/1] [====27%                     ] nsys_gpu-%j.nsys-rep[1/1] [=====31%                    ] nsys_gpu-%j.nsys-rep[1/1] [======34%                   ] nsys_gpu-%j.nsys-rep[1/1] [=======38%                  ] nsys_gpu-%j.nsys-rep[1/1] [========42%                 ] nsys_gpu-%j.nsys-rep[1/1] [=========45%                ] nsys_gpu-%j.nsys-rep[1/1] [==========49%               ] nsys_gpu-%j.nsys-rep[1/1] [===========52%              ] nsys_gpu-%j.nsys-rep[1/1] [============56%             ] nsys_gpu-%j.nsys-rep[1/1] [=============58%            ] nsys_gpu-%j.nsys-rep[1/1] [========================100%] nsys_gpu-%j.nsys-rep[1/1] [========================100%] nsys_gpu-%j.nsys-rep
+Generated:
+	/home/h3240104505/HPC101_lab/lab4/results/perf_gpu-%j/nsys_gpu-%j.nsys-rep
+GPU host perf analysis finished: /home/h3240104505/HPC101_lab/lab4/results/perf_gpu-%j

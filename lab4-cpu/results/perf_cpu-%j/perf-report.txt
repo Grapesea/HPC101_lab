@@ -1,0 +1,53 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 522  of event 'cycles:Pu'
+# Event count (approx.): 261840282929
+#
+# Overhead  Command  Shared Object        Symbol                                                                                                    
+# ........  .......  ...................  ..........................................................................................................
+#
+    27.25%  ABE      ABE                  [.] compute_rhs_bssn_
+    16.36%  ABE      ABE                  [.] polint_
+     9.96%  ABE      ABE                  [.] fdderivs_
+     7.33%  ABE      ABE                  [.] lopsided_
+     6.26%  ABE      ABE                  [.] prolong3_
+     5.13%  ABE      ABE                  [.] kodis_
+     4.30%  ABE      libc.so.6            [.] __memset_avx512_unaligned_erms
+     3.67%  ABE      libc.so.6            [.] __memmove_avx512_unaligned_erms
+     3.31%  ABE      libc.so.6            [.] cfree@GLIBC_2.2.5
+     3.30%  ABE      ABE                  [.] fderivs_
+     1.92%  ABE      libc.so.6            [.] malloc
+     1.49%  ABE      ABE                  [.] rungekutta4_rout_
+     1.27%  ABE      ABE                  [.] polin3_
+     1.06%  ABE      libm.so.6            [.] __ieee754_pow_fma
+     0.78%  ABE      ABE                  [.] symmetry_bd_
+     0.72%  ABE      ABE                  [.] enforce_ga_
+     0.64%  ABE      ABE                  [.] decide3d_
+     0.59%  ABE      ABE                  [.] restrict3_
+     0.58%  ABE      ABE                  [.] average2_
+     0.53%  ABE      ABE                  [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
+     0.42%  ABE      libc.so.6            [.] _int_malloc
+     0.21%  ABE      ABE                  [.] global_interp_
+     0.21%  ABE      libc.so.6            [.] malloc_consolidate
+     0.21%  ABE      ABE                  [.] free@plt
+     0.21%  ABE      libm.so.6            [.] pow@@GLIBC_2.29
+     0.21%  ABE      ABE                  [.] malloc@plt
+     0.21%  ABE      libstdc++.so.6.0.33  [.] free@plt
+     0.21%  ABE      ABE                  [.] surface_integral::surf_Wave(double, int, cgh*, var*, var*, int, int, int, double*, double*, monitor*)
+     0.21%  python3  python3.13           [.] _PyEval_EvalFrameDefault
+     0.21%  python3  python3.13           [.] 0x000000000028906e
+     0.20%  ABE      ABE                  [.] get_ansorg_nbhs_
+     0.20%  ABE      ABE                  [.] memcpy@plt
+     0.19%  ABE      [unknown]            [k] 0xffffffff85401928
+     0.19%  ABE      ABE                  [.] memset@plt
+     0.15%  python3  python3.13           [.] 0x00000000001a405d
+     0.15%  python3  python3.13           [.] 0x000000000016d860
+     0.14%  python3  python3.13           [.] 0x000000000012ed93
+
+
+#
+# (Tip: To adjust path to source files to local file system use perf report --prefix=... --prefix-strip=...)
+#

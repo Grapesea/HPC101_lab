@@ -1,1 +1,0 @@
-/usr/bin/nvcc -forward-unknown-to-host-compiler -ccbin=/usr/bin/g++-13  "--generate-code=arch=compute_80,code=[compute_80,sm_80]" -Xcompiler=-fPIC -Wno-deprecated-gpu-targets -shared -dlink --options-file CMakeFiles/ABEGPU.dir/deviceObjects1.rsp -o CMakeFiles/ABEGPU.dir/cmake_device_link.o --options-file CMakeFiles/ABEGPU.dir/deviceLinkLibs.rsp

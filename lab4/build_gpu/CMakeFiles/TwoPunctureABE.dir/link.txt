@@ -1,1 +1,0 @@
-/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/TwoPunctureABE.dir/link.d CMakeFiles/TwoPunctureABE.dir/src/TwoPunctureABE.C.o CMakeFiles/TwoPunctureABE.dir/src/TwoPunctures.C.o -o TwoPunctureABE  -Wl,-rpath,/usr/lib/x86_64-linux-gnu/openmpi/lib /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so

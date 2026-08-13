@@ -1,0 +1,36 @@
+# started on Thu Aug 13 06:12:00 2026
+
+
+ Performance counter stats for 'perf record -F 5 -m 8 -o /home/h3240104505/HPC101_lab/lab4/results/perf_cpu-%j/perf.data -- ./run.sh --twop-cache':
+
+         141107.37 msec task-clock:u                     #    1.003 CPUs utilized             
+                 0      context-switches:u               #    0.000 /sec                      
+                 0      cpu-migrations:u                 #    0.000 /sec                      
+           6812038      page-faults:u                    #   48.276 K/sec                     
+      350061919516      cycles:u                         #    2.481 GHz                         (57.74%)
+     1150091490144      instructions:u                   #    3.29  insn per cycle              (59.81%)
+      112766633329      branches:u                       #  799.155 M/sec                       (66.58%)
+         133383932      branch-misses:u                  #    0.12% of all branches             (74.01%)
+                        TopdownL1                 #     42.4 %  tma_backend_bound      
+                                                  #      8.9 %  tma_bad_speculation    
+                                                  #     18.0 %  tma_frontend_bound     
+                                                  #     30.6 %  tma_retiring           
+                        TopdownL2                 #      7.8 %  tma_branch_mispredicts 
+                                                  #     31.1 %  tma_core_bound         
+                                                  #      6.7 %  tma_fetch_bandwidth    
+                                                  #     11.4 %  tma_fetch_latency      
+                                                  #      5.5 %  tma_heavy_operations   
+                                                  #     25.2 %  tma_light_operations   
+                                                  #      1.1 %  tma_machine_clears     
+                                                  #     11.3 %  tma_memory_bound         (82.70%)
+      383217420855      L1-dcache-loads:u                #    2.716 G/sec                       (90.95%)
+        7692409722      L1-dcache-load-misses:u          #    2.01% of all L1-dcache accesses   (90.90%)
+        1655327976      LLC-loads:u                      #   11.731 M/sec                       (90.89%)
+        1113559896      LLC-load-misses:u                #   67.27% of all LL-cache accesses    (52.60%)
+
+     140.723237034 seconds time elapsed
+
+     129.527655000 seconds user
+      11.639558000 seconds sys
+
+
