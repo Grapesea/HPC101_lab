@@ -13,7 +13,6 @@ echo "Start: $(date)"
 input_backup="AMSS_NCKU_Input.py.4gsh.$$"
 cp AMSS_NCKU_Input.py "$input_backup"
 trap 'cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"' EXIT
-sed -i '/^[[:space:]]*GPU_Calculation[[:space:]]*=/c\GPU_Calculation  = "yes"' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Final_Evolution_Time[[:space:]]*=/c\Final_Evolution_Time = 100.0' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Evolution_Step_Number[[:space:]]*=/c\Evolution_Step_Number = 10000000' AMSS_NCKU_Input.py
 

@@ -18,10 +18,10 @@ import numpy
 File_directory   = "GW250118"                    ## output file directory
 Output_directory = "binary_output"               ## binary data file directory
                                                  ## The file directory name should not be too long
-MPI_processes    = int(os.environ.get("AMSS_MPI_PROCESSES", "30"))  ## number of mpi processes used in the simulation
-OMP_threads      = int(os.environ.get("AMSS_OMP_THREADS", "1"))
+MPI_processes    = 30  ## number of mpi processes used in the simulation
+OMP_threads      = 1
 
-GPU_Calculation  = "no"
+GPU_Calculation  = "yes"
                                                  ## (prefer "no" in the current version, because the GPU part may have bugs when integrated in this Python interface)
 
 #################################################

@@ -23,7 +23,6 @@ unset AMSS_FINAL_EVOLUTION_TIME AMSS_EVOLUTION_STEPS
 export AMSS_MPI_PROCESSES=30
 export AMSS_OMP_THREADS=1
 export AMSS_ENABLE_GPU=OFF
-export AMSS_ENABLE_OPENMP=OFF
 export AMSS_OPT="-Ofast -ffast-math"
 export AMSS_ARCH_FLAGS="-mcpu=native"
 export AMSS_BUILD_DIR="$PWD/build_cpu_arm"
