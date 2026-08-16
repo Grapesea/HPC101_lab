@@ -1,0 +1,84 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Fri Aug 14 04:21:14 PM UTC 2026
+uname: aarch64, nproc=60
+cpu.max: 6000000 100000
+Build dir: /home/h3240104505/HPC101_lab/lab4-cpu/build_lab4_twop
+Threads to sweep: 1 4 8 13 16 24 30
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_lab4_twop" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=native -DAMSS_ENABLE_OPENMP=ON -DAMSS_ENABLE_SANITY_CHECK=OFF -DAMSS_MPI_CUDA_AWARE=0 
+-- The CXX compiler identification is GNU 14.2.0
+-- The Fortran compiler identification is GNU 14.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Detecting Fortran compiler ABI info
+-- Detecting Fortran compiler ABI info - done
+-- Check for working Fortran compiler: /usr/bin/gfortran - skipped
+-- Found MPI_CXX: /usr/lib/aarch64-linux-gnu/openmpi/lib/libmpi.so (found version "3.1")
+-- Found MPI: TRUE (found version "3.1") found components: CXX
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP_Fortran: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5") found components: CXX Fortran
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=native OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (40.7s)
+-- Generating done (0.6s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_lab4_twop
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_lab4_twop" -j 60
+[  6%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctureABE.C.o
+[  6%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctures.C.o
+[ 10%] Building CXX object CMakeFiles/ABE.dir/src/ABE.C.o
+[ 26%] Building CXX object CMakeFiles/ABE.dir/src/Block.C.o
+[ 26%] Building CXX object CMakeFiles/ABE.dir/src/Ansorg.C.o
+[ 60%] Building CXX object CMakeFiles/ABE.dir/src/checkpoint.C.o
+[ 60%] Building CXX object CMakeFiles/ABE.dir/src/MPatch.C.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/prolongrestrict_cell.f90.o
+[ 93%] Building CXX object CMakeFiles/ABE.dir/src/monitor.C.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/bssn_rhs.f90.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/sommerfeld_rout.f90.o
+[ 60%] Building CXX object CMakeFiles/ABE.dir/src/surface_integral.C.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/getnp4.f90.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/lopsidediff.f90.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/kodiss.f90.o
+[ 60%] Building CXX object CMakeFiles/ABE.dir/src/perf.C.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/rungekutta4_rout.f90.o
+[ 93%] Building CXX object CMakeFiles/ABE.dir/src/transpbh.C.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/fmisc.f90.o
+[ 60%] Building Fortran object CMakeFiles/ABE.dir/src/enforce_algebra.f90.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/initial_puncture.f90.o
+[ 93%] Building CXX object CMakeFiles/ABE.dir/src/misc.C.o
+[ 60%] Building CXX object CMakeFiles/ABE.dir/src/bssn_class.C.o
+[ 60%] Building CXX object CMakeFiles/ABE.dir/src/cgh.C.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/fadmquantites_bssn.f90.o
+[ 60%] Building CXX object CMakeFiles/ABE.dir/src/var.C.o
+[ 93%] Building Fortran object CMakeFiles/ABE.dir/src/diff_new.f90.o
+[ 60%] Building CXX object CMakeFiles/ABE.dir/src/Parallel.C.o
+/home/h3240104505/HPC101_lab/lab4-cpu/src/TwoPunctureABE.C: In function ‘int main(int, char**)’:
+/home/h3240104505/HPC101_lab/lab4-cpu/src/TwoPunctureABE.C:229:13: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+  229 |   ADM->Save("Ansorg.psid");
+      |             ^~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C: In member function ‘virtual void bssn_class::Read_Ansorg()’:
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C:1477:24: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+ 1477 |     Ansorg read_ansorg("Ansorg.psid", order);
+      |                        ^~~~~~~~~~~~~
+[ 96%] Linking CXX executable TwoPunctureABE
+[ 96%] Built target TwoPunctureABE
+[100%] Linking CXX executable ABE
+[100%] Built target ABE
+==> Built executables:
+-rwxr-xr-x 1 root root 747K Aug 14 16:22 /home/h3240104505/HPC101_lab/lab4-cpu/build_lab4_twop/ABE
+-rwxr-xr-x 1 root root 145K Aug 14 16:21 /home/h3240104505/HPC101_lab/lab4-cpu/build_lab4_twop/TwoPunctureABE
+threads wall_s  max_abs_diff_vs_ref
+1  199s  5.331e-14  rc=0
+4  126s  5.331e-14  rc=0
+8  107s  5.331e-14  rc=0
+13  98s  5.331e-14  rc=0
+16  92s  5.331e-14  rc=0
+24  82s  5.331e-14  rc=0
+30  83s  5.331e-14  rc=0
+Done: Fri Aug 14 04:35:18 PM UTC 2026

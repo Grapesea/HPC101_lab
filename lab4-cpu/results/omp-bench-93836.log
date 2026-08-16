@@ -1,0 +1,6 @@
+Benchmark root: /tmp/lab4-omp-bench
+Build: /home/h3240104505/HPC101_lab/lab4-cpu/build_omp
+Steps per combination: 2
+==> ranks=30 threads=1 total_cpus=30
+RESULT ranks=30 threads=1 steps=2 mean=38.552500 median=38.552500 min=38.478500 max=38.626500
+==> ranks=48 threads=1 total_cpus=48

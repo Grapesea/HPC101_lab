@@ -1,0 +1,7 @@
+Benchmark root: /home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep
+Build: /home/h3240104505/HPC101_lab/lab4-cpu/build_omp
+Steps per combination: 3
+==> ranks=30 threads=1 total_cpus=30
+RESULT ranks=30 threads=1 steps=3 mean=50.733200 median=50.753100 min=50.665500 max=50.781000
+==> ranks=30 threads=2 total_cpus=60
+RESULT ranks=30 threads=2 steps=3 mean=69.466333 median=69.243000 min=69.237500 max=69.918500

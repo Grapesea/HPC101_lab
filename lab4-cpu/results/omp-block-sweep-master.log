@@ -1,0 +1,11 @@
+Benchmark root: /tmp/lab4-omp-block-sweep
+Persistent logs: /home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep-block
+Build: /home/h3240104505/HPC101_lab/lab4-cpu/build_omp
+Steps per combination: 1
+Combos: 12:1 12:4 30:1 30:2 15:2 10:3
+==> ranks=12 threads=1 total_cpus=12
+RESULT ranks=12 threads=1 steps=1 mean_cpu=106.013000 median_cpu=106.013000 min_cpu=106.013000 max_cpu=106.013000 wall_total=405.553619 wall_per_step=405.553619 evolve_total=397.297000 evolve_per_step=397.297000
+==> ranks=12 threads=4 total_cpus=48
+RESULT ranks=12 threads=4 steps=1 mean_cpu=60.722500 median_cpu=60.722500 min_cpu=60.722500 max_cpu=60.722500 wall_total=206.644416 wall_per_step=206.644416 evolve_total=195.410000 evolve_per_step=195.410000
+==> ranks=30 threads=1 total_cpus=30
+Terminated

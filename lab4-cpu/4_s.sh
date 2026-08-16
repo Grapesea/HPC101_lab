@@ -7,6 +7,25 @@
 #HPC --time=30m
 set -euo pipefail
 
+# End-to-end wall-clock guard for the profiling run.  Keep the report at the
+# requested 25-minute threshold (1500 s), below the scheduler's 30-minute cap.
+START_EPOCH=$(date +%s)
+AMSS_TIME_LIMIT_SECONDS="${AMSS_TIME_LIMIT_SECONDS:-1500}"
+report_total_time() {
+  local rc="${1:-0}" end_epoch elapsed whole_minutes remainder
+  end_epoch=$(date +%s)
+  elapsed=$((end_epoch - START_EPOCH))
+  whole_minutes=$((elapsed / 60))
+  remainder=$((elapsed % 60))
+  echo "Total wall time: ${elapsed}s (${whole_minutes}m ${remainder}s)"
+  if (( elapsed >= AMSS_TIME_LIMIT_SECONDS )); then
+    echo "WARNING: total wall time exceeded ${AMSS_TIME_LIMIT_SECONDS}s (${AMSS_TIME_LIMIT_SECONDS} seconds / 25-minute target)." >&2
+  else
+    echo "Time budget remaining: $((AMSS_TIME_LIMIT_SECONDS - elapsed))s"
+  fi
+  return "$rc"
+}
+
 echo "PWD=$(pwd)"
 echo "Start CPU perf: $(date)"
 
@@ -16,7 +35,7 @@ JOB_TAG="${HPC_JOB_ID:-${SLURM_JOB_ID:-${JOB_ID:-%j}}}"
 
 input_backup="AMSS_NCKU_Input.py.4ssh.$$"
 cp AMSS_NCKU_Input.py "$input_backup"
-trap 'cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"' EXIT
+trap 'rc=$?; cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"; report_total_time "$rc"; exit "$rc"' EXIT
 sed -i '/^[[:space:]]*GPU_Calculation[[:space:]]*=/c\GPU_Calculation  = "no"' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Final_Evolution_Time[[:space:]]*=/c\Final_Evolution_Time = 1.0' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Evolution_Step_Number[[:space:]]*=/c\Evolution_Step_Number = 1' AMSS_NCKU_Input.py
@@ -25,6 +44,8 @@ sed -i '/^[[:space:]]*Evolution_Step_Number[[:space:]]*=/c\Evolution_Step_Number
 export AMSS_GPU_CALCULATION=no
 export AMSS_MPI_PROCESSES=1
 export AMSS_OMP_THREADS=1
+export AMSS_FINAL_EVOLUTION_TIME=1.0
+export AMSS_EVOLUTION_STEPS=1
 export AMSS_ENABLE_GPU=OFF
 export AMSS_ENABLE_OPENMP=OFF
 export AMSS_OPT="-Ofast -ffast-math"

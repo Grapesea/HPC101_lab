@@ -7,7 +7,8 @@ option(AMSS_ENABLE_GPU "Enable CUDA GPU build (ABEGPU target)" OFF)
 # architecture selection separate below; AMSS_OPT applies to C++/Fortran.
 set(AMSS_OPT "-Ofast -ffast-math" CACHE STRING "C/C++/Fortran optimization level")
 set(AMSS_ARCH_FLAGS "-mcpu=native" CACHE STRING "Architecture-specific compiler flags")
-option(AMSS_ENABLE_OPENMP "Link OpenMP to all executables" OFF)
+option(AMSS_ENABLE_OPENMP "Enable OpenMP in CPU solvers" OFF)
+option(AMSS_ENABLE_SANITY_CHECK "Keep per-RHS full-array NaN scans" OFF)
 set(AMSS_MPI_CUDA_AWARE 0 CACHE STRING "Set MPI_CUDA_AWARE macro for ABEGPU (0/1)")
 set_property(CACHE AMSS_MPI_CUDA_AWARE PROPERTY STRINGS 0 1)
 
@@ -28,6 +29,10 @@ add_compile_options(
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+if(AMSS_ENABLE_SANITY_CHECK)
+  add_compile_definitions(AMSS_SANITY_CHECK)
+endif()
 
 # --- MPI --------------------------------------------------------------------
 find_package(MPI REQUIRED COMPONENTS CXX)
@@ -54,6 +59,7 @@ set(ABE_SOURCES
 )
 add_executable(ABE ${ABE_SOURCES})
 target_link_libraries(ABE PRIVATE MPI::MPI_CXX)
+# The Fortran stencil kernels below are linked with OpenMP when requested.
 
 # --- TwoPunctureABE: initial-data solver -----------------------------------
 add_executable(TwoPunctureABE src/TwoPunctureABE.C src/TwoPunctures.C)
@@ -115,5 +121,5 @@ if(AMSS_ENABLE_GPU)
 else()
   message(STATUS "GPU      : OFF")
 endif()
-message(STATUS "AMSS_OPT=${AMSS_OPT} ARCH_FLAGS=${AMSS_ARCH_FLAGS} OPENMP=${AMSS_ENABLE_OPENMP} MPI_CUDA_AWARE=${AMSS_MPI_CUDA_AWARE}")
+message(STATUS "AMSS_OPT=${AMSS_OPT} ARCH_FLAGS=${AMSS_ARCH_FLAGS} OPENMP=${AMSS_ENABLE_OPENMP} SANITY_CHECK=${AMSS_ENABLE_SANITY_CHECK} MPI_CUDA_AWARE=${AMSS_MPI_CUDA_AWARE}")
 message(STATUS "==========================================================")

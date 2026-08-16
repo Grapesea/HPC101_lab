@@ -1,0 +1,102 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cycles:Pu'
+# Event count (approx.): 215117188559
+#
+# Overhead  Command  Shared Object          Symbol                                                                                                                                                                                           
+# ........  .......  .....................  .................................................................................................................................................................................................
+#
+    62.06%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f13c4
+     8.12%  ABE      ABE                    [.] compute_rhs_bssn_
+     4.45%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1324
+     4.31%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230c1c
+     4.15%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230f24
+     3.92%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f13b0
+     1.29%  ABE      libc.so.6              [.] __memset_sve_zva64
+     1.23%  ABE      libc.so.6              [.] __memcpy_sve
+     1.11%  ABE      ABE                    [.] fdderivs_._omp_fn.0
+     1.07%  ABE      ABE                    [.] lopsided_._omp_fn.0
+     0.92%  ABE      ABE                    [.] kodis_._omp_fn.0
+     0.57%  ABE      libopen-pal.so.80.0.5  [.] opal_progress
+     0.54%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000608c8
+     0.48%  ABE      ABE                    [.] enforce_ga_
+     0.43%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230c28
+     0.41%  ABE      ABE                    [.] fderivs_._omp_fn.0
+     0.35%  ABE      ABE                    [.] rungekutta4_rout_
+     0.29%  ABE      ABE                    [.] prolong3_
+     0.26%  ABE      ABE                    [.] symmetry_bd_
+     0.22%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1300
+     0.21%  ABE      ABE                    [.] average2_
+     0.16%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1120
+     0.16%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230f48
+     0.16%  ABE      libmpi.so.40.40.7      [.] 0x0000000000287ec0
+     0.16%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000271f8
+     0.16%  ABE      libopen-pal.so.80.0.5  [.] 0x0000000000027238
+     0.16%  ABE      libmpi.so.40.40.7      [.] opal_progress@plt
+     0.16%  ABE      ABE                    [.] fderivs_
+     0.16%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1328
+     0.14%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f124c
+     0.11%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f13bc
+     0.11%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1230
+     0.11%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230bf0
+     0.11%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1170
+     0.11%  ABE      ABE                    [.] restrict3_
+     0.11%  ABE      ABE                    [.] copy_
+     0.11%  ABE      libmpi.so.40.40.7      [.] 0x0000000000287ecc
+     0.08%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000608cc
+     0.08%  ABE      libc.so.6              [.] _int_free_chunk
+     0.08%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1330
+     0.05%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230be0
+     0.05%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000271c4
+     0.05%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f14c8
+     0.05%  ABE      ABE                    [.] misc::fact(int)
+     0.05%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1348
+     0.05%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230c0c
+     0.05%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f114c
+     0.05%  ABE      ABE                    [.] Parallel::build_gstl(MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>**, MyList<Parallel::gridseg>**)
+     0.05%  ABE      libc.so.6              [.] malloc
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x0000000000245a80
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x0000000000241b4c
+     0.03%  ABE      libm.so.6              [.] pow@@GLIBC_2.29
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230f18
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x00000000001f1f90
+     0.03%  ABE      libc.so.6              [.] pthread_mutex_lock@@GLIBC_2.17
+     0.03%  ABE      ABE                    [.] surface_integral::surf_MassPAng(double, int, cgh*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, double*, monitor*)
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1148
+     0.03%  ABE      ABE                    [.] Patch::Interp_Points(MyList<var>*, int, double**, double*, int)
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1248
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f112c
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1308
+     0.03%  ABE      ABE                    [.] fdderivs_
+     0.03%  ABE      ABE                    [.] memcpy@plt
+     0.03%  ABE      ABE                    [.] Parallel::data_packer(double*, MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>*, int, int, MyList<var>*, MyList<var>*, int) [clone .constprop.0]
+     0.03%  ABE      [unknown]              [k] 0xffffbb7146733314
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x000000000023f9d0
+     0.03%  ABE      libmpi.so.40.40.7      [.] mca_pml_ob1_rdma_btls
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x0000000000241ecc
+     0.03%  ABE      ABE                    [.] bssn_class::Step(int, int) [clone ._omp_fn.1]
+     0.03%  ABE      libc.so.6              [.] _int_malloc
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1270
+     0.02%  ABE      ABE                    [.] get_ansorg_nbhs_
+     0.02%  ABE      libm.so.6              [.] log@@GLIBC_2.29
+     0.02%  ABE      ABE                    [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
+     0.02%  ABE      libmpi.so.40.40.7      [.] mca_pml_ob1_recv_request_progress_rget
+     0.01%  ABE      libc.so.6              [.] __mpn_mul
+     0.01%  ABE      libc.so.6              [.] cfree@GLIBC_2.17
+     0.00%  ABE      libc.so.6              [.] process_vm_readv
+     0.00%  ABE      ABE                    [.] Parallel::transfer(MyList<Parallel::gridseg>**, MyList<Parallel::gridseg>**, MyList<var>*, MyList<var>*, int)
+     0.00%  ABE      ld-linux-aarch64.so.1  [.] do_lookup_x
+     0.00%  ABE      ld-linux-aarch64.so.1  [.] strcmp
+     0.00%  ABE      [unknown]              [k] 0xffffbb7146732894
+     0.00%  ABE      ld-linux-aarch64.so.1  [.] _dl_lookup_symbol_x
+     0.00%  ABE      ld-linux-aarch64.so.1  [.] _dl_start
+     0.00%  ABE      ld-linux-aarch64.so.1  [.] _start
+     0.00%  ABE      [unknown]              [k] 0xffffbb7146732db8
+
+
+#
+# (Tip: To trace only single function with Processor Trace use perf record --filter 'filter func @ program' -e intel_pt//u ./program ; perf script --insn-trace)
+#

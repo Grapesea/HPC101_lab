@@ -64,6 +64,8 @@ integer, parameter :: NO_SYMM=0, OCTANT=2
 
   call symmetry_bd(3,ex,f,fh,SoA)
 
+!$omp parallel do collapse(2) schedule(static) private(i,j,k) &
+!$omp& if(ex(1)*ex(2)*ex(3) >= 2048)
   do k=1,ex(3)
   do j=1,ex(2)
   do i=1,ex(1)

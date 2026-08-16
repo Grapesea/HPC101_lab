@@ -1,0 +1,13 @@
+Benchmark root: /home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep
+Build: /home/h3240104505/HPC101_lab/lab4-cpu/build_omp
+Steps per combination: 2
+==> ranks=15 threads=2 total_cpus=30
+FAILED ranks=15 threads=2 rc=1 wall=10s log=/home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep/15x2.log
+==> ranks=10 threads=3 total_cpus=30
+FAILED ranks=10 threads=3 rc=1 wall=32s log=/home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep/10x3.log
+==> ranks=12 threads=2 total_cpus=24
+FAILED ranks=12 threads=2 rc=1 wall=21s log=/home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep/12x2.log
+==> ranks=20 threads=1 total_cpus=20
+FAILED ranks=20 threads=1 rc=1 wall=25s log=/home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep/20x1.log
+==> ranks=24 threads=1 total_cpus=24
+FAILED ranks=24 threads=1 rc=1 wall=16s log=/home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep/24x1.log

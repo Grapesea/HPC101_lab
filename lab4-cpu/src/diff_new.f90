@@ -72,6 +72,10 @@
   fy = ZEO
   fz = ZEO
 
+! Each output point is independent after the serial ghost-zone fill above.
+! Avoid creating a team for tiny AMR blocks where fork/join costs dominate.
+!$omp parallel do collapse(2) schedule(static) private(i,j,k) &
+!$omp& if(ex(1)*ex(2)*ex(3) >= 2048)
   do k=1,ex(3)-1
   do j=1,ex(2)-1
   do i=1,ex(1)-1
@@ -476,6 +480,8 @@
   fxz = ZEO
   fyz = ZEO
 
+!$omp parallel do collapse(2) schedule(static) private(i,j,k) &
+!$omp& if(ex(1)*ex(2)*ex(3) >= 2048)
   do k=1,ex(3)-1
   do j=1,ex(2)-1
   do i=1,ex(1)-1

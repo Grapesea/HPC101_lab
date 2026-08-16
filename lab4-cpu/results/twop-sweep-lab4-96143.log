@@ -1,0 +1,7 @@
+PWD=/tmp
+Start: Fri Aug 14 04:17:18 PM UTC 2026
+uname: aarch64, nproc=60
+cpu.max: 6000000 100000
+Build dir: /tmp/build_lab4_twop
+Threads to sweep: 1 4 8 13 16 24 30
+env: ‘./compile.sh’: No such file or directory

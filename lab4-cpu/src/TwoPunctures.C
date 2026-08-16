@@ -1925,33 +1925,45 @@ void TwoPunctures::relax(double *dv, int const nvar, int const n1, int const n2,
 {
   int i, j, k, n;
 
-  for (k = 0; k < n3; k = k + 2)
+  // Red-black line Gauss-Seidel. Within each of the eight sub-sweeps the line
+  // solves are mutually independent (they only read the opposite-parity i/j/k
+  // planes that this sub-sweep leaves frozen), so the (k, i) / (k, j) loops
+  // are collapsed and parallelized. This is bit-identical to the original
+  // sequential order (N_PlaneRelax == 1 in this build).
+  for (n = 0; n < N_PlaneRelax; n++)
   {
-    for (n = 0; n < N_PlaneRelax; n++)
-    {
-      for (i = 2; i < n1; i = i + 2)
+#pragma omp parallel for collapse(2) schedule(static)
+    for (k = 0; k < n3; k += 2)
+      for (i = 2; i < n1; i += 2)
         LineRelax_be(dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-      for (i = 1; i < n1; i = i + 2)
+#pragma omp parallel for collapse(2) schedule(static)
+    for (k = 0; k < n3; k += 2)
+      for (i = 1; i < n1; i += 2)
         LineRelax_be(dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-      for (j = 1; j < n2; j = j + 2)
+#pragma omp parallel for collapse(2) schedule(static)
+    for (k = 0; k < n3; k += 2)
+      for (j = 1; j < n2; j += 2)
         LineRelax_al(dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-      for (j = 0; j < n2; j = j + 2)
+#pragma omp parallel for collapse(2) schedule(static)
+    for (k = 0; k < n3; k += 2)
+      for (j = 0; j < n2; j += 2)
         LineRelax_al(dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-    }
-  }
-  for (k = 1; k < n3; k = k + 2)
-  {
-    for (n = 0; n < N_PlaneRelax; n++)
-    {
-      for (i = 0; i < n1; i = i + 2)
+#pragma omp parallel for collapse(2) schedule(static)
+    for (k = 1; k < n3; k += 2)
+      for (i = 0; i < n1; i += 2)
         LineRelax_be(dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-      for (i = 1; i < n1; i = i + 2)
+#pragma omp parallel for collapse(2) schedule(static)
+    for (k = 1; k < n3; k += 2)
+      for (i = 1; i < n1; i += 2)
         LineRelax_be(dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-      for (j = 1; j < n2; j = j + 2)
+#pragma omp parallel for collapse(2) schedule(static)
+    for (k = 1; k < n3; k += 2)
+      for (j = 1; j < n2; j += 2)
         LineRelax_al(dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-      for (j = 0; j < n2; j = j + 2)
+#pragma omp parallel for collapse(2) schedule(static)
+    for (k = 1; k < n3; k += 2)
+      for (j = 0; j < n2; j += 2)
         LineRelax_al(dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-    }
   }
 }
 /* --------------------------------------------------------------------------*/
@@ -1963,11 +1975,12 @@ void TwoPunctures::LineRelax_be(double *dv,
 {
   int j, m, Ic, Ip, Im, col, ivar;
 
-  double *diag = new double[n2];
-  double *e = new double[n2 - 1]; /* above diagonal */
-  double *f = new double[n2 - 1]; /* below diagonal */
-  double *b = new double[n2];     /* rhs */
-  double *x = new double[n2];     /* solution vector */
+  // Stack-allocated workspaces: thread-safe under OpenMP and no malloc/free.
+  double diag[n2];
+  double e[n2]; /* above diagonal */
+  double f[n2]; /* below diagonal */
+  double b[n2]; /* rhs */
+  double x[n2]; /* solution vector */
 
   //  gsl_vector *diag = gsl_vector_alloc(n2);
   //  gsl_vector *e = gsl_vector_alloc(n2-1); /* above diagonal */
@@ -2029,11 +2042,6 @@ void TwoPunctures::LineRelax_be(double *dv,
     }
   }
 
-  delete[] diag;
-  delete[] e;
-  delete[] f;
-  delete[] b;
-  delete[] x;
   //  gsl_vector_free(diag);
   //  gsl_vector_free(e);
   //  gsl_vector_free(f);
@@ -2208,11 +2216,12 @@ void TwoPunctures::LineRelax_al(double *dv,
 {
   int i, m, Ic, Ip, Im, col, ivar;
 
-  double *diag = new double[n1];
-  double *e = new double[n1 - 1]; /* above diagonal */
-  double *f = new double[n1 - 1]; /* below diagonal */
-  double *b = new double[n1];     /* rhs */
-  double *x = new double[n1];     /* solution vector */
+  // Stack-allocated workspaces: thread-safe under OpenMP and no malloc/free.
+  double diag[n1];
+  double e[n1]; /* above diagonal */
+  double f[n1]; /* below diagonal */
+  double b[n1]; /* rhs */
+  double x[n1]; /* solution vector */
 
   //  gsl_vector *diag = gsl_vector_alloc(n1);
   //  gsl_vector *e = gsl_vector_alloc(n1-1); /* above diagonal */
@@ -2268,12 +2277,6 @@ void TwoPunctures::LineRelax_al(double *dv,
     }
   }
 
-  delete[] diag;
-  delete[] e;
-  delete[] f;
-  delete[] b;
-  delete[] x;
-
   //  gsl_vector_free(diag);
   //  gsl_vector_free(e);
   //  gsl_vector_free(f);
@@ -2291,11 +2294,8 @@ void TwoPunctures::LineRelax_al(double *dv,
 void TwoPunctures::ThomasAlgorithm(int N, double *b, double *a, double *c, double *x, double *q)
 {
   int i;
-  double *l, *u, *d, *y;
-  l = new double[N - 1];
-  u = new double[N - 1];
-  d = new double[N];
-  y = new double[N];
+  // Stack-allocated workspaces: thread-safe under OpenMP and no malloc/free.
+  double l[N], u[N], d[N], y[N];
 
   /* LU Decomposition */
   d[0] = a[0];
@@ -2321,11 +2321,6 @@ void TwoPunctures::ThomasAlgorithm(int N, double *b, double *a, double *c, doubl
 
   for (i = N - 2; i >= 0; i--)
     x[i] = (y[i] - u[i] * x[i + 1]) / d[i];
-
-  delete[] l;
-  delete[] u;
-  delete[] d;
-  delete[] y;
 
   return;
 }

@@ -1,0 +1,2 @@
+TWOP_TOOLCHAIN_RESULT label=gnu threads=24 wall=69.747287 max_abs_diff=5.331e-14
+TWOP_TOOLCHAIN_RESULT label=arm threads=24 wall=110.533988 max_abs_diff=3.017e-14

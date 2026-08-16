@@ -1,0 +1,8 @@
+      0.5769759582      0.5988372093       0.983556747 # bare mass 1   mass 1   ADM mass
+                 0       2.406976744                 0 # position 1
+           -0.1275   -0.005140814811                 0 # momentum 1
+                 0                 0                 0 # angular mumentum 1
+      0.3785775197      0.4011627908       0.983556747 # bare mass 2   mass 2   ADM mass
+                 0      -3.593023256                 0 # position 2
+            0.1275    0.005140814811                 0 # momentum 2
+                 0                 0                 0 # angular mumentum 2

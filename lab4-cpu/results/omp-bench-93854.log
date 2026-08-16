@@ -1,0 +1,14 @@
+Benchmark root: /tmp/lab4-omp-sweep-$
+Persistent logs: /home/h3240104505/HPC101_lab/lab4-cpu/results/omp-sweep
+Build: /home/h3240104505/HPC101_lab/lab4-cpu/build_omp
+Steps per combination: 2
+==> ranks=30 threads=1 total_cpus=30
+RESULT ranks=30 threads=1 steps=2 mean=38.009450 median=38.009450 min=37.758100 max=38.260800 wall_total=81.760121 wall_per_step=40.880060 evolve_total=76.244100 evolve_per_step=38.122050
+==> ranks=30 threads=2 total_cpus=60
+RESULT ranks=30 threads=2 steps=2 mean=54.437050 median=54.437050 min=54.410600 max=54.463500 wall_total=86.165908 wall_per_step=43.082954 evolve_total=80.921000 evolve_per_step=40.460500
+==> ranks=40 threads=1 total_cpus=40
+RESULT ranks=40 threads=1 steps=2 mean=48.364350 median=48.364350 min=48.340300 max=48.388400 wall_total=102.514655 wall_per_step=51.257328 evolve_total=97.067500 evolve_per_step=48.533750
+==> ranks=48 threads=1 total_cpus=48
+RESULT ranks=48 threads=1 steps=2 mean=47.564400 median=47.564400 min=47.552200 max=47.576600 wall_total=100.896456 wall_per_step=50.448228 evolve_total=95.474600 evolve_per_step=47.737300
+==> ranks=60 threads=1 total_cpus=60
+RESULT ranks=60 threads=1 steps=2 mean=46.521850 median=46.521850 min=46.495500 max=46.548200 wall_total=98.942801 wall_per_step=49.471401 evolve_total=93.386800 evolve_per_step=46.693400

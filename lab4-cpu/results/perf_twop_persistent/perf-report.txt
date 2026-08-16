@@ -1,0 +1,119 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 17K of event 'cycles:Pu'
+# Event count (approx.): 892136624437
+#
+# Overhead  Command         Shared Object          Symbol                                                                                                                                                                                                                                                              
+# ........  ..............  .....................  ....................................................................................................................................................................................................................................................................
+#
+    33.68%  TwoPunctureABE  libomp.so              [.] kmp_flag_64<false, true>::wait(kmp_info*, int, void*)
+    19.36%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::LineRelax_be(double*, int, int, int, int, int, int, double const*, int const*, int**, double**)
+    15.15%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::LineRelax_al(double*, int, int, int, int, int, int, double const*, int const*, int**, double**)
+     8.72%  TwoPunctureABE  libmvec.so.1           [.] _ZGVnN2v_cos
+     8.17%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::ThomasAlgorithm(int, double*, double*, double*, double*, double*)
+     3.19%  TwoPunctureABE  libm.so.6              [.] __cos
+     2.09%  TwoPunctureABE  libm.so.6              [.] __sin
+     2.03%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc8bde984
+     0.72%  TwoPunctureABE  libmvec.so.1           [.] _ZGVnN2v_sin
+     0.67%  TwoPunctureABE  libomp.so              [.] kmp_flag_native<unsigned long long, (flag_type)1, true>::notdone_check()
+     0.58%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::J_times_dv(int, int, int, int, TwoPunctures::DERIVS, double*, TwoPunctures::DERIVS) [clone .constprop.0]
+     0.46%  TwoPunctureABE  libm.so.6              [.] __sincos
+     0.45%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::chebft_Zeros(double*, int, int) [clone .constprop.1] [clone .isra.0]
+     0.42%  TwoPunctureABE  libc.so.6              [.] _int_free_chunk
+     0.42%  TwoPunctureABE  libc.so.6              [.] cfree@GLIBC_2.17
+     0.41%  TwoPunctureABE  libc.so.6              [.] _int_malloc
+     0.41%  TwoPunctureABE  libc.so.6              [.] malloc
+     0.29%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::JFD_times_dv(int, int, int, int, int, int, int, TwoPunctures::DERIVS, TwoPunctures::DERIVS, double*) [clone .constprop.0] [clone .isra.0]
+     0.22%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::BY_KKofxyz(double, double, double)
+     0.22%  TwoPunctureABE  libc.so.6              [.] __memset_sve_zva64
+     0.21%  TwoPunctureABE  libm.so.6              [.] __ccosh
+     0.20%  TwoPunctureABE  libc.so.6              [.] __memcpy_sve
+     0.15%  TwoPunctureABE  libm.so.6              [.] __cosh_finite@GLIBC_2.17
+     0.15%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::fourft(double*, int, int) [clone .constprop.0] [clone .isra.0]
+     0.09%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::rx3_To_xyz(int, double, double, double, double*, double*, TwoPunctures::DERIVS) [clone .constprop.0] [clone .isra.0]
+     0.09%  TwoPunctureABE  [vdso]                 [.] __kernel_gettimeofday
+     0.09%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::chebft_Zeros(double*, int, int) [clone .constprop.0] [clone .isra.0]
+     0.09%  TwoPunctureABE  libm.so.6              [.] __sinh_finite@GLIBC_2.17
+     0.09%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::Derivatives_AB3(int, int, int, int, TwoPunctures::DERIVS) [clone .constprop.0] [clone .isra.0]
+     0.07%  TwoPunctureABE  libc.so.6              [.] __sched_yield
+     0.07%  TwoPunctureABE  libm.so.6              [.] exp@@GLIBC_2.29
+     0.07%  TwoPunctureABE  libm.so.6              [.] __csinh
+     0.07%  TwoPunctureABE  libm.so.6              [.] __atan
+     0.06%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::F_of_v(int, int, int, int, TwoPunctures::DERIVS, double*, TwoPunctures::DERIVS) [clone .constprop.0]
+     0.06%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::fourft(double*, int, int) [clone .constprop.1] [clone .isra.0]
+     0.06%  TwoPunctureABE  TwoPunctureABE         [.] _ZGVnN2v_cos@plt
+     0.06%  TwoPunctureABE  libm.so.6              [.] __log1p
+     0.06%  TwoPunctureABE  libomp.so              [.] __kmp_yield
+     0.05%  TwoPunctureABE  libm.so.6              [.] __expm1
+     0.05%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::C_To_c(int, double, double, double*, double*, TwoPunctures::DERIVS) [clone .constprop.0] [clone .isra.0]
+     0.05%  TwoPunctureABE  libomp.so              [.] sched_yield@plt
+     0.04%  TwoPunctureABE  libomp.so              [.] __kmp_hyper_barrier_release(barrier_type, kmp_info*, int, int, int, void*)
+     0.04%  TwoPunctureABE  libc.so.6              [.] __aarch64_cas8_rel
+     0.04%  TwoPunctureABE  TwoPunctureABE         [.] memset@plt
+     0.03%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::bicgstab(int, int, int, int, TwoPunctures::DERIVS, TwoPunctures::DERIVS, int, double, double*) [clone .constprop.0] [clone .isra.0]
+     0.03%  TwoPunctureABE  TwoPunctureABE         [.] cos@plt
+     0.03%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::AB_To_XR(int, double, double, double*, double*, TwoPunctures::DERIVS) [clone .constprop.0] [clone .isra.0]
+     0.03%  TwoPunctureABE  TwoPunctureABE         [.] malloc@plt
+     0.02%  TwoPunctureABE  libomp.so              [.] __kmp_hyper_barrier_gather(barrier_type, kmp_info*, int, int, void (*)(void*, void*), void*)
+     0.02%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc8be446c
+     0.02%  TwoPunctureABE  libomp.so              [.] __kmpc_barrier
+     0.01%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::allocate_derivs(TwoPunctures::DERIVS*, int) [clone .constprop.0] [clone .isra.0]
+     0.01%  TwoPunctureABE  TwoPunctureABE         [.] sin@plt
+     0.01%  TwoPunctureABE  libomp.so              [.] GOMP_barrier@@VERSION
+     0.01%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::relax(double*, int, int, int, int, double const*, int const*, int**, double**, int) [clone ._omp_fn.0]
+     0.01%  TwoPunctureABE  TwoPunctureABE         [.] memcpy@plt
+     0.01%  TwoPunctureABE  libomp.so              [.] __kmp_barrier
+     0.01%  TwoPunctureABE  libomp.so              [.] __kmp_get_global_thread_id_reg
+     0.01%  TwoPunctureABE  libomp.so              [.] __kmp_now_nsec
+     0.01%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc7cd89b4
+     0.01%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc7cd8998
+     0.01%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::NonLinEquations(double, double, double, double, double, double, double, double, double, double, TwoPunctures::DERIVS, double*) [clone .constprop.0] [clone .isra.0]
+     0.01%  TwoPunctureABE  TwoPunctureABE         [.] _ZGVnN2v_sin@plt
+     0.01%  TwoPunctureABE  libomp.so              [.] kmp_flag_native<unsigned long long, (flag_type)1, true>::done_check()
+     0.01%  TwoPunctureABE  libomp.so              [.] __aarch64_ldadd8_acq_rel
+     0.01%  TwoPunctureABE  libomp.so              [.] __kmpc_bound_num_threads
+     0.00%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc8be495c
+     0.00%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc7cd88cc
+     0.00%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc7dc14a8
+     0.00%  TwoPunctureABE  libc.so.6              [.] __printf_fp_buffer_1.isra.0
+     0.00%  TwoPunctureABE  libc.so.6              [.] __printf_buffer
+     0.00%  TwoPunctureABE  libc.so.6              [.] __mpn_mul_1
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::__use_cache<std::__numpunct_cache<char> >::operator()(std::locale const&) const [clone .isra.0]
+     0.00%  TwoPunctureABE  libc.so.6              [.] __printf_buffer_write
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::__convert_from_v(__locale_struct* const&, char*, int, char const*, ...)
+     0.00%  TwoPunctureABE  libc.so.6              [.] __mpn_mul
+     0.00%  TwoPunctureABE  libc.so.6              [.] __GI___strchrnul
+     0.00%  TwoPunctureABE  libc.so.6              [.] __GI___fileno
+     0.00%  TwoPunctureABE  libc.so.6              [.] __strlen_generic
+     0.00%  TwoPunctureABE  libc.so.6              [.] __uselocale
+     0.00%  TwoPunctureABE  libc.so.6              [.] ___vsnprintf
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::basic_filebuf<char, std::char_traits<char> >::sync()
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::locale::id::_M_id() const
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::ostream& std::ostream::_M_insert<double>(double)
+     0.00%  TwoPunctureABE  TwoPunctureABE         [.] TwoPunctures::Save(char*)
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::ostreambuf_iterator<char, std::char_traits<char> > std::num_put<char, std::ostreambuf_iterator<char, std::char_traits<char> > >::_M_insert_float<double>(std::ostreambuf_iterator<char, std::char_traits<char> >, std::ios_base&, char, char, double) const
+     0.00%  TwoPunctureABE  libc.so.6              [.] __printf_fp_l_buffer
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::basic_filebuf<char, std::char_traits<char> >::xsputn(char const*, long)
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::__basic_file<char>::fd()
+     0.00%  TwoPunctureABE  libc.so.6              [.] hack_digit
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] pthread_once@plt
+     0.00%  TwoPunctureABE  libstdc++.so.6.0.33    [.] std::ostream::sentry::sentry(std::ostream&)
+     0.00%  TwoPunctureABE  libc.so.6              [.] __memcpy_generic
+     0.00%  TwoPunctureABE  ld-linux-aarch64.so.1  [.] do_lookup_x
+     0.00%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc8bde194
+     0.00%  TwoPunctureABE  TwoPunctureABE         [.] omp_get_num_threads@plt
+     0.00%  TwoPunctureABE  libc.so.6              [.] pthread_cond_wait@@GLIBC_2.17
+     0.00%  TwoPunctureABE  libc.so.6              [.] __GI___clone3
+     0.00%  TwoPunctureABE  libc.so.6              [.] __syscall_cancel_arch
+     0.00%  TwoPunctureABE  libc.so.6              [.] __internal_syscall_cancel
+     0.00%  TwoPunctureABE  ld-linux-aarch64.so.1  [.] _dl_start
+     0.00%  TwoPunctureABE  ld-linux-aarch64.so.1  [.] _start
+     0.00%  TwoPunctureABE  [unknown]              [k] 0xffffb2dbc8bde6b8
+
+
+#
+# (Tip: Create an archive with symtabs to analyse on other machine: perf archive)
+#

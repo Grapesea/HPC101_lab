@@ -1,0 +1,180 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Fri Aug 14 11:41:12 PM UTC 2026
+Mode=CPU (ABE), MPI ranks=30, OMP threads=1
+Build=/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+OutputRoot=/home/h3240104505/HPC101_lab/lab4-cpu/runs/20260814-234112-101158791
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_gnu" -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=native -DAMSS_ENABLE_OPENMP=ON -DAMSS_ENABLE_SANITY_CHECK=OFF -DAMSS_MPI_CUDA_AWARE=0 
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=native OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (2.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_gnu
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_gnu" -j 60
+[ 10%] Built target TwoPunctureABE
+[100%] Built target ABE
+==> Built executables:
+-rwxr-xr-x 1 root root 747K Aug 14 17:28 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_gnu/ABE
+-rwxr-xr-x 1 root root 145K Aug 14 17:28 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_gnu/TwoPunctureABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -DCMAKE_CXX_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ -DCMAKE_Fortran_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=native -DAMSS_ENABLE_OPENMP=ON -DAMSS_ENABLE_SANITY_CHECK=OFF -DAMSS_MPI_CUDA_AWARE=0 
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++
+-- Fortran  : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=native OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (2.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -j 60
+[ 10%] Built target TwoPunctureABE
+[100%] Built target ABE
+==> Built executables:
+-rwxr-xr-x 1 root root 812K Aug 14 17:28 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang/ABE
+-rwxr-xr-x 1 root root 145K Aug 14 23:36 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang/TwoPunctureABE
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/20260814-234112-101158791
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/twopuncture_cache
+==> MPI exec : mpiexec
+./TwoPunctureABE: error while loading shared libraries: libomp.so: cannot open shared object file: No such file or directory
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/20260814-234112-101158791/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/twopuncture_cache
+ Output directory has been generated
+
+------------------------------------------------------------------------------------------
+
+ Printing the basic parameter and setting in the AMSS-NCKU simulation 
+
+ The number of MPI processes in the AMSS-NCKU simulation =  30
+
+ The form of computational equation  =  BSSN
+ The initial data in this simulation =  Ansorg-TwoPuncture
+
+ Starting evolution time   =  0.0
+ Final evolution time      =  40.0
+ Maximal iteration number  =  10000000
+ Courant factor            =  0.5
+ Strength of dissipation   =  0.15
+ Symmetry of system        =  equatorial-symmetry
+ The Runge-Kutta scheme in the time evolution   =  runge-kutta-45
+ The finite-difference scheme in the simulation =  4th-order
+
+ The static AMR grid type =  Linear
+ The moving AMR grid type =  Linear
+
+ The number of static AMR grid levels =  5
+ The number of moving AMR grid levels =  4
+ The number of total  AMR grid levels =  9
+
+ The grid number of each static AMR grid level =  40
+ The grid number of each moving AMR grid level =  48
+
+ The scale for largest  static AMR grid in X direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Y direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Z direction =  [-320.  320.]
+ The scale for smallest static AMR grid in X direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Y direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Z direction =  [-20.  20.]
+
+ The scale for largest  moving AMR grid =  [-12.  12.]
+ The scale for smallest moving AMR grid =  [-1.5  1.5]
+
+ The coarest resolution for static AMR grid =  16.0
+ The finest  resolution for static AMR grid =  1.0
+ The coarest resolution for moving AMR grid =  0.5
+ The finest  resolution for moving AMR grid =  0.0625
+
+ The time refinement starts from AMR grid level =  4
+ The time interval in each step for coarest AMR grid during time evaluation =  1.0
+
+ This simulation uses the Patch AMR grid structure 
+
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+ Printing the puncture information 
+
+ The information for 1 puncture 
+ Mass(1) =   0.598837,  Charge(1) =   0.000000,  a(1)  =   0.000000
+ X(1)    =   0.000000,  Y(1)      =   2.406977,  Z(1)  =   0.000000
+ Px(1)   =  -0.127500,  Py(1)     =  -0.005141,  Pz(1) =   0.000000
+ Jx(1)   =   0.000000,  Jy(1)     =   0.000000,  Jz(1) =   0.000000
+
+ The information for 2 puncture 
+ Mass(2) =   0.401163,  Charge(2) =   0.000000,  a(2)  =   0.000000
+ X(2)    =   0.000000,  Y(2)      =  -3.593023,  Z(2)  =   0.000000
+ Px(2)   =   0.127500,  Py(2)     =   0.005141,  Pz(2) =   0.000000
+ Jx(2)   =   0.000000,  Jy(2)     =   0.000000,  Jz(2) =   0.000000
+
+------------------------------------------------------------------------------------------
+
+ Generating the AMSS-NCKU input parfile for the ABE executable.
+
+
+ Setting Puncture's position and momentum 
+
+
+ Wirte Down The Grid Information 
+
+ Number of Total Grid Level =  9
+ Number of Static Grid Level =  5
+ Number of Moving Grid Level =  4
+
+
+ Setting the demanded numerical grid 
+
+ adjusting the static gird points, making the original point (0,0,0) to the static gird points 
+
+
+ adjusting the moving gird points, ensuring the alliance of moving grids points and static grids points 
+
+ adjust_puncture[5,0,0] = 0.0 
+ adjust_puncture[5,0,1] = 2.5 
+ adjust_puncture[5,0,2] = 0.0 
+ adjust_puncture[5,1,0] = 0.0 
+ adjust_puncture[5,1,1] = -3.5 
+ adjust_puncture[5,1,2] = 0.0 
+ adjust_puncture[6,0,0] = 0.0 
+ adjust_puncture[6,0,1] = 2.5 
+ adjust_puncture[6,0,2] = 0.0 
+ adjust_puncture[6,1,0] = 0.0 
+ adjust_puncture[6,1,1] = -3.5 
+ adjust_puncture[6,1,2] = 0.0 
+ adjust_puncture[7,0,0] = 0.0 
+ adjust_puncture[7,0,1] = 2.375 
+ adjust_puncture[7,0,2] = 0.0 
+ adjust_puncture[7,1,0] = 0.0 
+ adjust_puncture[7,1,1] = -3.625 
+ adjust_puncture[7,1,2] = 0.0 
+ adjust_puncture[8,0,0] = 0.0 
+ adjust_puncture[8,0,1] = 2.4375 
+ adjust_puncture[8,0,2] = 0.0 
+ adjust_puncture[8,1,0] = 0.0 
+ adjust_puncture[8,1,1] = -3.5625 
+ adjust_puncture[8,1,2] = 0.0 
+
+ The moving grid puncture position adjustment is done 
+
+
+ Initial data method: Ansorg-TwoPuncture
+
+
+ Running the AMSS-NCKU executable file TwoPunctureABE
+
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab4-cpu/AMSS_NCKU_Program.py", line 211, in <module>
+    makefile_and_run.run_TwoPunctureABE()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab4-cpu/scripts/makefile_and_run.py", line 56, in run_TwoPunctureABE
+    _run_and_tee(cmd, "TwoPunctureABE_out.log")
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/h3240104505/HPC101_lab/lab4-cpu/scripts/makefile_and_run.py", line 29, in _run_and_tee
+    raise subprocess.CalledProcessError(rc, cmd)
+subprocess.CalledProcessError: Command './TwoPunctureABE < /dev/null' returned non-zero exit status 127.
+Total wall time: 8s (0m 8s)
+Time budget remaining: 1492s

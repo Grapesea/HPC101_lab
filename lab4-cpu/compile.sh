@@ -38,6 +38,7 @@ fi
 [[ -n "${AMSS_OPT:-}" ]]           && cmake_args+=("-DAMSS_OPT=$AMSS_OPT")
 [[ -n "${AMSS_ARCH_FLAGS:-}" ]]    && cmake_args+=("-DAMSS_ARCH_FLAGS=$AMSS_ARCH_FLAGS")
 [[ -n "${AMSS_ENABLE_OPENMP:-}" ]] && cmake_args+=("-DAMSS_ENABLE_OPENMP=$AMSS_ENABLE_OPENMP")
+[[ -n "${AMSS_ENABLE_SANITY_CHECK:-}" ]] && cmake_args+=("-DAMSS_ENABLE_SANITY_CHECK=$AMSS_ENABLE_SANITY_CHECK")
 [[ -n "${AMSS_MPI_CUDA_AWARE:-}" ]] && cmake_args+=("-DAMSS_MPI_CUDA_AWARE=$AMSS_MPI_CUDA_AWARE")
 
 echo "==> Configure: $CMAKE -S \"$ROOT_DIR\" -B \"$BUILD_DIR\" ${cmake_args[*]:-} $*"

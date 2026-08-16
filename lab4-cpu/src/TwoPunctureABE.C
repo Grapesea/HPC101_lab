@@ -25,6 +25,10 @@ using namespace std;
 
 #include "TwoPunctures.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 inline string &lTrim(string &ss)
 {
   string::iterator p = find_if(ss.begin(), ss.end(), not1(ptr_fun<int, int>(isspace)));
@@ -204,6 +208,18 @@ int main(int argc, char *argv[])
     cout << "///////////////////////////////////////////////////////////////" << endl;
   }
   //===========================the computation body====================================================
+  // TwoPuncture is a separate stage from ABE and benefits from many OpenMP
+  // threads; it reads its own AMSS_TWOP_THREADS setting (default: all cores)
+  // instead of sharing ABE's OMP_NUM_THREADS.
+#ifdef _OPENMP
+  {
+    const char *twop_threads = getenv("AMSS_TWOP_THREADS");
+    if (twop_threads && atoi(twop_threads) > 0)
+      omp_set_num_threads(atoi(twop_threads));
+    printf("TwoPuncture OpenMP: using %d thread(s)\n", omp_get_max_threads());
+  }
+#endif
+
   TwoPunctures *ADM;
 
   ADM = new TwoPunctures(mp, mm, b, P_plusx, P_plusy, P_plusz, S_plusx, S_plusy, S_plusz,

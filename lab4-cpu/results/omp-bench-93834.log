@@ -1,0 +1,4 @@
+Benchmark root: /tmp/lab4-omp-bench
+Build: /workspace/lab4/build
+Steps per combination: 2
+==> ranks=30 threads=1 total_cpus=30

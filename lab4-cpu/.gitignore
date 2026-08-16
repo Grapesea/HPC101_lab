@@ -7,3 +7,11 @@ twopuncture_cache/
 build_*/
 .vscode/
 .out
+bench_*.sh
+bench_*/
+*_output/
+*_check/
+rank_*/
+perf_rank0.sh
+core.*
+*_results/

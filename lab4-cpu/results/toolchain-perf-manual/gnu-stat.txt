@@ -1,0 +1,24 @@
+# started on Fri Aug 14 17:21:00 2026
+
+
+ Performance counter stats for 'perf record -F 49 -m 8 -o /home/h3240104505/HPC101_lab/lab4-cpu/results/toolchain-perf-manual/gnu.data -- ./ABE':
+
+          77286.69 msec task-clock:u                     #    0.951 CPUs utilized             
+                 0      context-switches:u               #    0.000 /sec                      
+                 0      cpu-migrations:u                 #    0.000 /sec                      
+            108038      page-faults:u                    #    1.398 K/sec                     
+      215435579518      cycles:u                         #    2.787 GHz                       
+      384171025701      instructions:u                   #    1.78  insn per cycle            
+       54166798181      branches:u                       #  700.855 M/sec                     
+         395940052      branch-misses:u                  #    0.73% of all branches           
+      162213901067      L1-dcache-loads:u                #    2.099 G/sec                     
+         866019665      L1-dcache-load-misses:u          #    0.53% of all L1-dcache accesses 
+         855877733      LLC-loads:u                      #   11.074 M/sec                     
+         437381167      LLC-load-misses:u                #   51.10% of all LL-cache accesses  
+
+      81.269268245 seconds time elapsed
+
+      76.006972000 seconds user
+       1.388126000 seconds sys
+
+

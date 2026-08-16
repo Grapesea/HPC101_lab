@@ -8,6 +8,10 @@
 #include <map>
 using namespace std;
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include <mpi.h>
 
 #include "misc.h"
@@ -32,9 +36,22 @@ namespace parameters
 int main(int argc, char *argv[])
 {
       int myrank = 0, nprocs = 1;
-      MPI_Init(&argc, &argv);
+      int mpi_thread_provided = 0;
+      // The OpenMP-parallelized block loops in bssn_class::Step() call MPI
+      // only from the master thread (between parallel regions), so
+      // MPI_THREAD_FUNNELED is the correct (and safest) support level.
+      MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &mpi_thread_provided);
       MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
       MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+
+#ifdef _OPENMP
+      if (myrank == 0)
+      {
+            cout << " OpenMP enabled: max threads per MPI rank = "
+                 << omp_get_max_threads()
+                 << ", MPI thread support = " << mpi_thread_provided << endl;
+      }
+#endif
 
       double Begin_clock, End_clock;
       if (myrank == 0)

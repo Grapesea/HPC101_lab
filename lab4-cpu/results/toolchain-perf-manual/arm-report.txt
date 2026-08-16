@@ -1,0 +1,110 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cycles:Pu'
+# Event count (approx.): 179324917512
+#
+# Overhead  Command  Shared Object          Symbol                                                                                                                                    
+# ........  .......  .....................  ..........................................................................................................................................
+#
+    60.60%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f13c4
+     8.13%  ABE      ABE                    [.] compute_rhs_bssn_
+     4.43%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230c1c
+     4.01%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f13b0
+     3.97%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230f24
+     3.71%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1324
+     2.68%  ABE      ABE                    [.] __nv_lopsided__F1L80_1_
+     1.73%  ABE      ABE                    [.] __nv_fdderivs__F1L483_2_
+     1.45%  ABE      ABE                    [.] __nv_kodis__F1L67_1_
+     1.03%  ABE      ABE                    [.] copy_
+     1.01%  ABE      ABE                    [.] __nv_fderivs__F1L77_1_
+     0.62%  ABE      ABE                    [.] symmetry_bd_
+     0.59%  ABE      libopen-pal.so.80.0.5  [.] opal_progress
+     0.43%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000608c8
+     0.40%  ABE      ABE                    [.] prolong3_
+     0.32%  ABE      libastring.so          [.] memset
+     0.29%  ABE      ABE                    [.] enforce_ga_
+     0.26%  ABE      libopen-pal.so.80.0.5  [.] 0x0000000000027238
+     0.21%  ABE      libmpi.so.40.40.7      [.] 0x0000000000287ec0
+     0.20%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1170
+     0.19%  ABE      libamath.so            [.] optr_pl_gcc_vpowq_f64
+     0.16%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1328
+     0.16%  ABE      ABE                    [.] rungekutta4_rout_
+     0.16%  ABE      libmpi.so.40.40.7      [.] opal_progress@plt
+     0.16%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1120
+     0.16%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230c28
+     0.13%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000271f8
+     0.13%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f124c
+     0.13%  ABE      ABE                    [.] average2_
+     0.10%  ABE      libmpi.so.40.40.7      [.] 0x0000000000241b4c
+     0.10%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000608cc
+     0.10%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230bf0
+     0.10%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230be0
+     0.10%  ABE      ABE                    [.] sommerfeld_rout_
+     0.10%  ABE      ABE                    [.] lowerboundset_
+     0.10%  ABE      ABE                    [.] restrict3_
+     0.07%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1300
+     0.07%  ABE      libmpi.so.40.40.7      [.] 0x0000000000241b58
+     0.07%  ABE      libm.so.6              [.] __sincos
+     0.07%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230f18
+     0.07%  ABE      libmpi.so.40.40.7      [.] 0x00000000001f1f90
+     0.07%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230f48
+     0.07%  ABE      ABE                    [.] Patch::Interp_Points(MyList<var>*, int, double**, double*, int)
+     0.07%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1174
+     0.07%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1308
+     0.07%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230c0c
+     0.07%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1148
+     0.07%  ABE      libc.so.6              [.] _int_malloc
+     0.07%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f14c8
+     0.06%  ABE      ABE                    [.] Parallel::build_gstl(MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>**, MyList<Parallel::gridseg>**)
+     0.06%  ABE      libc.so.6              [.] malloc
+     0.06%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1348
+     0.06%  ABE      libc.so.6              [.] malloc_consolidate
+     0.06%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1230
+     0.06%  ABE      ABE                    [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
+     0.05%  ABE      libomp.so              [.] __kmp_fork_call
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230bf4
+     0.03%  ABE      ABE                    [.] misc::Wigner_d_function(int, int, int, double)
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f14b0
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000271f0
+     0.03%  ABE      ABE                    [.] misc::fact(int)
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x00000000001f1f88
+     0.03%  ABE      libmpi.so.40.40.7      [.] PMPI_Comm_rank
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1244
+     0.03%  ABE      libc.so.6              [.] cfree@GLIBC_2.17
+     0.03%  ABE      ABE                    [.] Parallel::build_owned_gsl5(Patch*, int)
+     0.03%  ABE      ABE                    [.] bssn_class::Step(int, int)
+     0.03%  ABE      libc.so.6              [.] _int_free_chunk
+     0.03%  ABE      libc.so.6              [.] hack_digit
+     0.03%  ABE      ABE                    [.] Parallel::data_packer(double*, MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>*, int, int, MyList<var>*, MyList<var>*, int)
+     0.03%  ABE      libmpi.so.40.40.7      [.] 0x0000000000230c10
+     0.03%  ABE      libopen-pal.so.80.0.5  [.] 0x00000000000f1330
+     0.03%  ABE      libarmflang.so         [.] memcpy@plt
+     0.01%  ABE      libamath.so            [.] optr_pl_ac_tanh_f64
+     0.01%  ABE      libstdc++.so.6.0.33    [.] operator new(unsigned long)
+     0.01%  ABE      libc.so.6              [.] str_to_mpn.part.0.constprop.0
+     0.00%  ABE      libc.so.6              [.] __GI_____strtod_l_internal
+     0.00%  ABE      libc.so.6              [.] __mpn_mul
+     0.00%  ABE      libmpi.so.40.40.7      [.] mca_pml_ob1_recv_req_start
+     0.00%  ABE      [unknown]              [k] 0xffffbb7146733314
+     0.00%  ABE      libopen-pal.so.80.0.5  [.] mca_btl_sm_poll_handle_frag
+     0.00%  ABE      libmpi.so.40.40.7      [.] 0x00000000002454dc
+     0.00%  ABE      libstdc++.so.6.0.33    [.] std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::find(char const*, unsigned long, unsigned long) const
+     0.00%  ABE      [unknown]              [k] 0xffffbb7146732894
+     0.00%  ABE      libpmix.so.2.13.7      [.] pmix_bfrops_base_unpack_string
+     0.00%  ABE      ld-linux-aarch64.so.1  [.] _dl_map_object_from_fd
+     0.00%  ABE      libc.so.6              [.] __GI___strchrnul
+     0.00%  ABE      libc.so.6              [.] __printf_buffer
+     0.00%  ABE      libc.so.6              [.] __internal_syscall_cancel
+     0.00%  ABE      libc.so.6              [.] __ctype_init
+     0.00%  ABE      libc.so.6              [.] start_thread
+     0.00%  ABE      ld-linux-aarch64.so.1  [.] _dl_start
+     0.00%  ABE      ld-linux-aarch64.so.1  [.] _start
+     0.00%  ABE      [unknown]              [k] 0xffffbb7146732db8
+
+
+#
+# (Tip: For a higher level overview, try: perf report --sort comm,dso)
+#

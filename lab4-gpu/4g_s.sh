@@ -16,6 +16,9 @@ cp AMSS_NCKU_Input.py "$input_backup"
 trap 'cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"' EXIT
 sed -i '/^[[:space:]]*Final_Evolution_Time[[:space:]]*=/c\Final_Evolution_Time = 1.0' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Evolution_Step_Number[[:space:]]*=/c\Evolution_Step_Number = 1' AMSS_NCKU_Input.py
+sed -i '/^[[:space:]]*MPI_processes[[:space:]]*=/c\MPI_processes = 1' AMSS_NCKU_Input.py
+sed -i '/^[[:space:]]*OMP_threads[[:space:]]*=/c\OMP_threads = 1' AMSS_NCKU_Input.py
+sed -i '/^[[:space:]]*GPU_Calculation[[:space:]]*=/c\GPU_Calculation = "yes"' AMSS_NCKU_Input.py
 
 # Force the one-GPU baseline. Linux perf observes host/MPI/CUDA-runtime work;
 # use Nsight Systems/Compute separately for CUDA kernel profiling.

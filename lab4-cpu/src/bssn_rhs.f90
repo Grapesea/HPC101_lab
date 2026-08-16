@@ -94,7 +94,9 @@
 
 
 
-!!! sanity check
+#ifdef AMSS_SANITY_CHECK
+!!! optional debug sanity check; disabled for production runs because this
+!!! scans 22 full 3-D arrays on every RHS call.
   dX = sum(chi)+sum(trK)+sum(dxx)+sum(gxy)+sum(gxz)+sum(dyy)+sum(gyz)+sum(dzz) &
       +sum(Axx)+sum(Axy)+sum(Axz)+sum(Ayy)+sum(Ayz)+sum(Azz)                   &
       +sum(Gamx)+sum(Gamy)+sum(Gamz)                                           &
@@ -124,6 +126,7 @@
      gont = 1
      return
   endif
+#endif
 
   PI = dacos(-ONE)
 

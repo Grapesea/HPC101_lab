@@ -16,3 +16,6 @@ lab4.*
 lab4/
 lab5.*
 report.pdf
+node_modules/
+*.json
+perf_rank0.sh

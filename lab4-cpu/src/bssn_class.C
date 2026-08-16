@@ -5,7 +5,13 @@
 #include <string>
 #include <cstring> 
 #include <iostream>
+#include <vector>
+#include <utility>
 using namespace std;
+
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 #include <time.h>
 
@@ -1822,16 +1828,35 @@ void bssn_class::Step(int lev, int YN)
   int pre = 0, cor = 1;
   int ERROR = 0;
 
-  // Predictor
-  MyList<Patch> *Pp = GH->PatL[lev];
-  while (Pp)
+  // Collect this rank's blocks at this level. Blocks are independent across
+  // the (Patch, Block) decomposition, so the RK4 predictor/corrector loops
+  // below are parallelized with OpenMP over these blocks.
+  std::vector<std::pair<Patch *, Block *> > myblocks;
   {
-    MyList<Block> *BP = Pp->data->blb;
-    while (BP)
+    MyList<Patch> *Pp = GH->PatL[lev];
+    while (Pp)
     {
-      Block *cg = BP->data;
-      if (myrank == cg->rank)
+      MyList<Block> *BP = Pp->data->blb;
+      while (BP)
       {
+        if (BP->data->rank == myrank)
+          myblocks.push_back(std::make_pair(Pp->data, BP->data));
+        if (BP == Pp->data->ble)
+          break;
+        BP = BP->next;
+      }
+      Pp = Pp->next;
+    }
+  }
+  const int nb = (int)myblocks.size();
+
+  // Predictor
+#pragma omp parallel for schedule(static) reduction(|:ERROR) if(nb > 1)
+  for (int b = 0; b < nb; b++)
+  {
+    Patch *pp = myblocks[b].first;
+    Block *cg = myblocks[b].second;
+    {
         f_enforce_ga(cg->shape,
                      cg->fgfs[gxx0->sgfn], cg->fgfs[gxy0->sgfn], cg->fgfs[gxz0->sgfn], 
                      cg->fgfs[gyy0->sgfn], cg->fgfs[gyz0->sgfn], cg->fgfs[gzz0->sgfn],
@@ -1887,8 +1912,8 @@ void bssn_class::Step(int lev, int YN)
           {
             if (lev == 0) // sommerfeld indeed
               f_sommerfeld_routbam(cg->shape, cg->X[0], cg->X[1], cg->X[2],
-                                   Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], 
-                                   Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
+                                   pp->bbox[0], pp->bbox[1], pp->bbox[2], 
+                                   pp->bbox[3], pp->bbox[4], pp->bbox[5],
                                    cg->fgfs[varlrhs->data->sgfn],
                                    cg->fgfs[varl0->data->sgfn], 
                                    varl0->data->propspeed, varl0->data->SoA,
@@ -1901,8 +1926,8 @@ void bssn_class::Step(int lev, int YN)
                                iter_count);
             if (lev > 0) // fix BD point
               f_sommerfeld_rout(cg->shape, cg->X[0], cg->X[1], cg->X[2],
-                                Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], 
-                                Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
+                                pp->bbox[0], pp->bbox[1], pp->bbox[2], 
+                                pp->bbox[3], pp->bbox[4], pp->bbox[5],
                                 dT_lev, 
                                 cg->fgfs[phi0->sgfn],
                                 cg->fgfs[Lap0->sgfn], 
@@ -1917,12 +1942,7 @@ void bssn_class::Step(int lev, int YN)
           }
         }
         f_lowerboundset(cg->shape, cg->fgfs[phi->sgfn], chitiny);
-      }
-      if (BP == Pp->data->ble)
-        break;
-      BP = BP->next;
     }
-    Pp = Pp->next;
   }
   // check error information
   {
@@ -1949,15 +1969,12 @@ void bssn_class::Step(int lev, int YN)
     // for RK4: t0, t0+dt/2, t0+dt/2, t0+dt;
     if (iter_count == 1 || iter_count == 3)
       TRK4 += dT_lev / 2;
-    Pp = GH->PatL[lev];
-    while (Pp)
+#pragma omp parallel for schedule(static) reduction(|:ERROR) if(nb > 1)
+    for (int b = 0; b < nb; b++)
     {
-      MyList<Block> *BP = Pp->data->blb;
-      while (BP)
+      Patch *pp = myblocks[b].first;
+      Block *cg = myblocks[b].second;
       {
-        Block *cg = BP->data;
-        if (myrank == cg->rank)
-        {
           f_enforce_ga(cg->shape,
                        cg->fgfs[gxx->sgfn], cg->fgfs[gxy->sgfn], cg->fgfs[gxz->sgfn], 
                        cg->fgfs[gyy->sgfn], cg->fgfs[gyz->sgfn], cg->fgfs[gzz->sgfn],
@@ -2012,8 +2029,8 @@ void bssn_class::Step(int lev, int YN)
             {
               if (lev == 0) // sommerfeld indeed
                 f_sommerfeld_routbam(cg->shape, cg->X[0], cg->X[1], cg->X[2],
-                                     Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], 
-                                     Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
+                                     pp->bbox[0], pp->bbox[1], pp->bbox[2], 
+                                     pp->bbox[3], pp->bbox[4], pp->bbox[5],
                                      cg->fgfs[varl1->data->sgfn],
                                      cg->fgfs[varl->data->sgfn], varl0->data->propspeed, varl0->data->SoA,
                                      Symmetry);
@@ -2025,8 +2042,8 @@ void bssn_class::Step(int lev, int YN)
 
               if (lev > 0) // fix BD point
                 f_sommerfeld_rout(cg->shape, cg->X[0], cg->X[1], cg->X[2],
-                                  Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], 
-                                  Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
+                                  pp->bbox[0], pp->bbox[1], pp->bbox[2], 
+                                  pp->bbox[3], pp->bbox[4], pp->bbox[5],
                                   dT_lev, 
                                   cg->fgfs[phi0->sgfn],
                                   cg->fgfs[Lap0->sgfn], 
@@ -2042,12 +2059,7 @@ void bssn_class::Step(int lev, int YN)
             }
           }
           f_lowerboundset(cg->shape, cg->fgfs[phi1->sgfn], chitiny);
-        }
-        if (BP == Pp->data->ble)
-          break;
-        BP = BP->next;
       }
-      Pp = Pp->next;
     }
 
     // check error information
@@ -2075,20 +2087,9 @@ void bssn_class::Step(int lev, int YN)
     // swap time level
     if (iter_count < 3)
     {
-      Pp = GH->PatL[lev];
-      while (Pp)
-      {
-        MyList<Block> *BP = Pp->data->blb;
-        while (BP)
-        {
-          Block *cg = BP->data;
-          cg->swapList(SynchList_pre, SynchList_cor, myrank);
-          if (BP == Pp->data->ble)
-            break;
-          BP = BP->next;
-        }
-        Pp = Pp->next;
-      }
+#pragma omp parallel for schedule(static) if(nb > 1)
+      for (int b = 0; b < nb; b++)
+        myblocks[b].second->swapList(SynchList_pre, SynchList_cor, myrank);
     }
   }
   // note the data structure before update
@@ -2098,20 +2099,11 @@ void bssn_class::Step(int lev, int YN)
   //
   // OldStateList  old -----------
   // update
-  Pp = GH->PatL[lev];
-  while (Pp)
+#pragma omp parallel for schedule(static) if(nb > 1)
+  for (int b = 0; b < nb; b++)
   {
-    MyList<Block> *BP = Pp->data->blb;
-    while (BP)
-    {
-      Block *cg = BP->data;
-      cg->swapList(StateList, SynchList_cor, myrank);
-      cg->swapList(OldStateList, SynchList_cor, myrank);
-      if (BP == Pp->data->ble)
-        break;
-      BP = BP->next;
-    }
-    Pp = Pp->next;
+    myblocks[b].second->swapList(StateList, SynchList_cor, myrank);
+    myblocks[b].second->swapList(OldStateList, SynchList_cor, myrank);
   }
   // for black hole position
   if (BH_num > 0 && lev == GH->levels - 1)

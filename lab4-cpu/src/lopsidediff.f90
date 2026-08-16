@@ -76,6 +76,9 @@ subroutine lopsided(ex,X,Y,Z,f,f_rhs,Sfx,Sfy,Sfz,Symmetry,SoA)
 
 ! upper bound set ex-1 only for efficiency, 
 ! the loop body will set ex 0 also
+! The stencil reads the completed ghost array and updates one unique RHS cell.
+!$omp parallel do collapse(2) schedule(static) private(i,j,k) &
+!$omp& if(ex(1)*ex(2)*ex(3) >= 2048)
   do k=1,ex(3)-1
   do j=1,ex(2)-1
   do i=1,ex(1)-1

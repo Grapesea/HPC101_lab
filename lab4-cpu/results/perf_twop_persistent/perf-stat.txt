@@ -1,0 +1,24 @@
+# started on Fri Aug 14 17:03:47 2026
+
+
+ Performance counter stats for 'perf record -F 49 -m 8 -o perf.data -- ../../build_hybrid_blocks_test/TwoPunctureABE':
+
+         363101.08 msec task-clock:u                     #    3.233 CPUs utilized             
+                 0      context-switches:u               #    0.000 /sec                      
+                 0      cpu-migrations:u                 #    0.000 /sec                      
+             69881      page-faults:u                    #  192.456 /sec                      
+      901798447853      cycles:u                         #    2.484 GHz                       
+     2952637795215      instructions:u                   #    3.27  insn per cycle            
+      618003339600      branches:u                       #    1.702 G/sec                     
+        2147100302      branch-misses:u                  #    0.35% of all branches           
+      917260412344      L1-dcache-loads:u                #    2.526 G/sec                     
+       11691198722      L1-dcache-load-misses:u          #    1.27% of all L1-dcache accesses 
+       20185722396      LLC-loads:u                      #   55.593 M/sec                     
+         133001608      LLC-load-misses:u                #    0.66% of all LL-cache accesses  
+
+     112.300582637 seconds time elapsed
+
+     327.719865000 seconds user
+      35.399464000 seconds sys
+
+

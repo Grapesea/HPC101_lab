@@ -11,6 +11,12 @@ set -euo pipefail
 # Ansorg-TwoPuncture allocates large Fortran automatic arrays.
 ulimit -s unlimited
 
+# bssn_class::Step() parallelizes over grid blocks with OpenMP, and each
+# worker thread runs compute_rhs_bssn which allocates ~35 MB of Fortran
+# automatic arrays on the thread stack. `ulimit -s` only affects the main
+# thread, so give OpenMP worker threads an explicit large stack too.
+export OMP_STACKSIZE="${OMP_STACKSIZE:-1G}"
+
 # HPC jobs run inside a root container even when submitted by a regular user.
 # Open MPI 5.x (prterun) therefore needs its explicit container opt-in. These
 # variables are ignored for non-root launches and preserve a caller-supplied
@@ -33,7 +39,12 @@ AMSS_BUILD_DIR="$(resolve_under_root "${AMSS_BUILD_DIR:-$ROOT_DIR/build}")"
 AMSS_OUTPUT_ROOT="$(resolve_under_root "${AMSS_OUTPUT_ROOT:-$ROOT_DIR}")"
 AMSS_CACHE_DIR="$(resolve_under_root "${AMSS_CACHE_DIR:-$ROOT_DIR/twopuncture_cache}")"
 AMSS_MPIEXEC="${AMSS_MPIEXEC:-mpiexec}"
-export AMSS_BUILD_DIR AMSS_OUTPUT_ROOT AMSS_CACHE_DIR AMSS_MPIEXEC
+# TwoPuncture's red/black plane relaxation is independent across planes.  The
+# main ABE ranks keep their configured OMP_NUM_THREADS value; TwoPunctureABE
+# reads this separate setting when compiled with OpenMP. lab4 sweep showed the
+# plateau at 24 threads (82s vs 98s @13), so default to 24.
+export AMSS_TWOP_THREADS="${AMSS_TWOP_THREADS:-24}"
+export AMSS_BUILD_DIR AMSS_OUTPUT_ROOT AMSS_CACHE_DIR AMSS_MPIEXEC AMSS_TWOP_THREADS
 
 if [[ "${1:-}" == "--twop-cache" ]]; then
   export AMSS_NCKU_TWOP_CACHE=1
