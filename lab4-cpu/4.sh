@@ -40,14 +40,9 @@ sed -i '/^[[:space:]]*Evolution_Step_Number[[:space:]]*=/c\Evolution_Step_Number
 # environment consistent, even if a previous GPU run left it set to "yes".
 export AMSS_GPU_CALCULATION=no
 unset AMSS_FINAL_EVOLUTION_TIME AMSS_EVOLUTION_STEPS
+export AMSS_ENABLE_GPU=OFF
 export AMSS_MPI_PROCESSES=30
 export AMSS_OMP_THREADS=1
-# The Python driver reads MPI_processes / OMP_threads from AMSS_NCKU_Input.py
-# (not from these env vars), so sed them into the input file to keep the two
-# in sync. The trap above restores the original input file on exit.
-sed -i "/^[[:space:]]*MPI_processes[[:space:]]*=/c\\MPI_processes = $AMSS_MPI_PROCESSES" AMSS_NCKU_Input.py
-sed -i "/^[[:space:]]*OMP_threads[[:space:]]*=/c\\OMP_threads = $AMSS_OMP_THREADS" AMSS_NCKU_Input.py
-export AMSS_ENABLE_GPU=OFF
 export AMSS_ENABLE_OPENMP=ON
 export AMSS_ENABLE_SANITY_CHECK=OFF
 # lab4 sweep: TwoPuncture relaxation plateaus at 24 threads (82s).

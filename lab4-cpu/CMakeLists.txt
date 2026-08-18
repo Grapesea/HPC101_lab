@@ -7,10 +7,22 @@ option(AMSS_ENABLE_GPU "Enable CUDA GPU build (ABEGPU target)" OFF)
 # architecture selection separate below; AMSS_OPT applies to C++/Fortran.
 set(AMSS_OPT "-Ofast -ffast-math" CACHE STRING "C/C++/Fortran optimization level")
 set(AMSS_ARCH_FLAGS "-mcpu=native" CACHE STRING "Architecture-specific compiler flags")
-option(AMSS_ENABLE_OPENMP "Enable OpenMP in CPU solvers" OFF)
+# Default ON: the lab4 CPU sweep (results/4-96927.log) relies on OpenMP for
+# TwoPunctureABE's 24-thread relaxation, so the submitted build must enable
+# it even when compile.sh is invoked with no extra AMSS_* environment set.
+option(AMSS_ENABLE_OPENMP "Enable OpenMP in CPU solvers" ON)
 option(AMSS_ENABLE_SANITY_CHECK "Keep per-RHS full-array NaN scans" OFF)
 set(AMSS_MPI_CUDA_AWARE 0 CACHE STRING "Set MPI_CUDA_AWARE macro for ABEGPU (0/1)")
 set_property(CACHE AMSS_MPI_CUDA_AWARE PROPERTY STRINGS 0 1)
+# Extra runtime library search paths baked into ABE/TwoPunctureABE's RPATH.
+# Needed for the hybrid-toolchain CPU build: compile.sh stages a
+# GNU-compiled TwoPunctureABE (faster TwoPuncture relaxation) inside the
+# Arm-compiled build tree (faster Fortran-heavy ABE evolution). That GNU
+# binary carries no RPATH for Arm's OpenMP runtime, and evaluation nodes may
+# not have an unversioned libomp.so on the default linker search path, so
+# without this it fails with "libomp.so: cannot open shared object file"
+# once relocated. Colon-separated, e.g. "/opt/arm/.../lib:/opt/arm/.../lib64".
+set(AMSS_EXTRA_RPATH "" CACHE STRING "Extra colon-separated runtime library search paths for ABE/TwoPunctureABE RPATH")
 
 # --- Compile flags ----------------------------------------------------------
 # Legacy AMSS-NCKU has strict-aliasing UB; -fno-strict-aliasing is kept
@@ -20,6 +32,9 @@ set_property(CACHE AMSS_MPI_CUDA_AWARE PROPERTY STRINGS 0 1)
 # Fortran side skips the f90 modules). Apply to every supported compiler.
 separate_arguments(AMSS_OPT_LIST UNIX_COMMAND "${AMSS_OPT}")
 separate_arguments(AMSS_ARCH_FLAGS_LIST UNIX_COMMAND "${AMSS_ARCH_FLAGS}")
+if(AMSS_EXTRA_RPATH)
+  string(REPLACE ":" ";" AMSS_EXTRA_RPATH_LIST "${AMSS_EXTRA_RPATH}")
+endif()
 
 # Clang/IntelLLVM/ARMClang all accept the GCC-style flags used here.
 # COMPILE_LANG_AND_ID takes comma-separated compiler IDs (not CMake list).
@@ -64,6 +79,14 @@ target_link_libraries(ABE PRIVATE MPI::MPI_CXX)
 # --- TwoPunctureABE: initial-data solver -----------------------------------
 add_executable(TwoPunctureABE src/TwoPunctureABE.C src/TwoPunctures.C)
 target_link_libraries(TwoPunctureABE PRIVATE MPI::MPI_CXX)
+
+# --- Extra RPATH (hybrid-toolchain runtime library fix, see AMSS_EXTRA_RPATH
+# above) -----------------------------------------------------------------
+if(AMSS_EXTRA_RPATH_LIST)
+  set_target_properties(ABE TwoPunctureABE PROPERTIES
+    BUILD_RPATH "${AMSS_EXTRA_RPATH_LIST}"
+    INSTALL_RPATH "${AMSS_EXTRA_RPATH_LIST}")
+endif()
 
 # --- Optional OpenMP --------------------------------------------------------
 if(AMSS_ENABLE_OPENMP)
@@ -122,4 +145,5 @@ else()
   message(STATUS "GPU      : OFF")
 endif()
 message(STATUS "AMSS_OPT=${AMSS_OPT} ARCH_FLAGS=${AMSS_ARCH_FLAGS} OPENMP=${AMSS_ENABLE_OPENMP} SANITY_CHECK=${AMSS_ENABLE_SANITY_CHECK} MPI_CUDA_AWARE=${AMSS_MPI_CUDA_AWARE}")
+message(STATUS "AMSS_EXTRA_RPATH=${AMSS_EXTRA_RPATH}")
 message(STATUS "==========================================================")

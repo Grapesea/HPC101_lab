@@ -1,0 +1,5 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Tue Aug 18 03:57:38 PM UTC 2026
+/tmp/.hpc.job: line 76: AMSS_MPI_PROCESSES: unbound variable
+Total wall time: 0s (0m 0s)
+Time budget remaining: 1500s

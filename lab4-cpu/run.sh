@@ -1,4 +1,8 @@
 #!/bin/bash
+#HPC --partition=lab4
+#HPC --cpu=60
+#HPC --mem=100Gi
+#HPC --time=30m
 # run.sh — run the AMSS-NCKU Lab 4 driver.
 #
 # Path layout (relative values resolve against the lab root):
@@ -10,6 +14,23 @@ set -euo pipefail
 
 # Ansorg-TwoPuncture allocates large Fortran automatic arrays.
 ulimit -s unlimited
+
+# compile.sh's default hybrid-toolchain build stages a GNU-compiled
+# TwoPunctureABE (faster TwoPuncture relaxation) inside the Arm-compiled
+# build tree (faster Fortran-heavy ABE evolution). That GNU binary's RPATH
+# is already patched at link time (AMSS_EXTRA_RPATH in CMakeLists.txt), but
+# hpc jobs do not reliably inherit the interactive container's
+# LD_LIBRARY_PATH, so export the same paths here too as a second line of
+# defense (see lab4.md "提交后的运行时链接修复"). Harmless no-op on any
+# machine without the Arm Compiler installed.
+ARM_COMPILER_ROOT="${AMSS_ARM_COMPILER_ROOT:-/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04}"
+ARM_GCC_ROOT="${AMSS_ARM_GCC_ROOT:-/opt/arm/gcc-14.2.0_Ubuntu-22.04}"
+extra_lib_path=""
+for d in "$ARM_COMPILER_ROOT/lib" "$ARM_GCC_ROOT/lib64"; do
+  [[ -d "$d" ]] || continue
+  extra_lib_path="${extra_lib_path:+$extra_lib_path:}$d"
+done
+[[ -n "$extra_lib_path" ]] && export LD_LIBRARY_PATH="${extra_lib_path}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 # bssn_class::Step() parallelizes over grid blocks with OpenMP, and each
 # worker thread runs compute_rhs_bssn which allocates ~35 MB of Fortran
