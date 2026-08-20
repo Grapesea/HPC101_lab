@@ -1,7 +1,5 @@
 #!/bin/bash
 #HPC --partition=lab4
-# Profiling one MPI rank gives usable per-process hotspots and avoids
-# multiplying perf's sample stream by 30 ranks.
 #HPC --cpu=16
 #HPC --mem=100Gi
 #HPC --time=30m
@@ -36,18 +34,16 @@ JOB_TAG="${HPC_JOB_ID:-${SLURM_JOB_ID:-${JOB_ID:-%j}}}"
 input_backup="AMSS_NCKU_Input.py.4ssh.$$"
 cp AMSS_NCKU_Input.py "$input_backup"
 trap 'rc=$?; cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"; report_total_time "$rc"; exit "$rc"' EXIT
-sed -i '/^[[:space:]]*GPU_Calculation[[:space:]]*=/c\GPU_Calculation  = "no"' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Final_Evolution_Time[[:space:]]*=/c\Final_Evolution_Time = 1.0' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Evolution_Step_Number[[:space:]]*=/c\Evolution_Step_Number = 1' AMSS_NCKU_Input.py
 
 # Force the CPU baseline and keep its profiled build/run separate.
-export AMSS_GPU_CALCULATION=no
-export AMSS_MPI_PROCESSES=1
+export AMSS_MPI_PROCESSES=30
 export AMSS_OMP_THREADS=1
 export AMSS_FINAL_EVOLUTION_TIME=1.0
 export AMSS_EVOLUTION_STEPS=1
 export AMSS_ENABLE_GPU=OFF
-export AMSS_ENABLE_OPENMP=OFF
+export AMSS_ENABLE_OPENMP=ON
 export AMSS_OPT="-Ofast -ffast-math"
 export AMSS_ARCH_FLAGS="-mcpu=native"
 export AMSS_BUILD_DIR="$PWD/build_cpu_perf"

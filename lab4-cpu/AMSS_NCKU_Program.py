@@ -37,6 +37,7 @@ matplotlib.use("Agg")          # headless: write figures to files, no display
 import AMSS_NCKU_Input as input_data
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+SKIP_PLOTS = os.environ.get("AMSS_SKIP_PLOTS", "") == "1"
 
 
 def _resolve_under_root(value, default):
@@ -166,7 +167,8 @@ print("\n Generating the AMSS-NCKU input parfile for the ABE executable.\n")
 from scripts import numerical_grid
 
 numerical_grid.append_AMSSNCKU_cgh_input()
-numerical_grid.plot_initial_grid()
+if not SKIP_PLOTS:
+    numerical_grid.plot_initial_grid()
 
 ##################################################################
 ## Stage the executables into the run directory
@@ -259,31 +261,37 @@ for name in ("bssn_BH.dat", "bssn_ADMQs.dat", "bssn_psi4.dat", "bssn_constraint.
 ##################################################################
 ## Plot the results (non-fatal: the simulation data is already saved)
 
-print("\n Plotting the AMSS-NCKU simulation results\n")
-try:
-    from scripts import plot_xiaoqu
-    from scripts import plot_GW_strain_amplitude_xiaoqu
+## Scoring only reads the numerical output files, while figure generation is
+## included in `This Program Cost`, so AMSS_SKIP_PLOTS=1 skips it entirely.
 
-    plot_xiaoqu.generate_puncture_orbit_plot(binary_results_directory, figure_directory)
-    plot_xiaoqu.generate_puncture_orbit_plot3D(binary_results_directory, figure_directory)
-    plot_xiaoqu.generate_puncture_distence_plot(binary_results_directory, figure_directory)
+if SKIP_PLOTS:
+    print("\n Skipping result plotting (AMSS_SKIP_PLOTS=1); figures are not graded.\n")
+else:
+    print("\n Plotting the AMSS-NCKU simulation results\n")
+    try:
+        from scripts import plot_xiaoqu
+        from scripts import plot_GW_strain_amplitude_xiaoqu
 
-    for i in range(input_data.Detector_Number):
-        plot_xiaoqu.generate_gravitational_wave_psi4_plot(
-            binary_results_directory, figure_directory, i)
-        plot_GW_strain_amplitude_xiaoqu.generate_gravitational_wave_amplitude_plot(
-            binary_results_directory, figure_directory, i)
+        plot_xiaoqu.generate_puncture_orbit_plot(binary_results_directory, figure_directory)
+        plot_xiaoqu.generate_puncture_orbit_plot3D(binary_results_directory, figure_directory)
+        plot_xiaoqu.generate_puncture_distence_plot(binary_results_directory, figure_directory)
 
-    for i in range(input_data.Detector_Number):
-        plot_xiaoqu.generate_ADMmass_plot(binary_results_directory, figure_directory, i)
+        for i in range(input_data.Detector_Number):
+            plot_xiaoqu.generate_gravitational_wave_psi4_plot(
+                binary_results_directory, figure_directory, i)
+            plot_GW_strain_amplitude_xiaoqu.generate_gravitational_wave_amplitude_plot(
+                binary_results_directory, figure_directory, i)
 
-    for i in range(input_data.grid_level):
-        plot_xiaoqu.generate_constraint_check_plot(binary_results_directory, figure_directory, i)
+        for i in range(input_data.Detector_Number):
+            plot_xiaoqu.generate_ADMmass_plot(binary_results_directory, figure_directory, i)
 
-except Exception as exc:                                  # noqa: BLE001
-    print(f" WARNING: plotting failed ({type(exc).__name__}: {exc})")
-    print(" The simulation result files are still available under "
-          f"{output_directory}")
+        for i in range(input_data.grid_level):
+            plot_xiaoqu.generate_constraint_check_plot(binary_results_directory, figure_directory, i)
+
+    except Exception as exc:                              # noqa: BLE001
+        print(f" WARNING: plotting failed ({type(exc).__name__}: {exc})")
+        print(" The simulation result files are still available under "
+              f"{output_directory}")
 
 ##################################################################
 

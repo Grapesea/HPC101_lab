@@ -62,9 +62,9 @@ AMSS_CACHE_DIR="$(resolve_under_root "${AMSS_CACHE_DIR:-$ROOT_DIR/twopuncture_ca
 AMSS_MPIEXEC="${AMSS_MPIEXEC:-mpiexec}"
 # TwoPuncture's red/black plane relaxation is independent across planes.  The
 # main ABE ranks keep their configured OMP_NUM_THREADS value; TwoPunctureABE
-# reads this separate setting when compiled with OpenMP. lab4 sweep showed the
-# plateau at 24 threads (82s vs 98s @13), so default to 24.
-export AMSS_TWOP_THREADS="${AMSS_TWOP_THREADS:-24}"
+# reads this separate setting when compiled with OpenMP. The final twop20
+# sweep selected 20 threads for the single-process initial-data solve.
+export AMSS_TWOP_THREADS="${AMSS_TWOP_THREADS:-20}"
 export AMSS_BUILD_DIR AMSS_OUTPUT_ROOT AMSS_CACHE_DIR AMSS_MPIEXEC AMSS_TWOP_THREADS
 
 if [[ "${1:-}" == "--twop-cache" ]]; then

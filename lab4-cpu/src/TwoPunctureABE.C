@@ -209,13 +209,21 @@ int main(int argc, char *argv[])
   }
   //===========================the computation body====================================================
   // TwoPuncture is a separate stage from ABE and benefits from many OpenMP
-  // threads; it reads its own AMSS_TWOP_THREADS setting (default: all cores)
-  // instead of sharing ABE's OMP_NUM_THREADS.
+  // threads; it reads its own AMSS_TWOP_THREADS setting (compile-time default
+  // baked by CMakeLists.txt, runtime env override) instead of sharing ABE's
+  // OMP_NUM_THREADS.
 #ifdef _OPENMP
   {
     const char *twop_threads = getenv("AMSS_TWOP_THREADS");
-    if (twop_threads && atoi(twop_threads) > 0)
-      omp_set_num_threads(atoi(twop_threads));
+    int twop_thread_count = (twop_threads && atoi(twop_threads) > 0)
+                                ? atoi(twop_threads)
+                                : 0;
+#ifdef AMSS_TWOP_THREADS
+    if (twop_thread_count <= 0)
+      twop_thread_count = AMSS_TWOP_THREADS;
+#endif
+    if (twop_thread_count > 0)
+      omp_set_num_threads(twop_thread_count);
     printf("TwoPuncture OpenMP: using %d thread(s)\n", omp_get_max_threads());
   }
 #endif

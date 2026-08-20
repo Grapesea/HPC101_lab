@@ -1,0 +1,24 @@
+# started on Thu Aug 20 06:00:11 2026
+
+
+ Performance counter stats for 'perf record -F 49 -m 8 -o /home/h3240104505/HPC101_lab/lab4-cpu/results/perf-5x12-passive-1787205609998644049/rank0.data -- ./ABE':
+
+         243654.70 msec task-clock:u                     #    0.491 CPUs utilized             
+                 0      context-switches:u               #    0.000 /sec                      
+                 0      cpu-migrations:u                 #    0.000 /sec                      
+            955657      page-faults:u                    #    3.922 K/sec                     
+      414510733028      cycles:u                         #    1.701 GHz                       
+      781286868812      instructions:u                   #    1.88  insn per cycle            
+       81378673875      branches:u                       #  333.992 M/sec                     
+         264206052      branch-misses:u                  #    0.32% of all branches           
+      305473860100      L1-dcache-loads:u                #    1.254 G/sec                     
+        3609313191      L1-dcache-load-misses:u          #    1.18% of all L1-dcache accesses 
+        4356444181      LLC-loads:u                      #   17.880 M/sec                     
+        1845296223      LLC-load-misses:u                #   42.36% of all LL-cache accesses  
+
+     496.000244769 seconds time elapsed
+
+     230.214253000 seconds user
+      13.883570000 seconds sys
+
+

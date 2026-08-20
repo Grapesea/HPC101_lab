@@ -54,6 +54,7 @@ base_cmake_args() {
   [[ -n "${AMSS_ARCH_FLAGS:-}" ]]           && cmake_args+=("-DAMSS_ARCH_FLAGS=$AMSS_ARCH_FLAGS")
   [[ -n "${AMSS_ENABLE_OPENMP:-}" ]]        && cmake_args+=("-DAMSS_ENABLE_OPENMP=$AMSS_ENABLE_OPENMP")
   [[ -n "${AMSS_ENABLE_SANITY_CHECK:-}" ]]  && cmake_args+=("-DAMSS_ENABLE_SANITY_CHECK=$AMSS_ENABLE_SANITY_CHECK")
+  [[ -n "${AMSS_TWOP_THREADS:-}" ]]         && cmake_args+=("-DAMSS_TWOP_THREADS=$AMSS_TWOP_THREADS")
   [[ -n "${AMSS_MPI_CUDA_AWARE:-}" ]]       && cmake_args+=("-DAMSS_MPI_CUDA_AWARE=$AMSS_MPI_CUDA_AWARE")
   return 0
 }

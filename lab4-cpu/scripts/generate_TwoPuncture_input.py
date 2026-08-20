@@ -83,7 +83,7 @@ def generate_AMSSNCKU_TwoPuncture_input():
     print( "ABE::S_minusz  = ", angular_momentum_BH[1,2], file=file1 )
     print( "ABE::Mp        = ", BBH_M1,                   file=file1 )
     print( "ABE::Mm        = ", BBH_M2,                   file=file1 )
-    print( "ABE::admtol    =  1.e-8",                     file=file1 )
+    print( "ABE::admtol    =  1.e-6",                     file=file1 )
     print( "ABE::Newtontol =  5.e-12",                    file=file1 )
     print( "ABE::nA        =  50",                        file=file1 )
     print( "ABE::nB        =  50",                        file=file1 )

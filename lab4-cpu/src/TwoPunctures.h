@@ -41,6 +41,8 @@ private:
        int Newton_maxit;
 
        int ntotal;
+       double *jop;      /* cached Jacobian coefficients, 10 per grid point */
+       int jop_capacity; /* allocated length of jop (10 * ntotal) */
 
        struct parameters
        {
@@ -116,6 +118,7 @@ public:
        double BY_KKofxyz(double x, double y, double z);
        void SetMatrix_JFD(int nvar, int n1, int n2, int n3, derivs u, int *ncols, int **cols, double **Matrix);
        void J_times_dv(int nvar, int n1, int n2, int n3, derivs dv, double *Jdv, derivs u);
+       void build_jop(int nvar, int n1, int n2, int n3, derivs u);
        void relax(double *dv, int const nvar, int const n1, int const n2, int const n3,
                   double const *rhs, int const *ncols, int **cols, double **JFD);
        void LineRelax_be(double *dv,

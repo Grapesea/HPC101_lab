@@ -14,6 +14,131 @@ using namespace std;
 #include "Parallel.h"
 #include "fmisc.h"
 
+
+// ============================================================================
+// Fixed 6th-order global interpolation (CPU fast path).
+//
+// Replicates fmisc.f90's global_interp() semantics -- including equatorial /
+// octant symmetry reflection -- but builds a per-point plan once and reuses it
+// for every variable, then evaluates with a fixed tensor-product kernel that
+// the compiler can unroll/vectorise and that is OpenMP-parallel over the
+// independent points.
+// ============================================================================
+namespace
+{
+
+struct AmssInterpPlan6
+{
+  Block *blk;     // owning block on this rank (0 if the point is not local)
+  int base[3];    // 0-based stencil base per dimension
+  double cx[3];   // fractional offset in stencil units [0, ORDN)
+  double w[3][6]; // Lagrange weights per dimension
+};
+
+// Lagrange weights for the 6 equally spaced nodes 0..5 at fractional pos cx.
+inline void amss_lagrange6(double cx, double w[6])
+{
+  for (int m = 0; m < 6; m++)
+  {
+    double num = 1.0, den = 1.0;
+    for (int l = 0; l < 6; l++)
+    {
+      if (l == m)
+        continue;
+      num *= (cx - l);
+      den *= (m - l);
+    }
+    w[m] = num / den;
+  }
+}
+
+// Build the interpolation plan for one point on one block.  `ex` is the block
+// shape, `X[d]` the 0-based coordinate arrays, `DH[d]` the grid spacings.
+// Matches global_interp(): cxI = idint((x1-X(1))/dX+0.4)+1, stencil
+// cxB = cxI-ORDN/2+1 (1-based), clamped against reflection near the symmetry
+// plane and against the upper bound.
+inline void amss_build_plan6(const int ex[3], double *const X[3],
+                             const double DH[3], const double xx[3],
+                             int Symmetry, AmssInterpPlan6 &plan)
+{
+  const int ORDN = 6;
+  for (int d = 0; d < 3; d++)
+  {
+    const double dD = DH[d];
+    const double x1 = xx[d];
+    const int idx0 = (int)((x1 - X[d][0]) / dD + 0.4); // idint truncates to 0
+    int base = idx0 - ORDN / 2 + 1;                      // 0-based cxB-1
+    const bool reflect =
+        (Symmetry == 2 && fabs(X[d][0]) < dD) ||
+        (Symmetry != 0 && d == 2 && fabs(X[d][0]) < dD);
+    const int cmin0 = reflect ? -ORDN / 2 : 0;
+    if (base < cmin0)
+      base = cmin0;
+    int top = base + ORDN - 1;
+    if (top > ex[d] - 1)
+    {
+      top = ex[d] - 1;
+      base = top - (ORDN - 1);
+    }
+    plan.base[d] = base;
+    // Physical position of the first stencil slot (mirrored when reflected).
+    const double slot_pos = (base >= 0) ? X[d][base] : -X[d][-base - 1];
+    plan.cx[d] = (x1 - slot_pos) / dD;
+    amss_lagrange6(plan.cx[d], plan.w[d]);
+  }
+}
+
+// Evaluate the plan for one variable: tensor product along x, then y, then z.
+// Data is column-major (Fortran layout): f[i + ex0*(j + ex1*k)].  Reflected
+// stencil slots use data index -s-1 and the variable's symmetry sign SoA[d].
+inline double amss_eval_plan6(const int ex[3], const double *f,
+                              const AmssInterpPlan6 &plan, const double SoA[3])
+{
+  double tmp[6][6]; // [y slot][z slot] after the x pass
+  for (int b = 0; b < 6; b++)
+  {
+    const int jy = plan.base[1] + b;
+    const int diy = (jy >= 0) ? jy : -jy - 1;
+    const double sy = (jy >= 0) ? 1.0 : SoA[1];
+    for (int c = 0; c < 6; c++)
+    {
+      const int jz = plan.base[2] + c;
+      const int diz = (jz >= 0) ? jz : -jz - 1;
+      const double sz = (jz >= 0) ? 1.0 : SoA[2];
+      double acc = 0.0;
+      for (int a = 0; a < 6; a++)
+      {
+        const int jx = plan.base[0] + a;
+        const int dix = (jx >= 0) ? jx : -jx - 1;
+        const double sx = (jx >= 0) ? 1.0 : SoA[0];
+        acc += plan.w[0][a] * sx * f[dix + ex[0] * (diy + ex[1] * diz)];
+      }
+      tmp[b][c] = acc;
+    }
+  }
+  double tmp2[6]; // z slots after the y pass
+  for (int c = 0; c < 6; c++)
+  {
+    double acc = 0.0;
+    for (int b = 0; b < 6; b++)
+    {
+      const int jy = plan.base[1] + b;
+      const double sy = (jy >= 0) ? 1.0 : SoA[1];
+      acc += plan.w[1][b] * sy * tmp[b][c];
+    }
+    tmp2[c] = acc;
+  }
+  double val = 0.0;
+  for (int c = 0; c < 6; c++)
+  {
+    const int jz = plan.base[2] + c;
+    const double sz = (jz >= 0) ? 1.0 : SoA[2];
+    val += plan.w[2][c] * sz * tmp2[c];
+  }
+  return val;
+}
+
+} // namespace
 Patch::Patch(int DIM, int *shapei, double *bboxi, int levi, bool buflog, int Symmetry) : lev(levi)
 {
 
@@ -408,6 +533,14 @@ void Patch::Interp_Points(MyList<var> *VarList,
     cudaFree(d_shellf);
     cudaFree(d_weight);
 #else
+    // CPU fast path: build one 6th-order interpolation plan per point, then
+    // evaluate every variable from the same plan with a fixed tensor-product
+    // kernel (amss_build_plan6 / amss_eval_plan6).  The points are
+    // independent, so the evaluation loop is OpenMP-parallel; the ownership
+    // counts are appended to the data buffer so one MPI_Allreduce returns
+    // both the fields and the weights.
+    AmssInterpPlan6 *plan = new AmssInterpPlan6[NN];
+    memset(plan, 0, sizeof(AmssInterpPlan6) * NN);
     for (int j = 0; j < NN; j++)
     {
         double pox[dim];
@@ -438,15 +571,8 @@ void Patch::Interp_Points(MyList<var> *VarList,
                 notfind = false;
                 if (myrank == BP->rank)
                 {
-                    varl = VarList;
-                    int k = 0;
-                    while (varl)
-                    {
-                        f_global_interp(BP->shape, BP->X[0], BP->X[1], BP->X[2], BP->fgfs[varl->data->sgfn], shellf[j * num_var + k],
-                                        pox[0], pox[1], pox[2], ordn, varl->data->SoA, Symmetry);
-                        varl = varl->next;
-                        k++;
-                    }
+                    plan[j].blk = BP;
+                    amss_build_plan6(BP->shape, BP->X, DH, pox, Symmetry, plan[j]);
                     weight[j] = 1;
                 }
             }
@@ -455,6 +581,109 @@ void Patch::Interp_Points(MyList<var> *VarList,
             Bp = Bp->next;
         }
     }
+
+    const int stride = num_var + 1;
+    double *shellw = new double[NN * stride];
+    memset(shellw, 0, sizeof(double) * NN * stride);
+#pragma omp parallel for schedule(static)
+    for (int j = 0; j < NN; j++)
+    {
+        if (!weight[j])
+            continue;
+        Block *BP = plan[j].blk;
+        MyList<var> *lv = VarList;
+        int k = 0;
+        while (lv)
+        {
+            shellw[j * stride + k] =
+                amss_eval_plan6(BP->shape, BP->fgfs[lv->data->sgfn], plan[j],
+                                lv->data->SoA);
+            lv = lv->next;
+            k++;
+        }
+    }
+    for (int j = 0; j < NN; j++)
+        shellw[j * stride + num_var] = (double)weight[j];
+
+    double *Shellw = new double[NN * stride];
+    MPI_Allreduce(shellw, Shellw, NN * stride, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+
+    for (int i = 0; i < NN; i++)
+    {
+        const int W = (int)Shellw[i * stride + num_var];
+        if (W > 1)
+        {
+            if (myrank == 0)
+                cout << "WARNING: Patch::Interp_Points meets multiple weight" << endl;
+            for (int j = 0; j < num_var; j++)
+                Shellf[j + i * num_var] = Shellw[i * stride + j] / W;
+        }
+        else if (W == 0 && myrank == 0)
+        {
+            cout << "ERROR: Patch::Interp_Points fails to find point (";
+            for (int j = 0; j < dim; j++)
+            {
+                cout << XX[j][i];
+                if (j < dim - 1)
+                    cout << ",";
+                else
+                    cout << ")";
+            }
+            cout << " on Patch (";
+            for (int j = 0; j < dim; j++)
+            {
+                cout << bbox[j] << "+" << lli[j] * getdX(j);
+                if (j < dim - 1)
+                    cout << ",";
+                else
+                    cout << ")--";
+            }
+            cout << "(";
+            for (int j = 0; j < dim; j++)
+            {
+                cout << bbox[dim + j] << "-" << uui[j] * getdX(j);
+                if (j < dim - 1)
+                    cout << ",";
+                else
+                    cout << ")" << endl;
+            }
+            cout << "splited domains:" << endl;
+            {
+                MyList<Block> *Bp = blb;
+                while (Bp)
+                {
+                    Block *BP = Bp->data;
+
+                    for (int i = 0; i < dim; i++)
+                    {
+                        llb[i] = (feq(BP->bbox[i], bbox[i], DH[i] / 2)) ? BP->bbox[i] + lli[i] * DH[i] : BP->bbox[i] + ghost_width * DH[i];
+                        uub[i] = (feq(BP->bbox[dim + i], bbox[dim + i], DH[i] / 2)) ? BP->bbox[dim + i] - uui[i] * DH[i] : BP->bbox[dim + i] - ghost_width * DH[i];
+                    }
+                    cout << "(";
+                    for (int j = 0; j < dim; j++)
+                    {
+                        cout << llb[j] << ":" << uub[j];
+                        if (j < dim - 1)
+                            cout << ",";
+                        else
+                            cout << ")" << endl;
+                    }
+                    if (Bp == ble)
+                        break;
+                    Bp = Bp->next;
+                }
+            }
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        else
+        {
+            for (int j = 0; j < num_var; j++)
+                Shellf[j + i * num_var] = Shellw[i * stride + j];
+        }
+    }
+    delete[] shellw;
+    delete[] Shellw;
+    delete[] plan;
 #endif
 
     // ================== GPU 零拷贝重构部分 结束 ==================
@@ -464,14 +693,9 @@ void Patch::Interp_Points(MyList<var> *VarList,
     int *Weight = new int[NN];
     MPI_Allreduce(weight, Weight, NN, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
     // (shellf was already reduced into Shellf inside the GPU block.)
-#else
-    // CPU path: Allreduce the local shellf/weight into Shellf/Weight.
-    MPI_Allreduce(shellf, Shellf, NN * num_var, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    int *Weight;
-    Weight = new int[NN];
-    MPI_Allreduce(weight, Weight, NN, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 #endif
 
+#ifdef USE_GPU
     for (int i = 0; i < NN; i++)
     {
         if (Weight[i] > 1)
@@ -539,10 +763,13 @@ void Patch::Interp_Points(MyList<var> *VarList,
             MPI_Abort(MPI_COMM_WORLD, 1);
         }
     }
+#endif
 
     delete[] shellf;
     delete[] weight;
+#ifdef USE_GPU
     delete[] Weight;
+#endif
     delete[] DH;
     delete[] llb;
     delete[] uub;
@@ -586,6 +813,8 @@ void Patch::Interp_Points(MyList<var> *VarList,
 	llb = new double[dim];
 	uub = new double[dim];
 
+	AmssInterpPlan6 *plan = new AmssInterpPlan6[NN];
+	memset(plan, 0, sizeof(AmssInterpPlan6) * NN);
 	for (int j = 0; j < NN; j++) // run along points
 	{
 		double pox[dim];
@@ -616,12 +845,6 @@ void Patch::Interp_Points(MyList<var> *VarList,
 			bool flag = true;
 			for (int i = 0; i < dim; i++)
 			{
-// NOTE: our dividing structure is (exclude ghost)
-// -1 0
-//       1  2
-// so (0,1) does not belong to any part for vertex structure
-// here we put (0,0.5) to left part and (0.5,1) to right part
-// BUT for cell structure the bbox is (-1.5,0.5) and (0.5,2.5), there is no missing region at all
 				llb[i] = (feq(BP->bbox[i], bbox[i], DH[i] / 2)) ? BP->bbox[i] + lli[i] * DH[i] : BP->bbox[i] + ghost_width * DH[i];
 				uub[i] = (feq(BP->bbox[dim + i], bbox[dim + i], DH[i] / 2)) ? BP->bbox[dim + i] - uui[i] * DH[i] : BP->bbox[dim + i] - ghost_width * DH[i];
 
@@ -637,18 +860,8 @@ void Patch::Interp_Points(MyList<var> *VarList,
 				notfind = false;
 				if (myrank == BP->rank)
 				{
-					//---> interpolation
-					varl = VarList;
-					int k = 0;
-					while (varl) // run along variables
-					{
-						//              shellf[j*num_var+k] = Parallel::global_interp(dim,BP->shape,BP->X,BP->fgfs[varl->data->sgfn],
-						//	  		                                    pox,ordn,varl->data->SoA,Symmetry);
-						f_global_interp(BP->shape, BP->X[0], BP->X[1], BP->X[2], BP->fgfs[varl->data->sgfn], shellf[j * num_var + k],
-														pox[0], pox[1], pox[2], ordn, varl->data->SoA, Symmetry);
-						varl = varl->next;
-						k++;
-					}
+					plan[j].blk = BP;
+					amss_build_plan6(BP->shape, BP->X, DH, pox, Symmetry, plan[j]);
 					weight[j] = 1;
 				}
 			}
@@ -658,28 +871,56 @@ void Patch::Interp_Points(MyList<var> *VarList,
 		}
 	}
 
-	MPI_Allreduce(shellf, Shellf, NN * num_var, MPI_DOUBLE, MPI_SUM, Comm_here);
-	int *Weight;
-	Weight = new int[NN];
-	MPI_Allreduce(weight, Weight, NN, MPI_INT, MPI_SUM, Comm_here);
+	const int stride = num_var + 1;
+	double *shellw = new double[NN * stride];
+	memset(shellw, 0, sizeof(double) * NN * stride);
+#pragma omp parallel for schedule(static)
+	for (int j = 0; j < NN; j++)
+	{
+		if (!weight[j])
+			continue;
+		Block *BP = plan[j].blk;
+		MyList<var> *lv = VarList;
+		int k = 0;
+		while (lv)
+		{
+			shellw[j * stride + k] =
+				amss_eval_plan6(BP->shape, BP->fgfs[lv->data->sgfn], plan[j],
+								lv->data->SoA);
+			lv = lv->next;
+			k++;
+		}
+	}
+	for (int j = 0; j < NN; j++)
+		shellw[j * stride + num_var] = (double)weight[j];
 
-	//  misc::tillherecheck("print me");
-	//  if(lmyrank == 0) cout<<"myrank = "<<myrank<<"print me"<<endl;
+	double *Shellw = new double[NN * stride];
+	MPI_Allreduce(shellw, Shellw, NN * stride, MPI_DOUBLE, MPI_SUM, Comm_here);
 
 	for (int i = 0; i < NN; i++)
 	{
-		if (Weight[i] > 1)
+		const int W = (int)Shellw[i * stride + num_var];
+		if (W > 1)
 		{
 			if (lmyrank == 0)
 				cout << "WARNING: Patch::Interp_Points meets multiple weight" << endl;
 			for (int j = 0; j < num_var; j++)
-				Shellf[j + i * num_var] = Shellf[j + i * num_var] / Weight[i];
+				Shellf[j + i * num_var] = Shellw[i * stride + j] / W;
+		}
+		else
+		{
+			for (int j = 0; j < num_var; j++)
+				Shellf[j + i * num_var] = Shellw[i * stride + j];
 		}
 	}
+	delete[] shellw;
+	delete[] Shellw;
+	delete[] plan;
+
+
 
 	delete[] shellf;
 	delete[] weight;
-	delete[] Weight;
 	delete[] DH;
 	delete[] llb;
 	delete[] uub;
@@ -790,12 +1031,11 @@ bool Patch::Interp_ONE_Point(MyList<var> *VarList, double *XX,
 				//---> interpolation
 				varl = VarList;
 				int k = 0;
+				AmssInterpPlan6 plan6;
+				amss_build_plan6(BP->shape, BP->X, DH, pox, Symmetry, plan6);
 				while (varl) // run along variables
 				{
-					//              shellf[j*num_var+k] = Parallel::global_interp(dim,BP->shape,BP->X,BP->fgfs[varl->data->sgfn],
-					//	  		                                    pox,ordn,varl->data->SoA,Symmetry);
-					f_global_interp(BP->shape, BP->X[0], BP->X[1], BP->X[2], BP->fgfs[varl->data->sgfn], shellf[k],
-													pox[0], pox[1], pox[2], ordn, varl->data->SoA, Symmetry);
+					shellf[k] = amss_eval_plan6(BP->shape, BP->fgfs[varl->data->sgfn], plan6, varl->data->SoA);
 					varl = varl->next;
 					k++;
 				}
@@ -953,12 +1193,11 @@ bool Patch::Interp_ONE_Point(MyList<var> *VarList, double *XX,
 				//---> interpolation
 				varl = VarList;
 				int k = 0;
+				AmssInterpPlan6 plan6;
+				amss_build_plan6(BP->shape, BP->X, DH, pox, Symmetry, plan6);
 				while (varl) // run along variables
 				{
-					//              shellf[j*num_var+k] = Parallel::global_interp(dim,BP->shape,BP->X,BP->fgfs[varl->data->sgfn],
-					//	  		                                    pox,ordn,varl->data->SoA,Symmetry);
-					f_global_interp(BP->shape, BP->X[0], BP->X[1], BP->X[2], BP->fgfs[varl->data->sgfn], shellf[k],
-													pox[0], pox[1], pox[2], ordn, varl->data->SoA, Symmetry);
+					shellf[k] = amss_eval_plan6(BP->shape, BP->fgfs[varl->data->sgfn], plan6, varl->data->SoA);
 					varl = varl->next;
 					k++;
 				}

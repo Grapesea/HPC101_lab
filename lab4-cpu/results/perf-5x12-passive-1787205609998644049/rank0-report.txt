@@ -1,0 +1,204 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 12K of event 'cycles:Pu'
+# Event count (approx.): 413866029374
+#
+# Overhead  Command  Shared Object                   Symbol                                                                                                                             
+# ........  .......  ..............................  ...................................................................................................................................
+#
+    16.85%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f13c4
+    14.98%  ABE      ABE                             [.] compute_rhs_bssn_
+    12.05%  ABE      ABE                             [.] __nv_lopsided__F1L80_1_
+     8.53%  ABE      ABE                             [.] __nv_fdderivs__F1L483_2_
+     7.89%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c1c
+     7.60%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f24
+     7.08%  ABE      ABE                             [.] __nv_kodis__F1L67_1_
+     4.90%  ABE      ABE                             [.] __nv_fderivs__F1L77_1_
+     1.85%  ABE      ABE                             [.] symmetry_bd_
+     1.28%  ABE      libopen-pal.so.80.0.5           [.] opal_progress
+     1.18%  ABE      ABE                             [.] prolong3_
+     0.97%  ABE      libastring.so                   [.] memset
+     0.89%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1324
+     0.87%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f13c0
+     0.76%  ABE      ABE                             [.] (anonymous namespace)::amss_eval_plan6(int const*, double const*, (anonymous namespace)::AmssInterpPlan6 const&, double const*)
+     0.70%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000608c8
+     0.69%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f13b0
+     0.66%  ABE      ABE                             [.] rungekutta4_rout_
+     0.55%  ABE      ABE                             [.] copy_
+     0.52%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c28
+     0.46%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230be0
+     0.37%  ABE      ABE                             [.] enforce_ga_
+     0.36%  ABE      libmpi.so.40.40.7               [.] 0x0000000000287ec0
+     0.35%  ABE      ABE                             [.] restrict3_
+     0.34%  ABE      libopen-pal.so.80.0.5           [.] 0x0000000000027238
+     0.32%  ABE      libamath.so                     [.] optr_pl_gcc_vpowq_f64
+     0.31%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000271f8
+     0.31%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1308
+     0.29%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f50
+     0.28%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1330
+     0.28%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f14c8
+     0.25%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1174
+     0.23%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f114c
+     0.23%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1348
+     0.21%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f124c
+     0.20%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c0c
+     0.20%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1270
+     0.20%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1230
+     0.17%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f18
+     0.17%  ABE      libmpi.so.40.40.7               [.] 0x0000000000287ed0
+     0.17%  ABE      libmpi.so.40.40.7               [.] 0x0000000000287ecc
+     0.16%  ABE      libmpi.so.40.40.7               [.] 0x000000000023f9d0
+     0.15%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230bf0
+     0.15%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f112c
+     0.14%  ABE      ABE                             [.] sommerfeld_rout_
+     0.13%  ABE      libmpi.so.40.40.7               [.] opal_progress@plt
+     0.13%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f133c
+     0.12%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000608cc
+     0.12%  ABE      ABE                             [.] misc::fact(int)
+     0.12%  ABE      ABE                             [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
+     0.11%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c10
+     0.11%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c08
+     0.07%  ABE      libmpi.so.40.40.7               [.] ompi_request_default_wait_all
+     0.07%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f13bc
+     0.07%  ABE      ABE                             [.] surface_integral::surf_Wave(double, int, cgh*, var*, var*, int, int, int, double*, double*, monitor*)
+     0.06%  ABE      [unknown]                       [k] 0xffffb2dbc8bde194
+     0.05%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000271c0
+     0.05%  ABE      ABE                             [.] average2_
+     0.05%  ABE      ABE                             [.] Patch::Interp_Points(MyList<var>*, int, double**, double*, int)
+     0.04%  ABE      ABE                             [.] misc::Wigner_d_function(int, int, int, double)
+     0.04%  ABE      libastring.so                   [.] memcpy
+     0.04%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1300
+     0.04%  ABE      libamath.so                     [.] optr_aor_gcc_pow_f64
+     0.04%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1328
+     0.04%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1244
+     0.04%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230bf4
+     0.04%  ABE      libm.so.6                       [.] __sincos
+     0.04%  ABE      libomp.so                       [.] __kmp_hyper_barrier_gather(barrier_type, kmp_info*, int, int, void (*)(void*, void*), void*)
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000271ec
+     0.03%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c04
+     0.03%  ABE      libc.so.6                       [.] pthread_cond_wait@@GLIBC_2.17
+     0.03%  ABE      libc.so.6                       [.] cfree@GLIBC_2.17
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f14c4
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000271b0
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1178
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1120
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1264
+     0.03%  ABE      libgcc_s.so.1                   [.] __powidf2
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1248
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1148
+     0.03%  ABE      libc.so.6                       [.] __internal_syscall_cancel
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1320
+     0.03%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f122c
+     0.02%  ABE      libc.so.6                       [.] malloc
+     0.02%  ABE      libomp.so                       [.] kmp_flag_64<false, true>::wait(kmp_info*, int, void*)
+     0.02%  ABE      libmpi.so.40.40.7               [.] 0x000000000023f9c4
+     0.02%  ABE      libc.so.6                       [.] _int_free_chunk
+     0.02%  ABE      ABE                             [.] Patch::Interp_Points(MyList<var>*, int, double**, double*, int) [clone .omp_outlined]
+     0.02%  ABE      libc.so.6                       [.] pthread_mutex_lock@@GLIBC_2.17
+     0.02%  ABE      [vdso]                          [.] __kernel_gettimeofday
+     0.02%  ABE      libomp.so                       [.] __kmp_fork_call
+     0.02%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x00000000000282c0
+     0.01%  ABE      libevent_core-2.1.so.7.0.1      [.] event_base_loop
+     0.01%  ABE      libomp.so                       [.] __kmp_get_global_thread_id_reg
+     0.01%  ABE      libamath.so                     [.] optr_pl_ac_asin_f64
+     0.01%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f4c
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1170
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x0000000000027248
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1268
+     0.01%  ABE      libmpi.so.40.40.7               [.] 0x000000000023f9d4
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000608c4
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1260
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1314
+     0.01%  ABE      libomp.so                       [.] __kmp_pop_current_task_from_thread
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f14b8
+     0.01%  ABE      libmpi.so.40.40.7               [.] 0x00000000001f1f88
+     0.01%  ABE      [unknown]                       [k] 0xffffb2dbc7d61a90
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000271e8
+     0.01%  ABE      ABE                             [.] fderivs_
+     0.01%  ABE      libstdc++.so.6.0.33             [.] operator delete[](void*)
+     0.01%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230bfc
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000271b8
+     0.01%  ABE      libc.so.6                       [.] pthread_cond_signal@@GLIBC_2.17
+     0.01%  ABE      libomp.so                       [.] __kmpc_fork_call
+     0.01%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f48
+     0.01%  ABE      libamath.so                     [.] optr_pl_ac_acos_f64
+     0.01%  ABE      libevent_core-2.1.so.7.0.1      [.] clock_gettime@plt
+     0.01%  ABE      libomp.so                       [.] __kmp_acquire_ticket_lock
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f14a8
+     0.01%  ABE      libstdc++.so.6.0.33             [.] operator delete(void*)
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000608c0
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1340
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x0000000000027244
+     0.01%  ABE      libomp.so                       [.] __kmp_serialized_parallel
+     0.01%  ABE      libomp.so                       [.] ___kmp_allocate
+     0.01%  ABE      ABE                             [.] __powidf2@plt
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1158
+     0.01%  ABE      ABE                             [.] _ZGVnN2vv_pow@plt
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000271d8
+     0.01%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1240
+     0.01%  ABE      ABE                             [.] Ansorg::find_point_bisection(double, int, double*, int)
+     0.01%  ABE      libmpi.so.40.40.7               [.] PMPI_Isend
+     0.01%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c30
+     0.01%  ABE      libomp.so                       [.] __kmp_invoke_task_func
+     0.01%  ABE      libomp.so                       [.] __kmp_hyper_barrier_release(barrier_type, kmp_info*, int, int, int, void*)
+     0.01%  ABE      libomp.so                       [.] void __kmp_suspend_64<false, true>(int, kmp_flag_64<false, true>*)
+     0.01%  ABE      [unknown]                       [k] 0xffffb2dbc8bde984
+     0.01%  ABE      libomp.so                       [.] __kmp_join_barrier(int)
+     0.01%  ABE      libamath.so                     [.] optr_pl_gcc_asinh_f64
+     0.01%  ABE      libc.so.6                       [.] __aarch64_swp4_acq
+     0.01%  ABE      libmpi.so.40.40.7               [.] ompi_coll_base_allreduce_intra_ring
+     0.01%  ABE      libc.so.6                       [.] __pthread_mutex_cond_lock
+     0.01%  ABE      libomp.so                       [.] __kmpc_for_static_init_8
+     0.01%  ABE      libomp.so                       [.] __kmpc_for_static_fini
+     0.01%  ABE      libc.so.6                       [.] __GI___pthread_mutex_unlock_usercnt
+     0.01%  ABE      libc.so.6                       [.] __aarch64_swp4_rel
+     0.00%  ABE      libomp.so                       [.] __kmp_launch_thread
+     0.00%  ABE      ABE                             [.] __kmpc_for_static_fini@plt
+     0.00%  ABE      libomp.so                       [.] __kmp_now_nsec
+     0.00%  ABE      libomp.so                       [.] kmp_flag_native<unsigned long long, (flag_type)1, true>::done_check()
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] opal_convertor_prepare_for_recv
+     0.00%  ABE      libomp.so                       [.] __kmp_push_current_task_to_thread
+     0.00%  ABE      libc.so.6                       [.] __syscall_cancel_arch
+     0.00%  ABE      libc.so.6                       [.] __mpn_mul_1
+     0.00%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c3c
+     0.00%  ABE      libomp.so                       [.] __kmp_fork_barrier(int, int)
+     0.00%  ABE      libc.so.6                       [.] _pthread_cleanup_push@@GLIBC_2.34
+     0.00%  ABE      libomp.so                       [.] __kmp_suspend_initialize_thread
+     0.00%  ABE      libomp.so                       [.] __kmp_init_implicit_task
+     0.00%  ABE      libomp.so                       [.] void __kmp_resume_template<kmp_flag_64<false, true> >(int, kmp_flag_64<false, true>*)
+     0.00%  ABE      libomp.so                       [.] __aarch64_ldadd8_acq_rel
+     0.00%  ABE      libc.so.6                       [.] __condvar_confirm_wakeup
+     0.00%  ABE      libomp.so                       [.] kmp_flag_native<unsigned long long, (flag_type)1, true>::notdone_check()
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] 0x0000000000041a68
+     0.00%  ABE      ABE                             [.] misc::gaulegf(double, double, double*, double*, int)
+     0.00%  ABE      libastring.so                   [.] strlen
+     0.00%  ABE      libevent_pthreads-2.1.so.7.0.1  [.] 0x0000000000001110
+     0.00%  ABE      ld-linux-aarch64.so.1           [.] _dl_cache_libcmp
+     0.00%  ABE      libc.so.6                       [.] __printf_buffer
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] event_callback_activate_nolock_
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x00000000000283e8
+     0.00%  ABE      libc.so.6                       [.] epoll_pwait
+     0.00%  ABE      libc.so.6                       [.] __printf_buffer_write
+     0.00%  ABE      libc.so.6                       [.] __GI___strchrnul
+     0.00%  ABE      libc.so.6                       [.] start_thread
+     0.00%  ABE      libc.so.6                       [.] __ctype_init
+     0.00%  fuse     [unknown]                       [k] 0xffffb2dbc8bde194
+     0.00%  ABE      ld-linux-aarch64.so.1           [.] _dl_start
+     0.00%  ABE      libomp.so                       [.] KMPNativeAffinity::Mask::set_system_affinity(bool) const
+     0.00%  ABE      libc.so.6                       [.] __GI___clone3
+     0.00%  ABE      libc.so.6                       [.] __GI___futex_abstimed_wait_cancelable64
+     0.00%  ABE      libomp.so                       [.] __kmp_affinity_bind_place
+     0.00%  fuse     libc.so.6                       [.] __GI___clone3
+     0.00%  ABE      ld-linux-aarch64.so.1           [.] _start
+     0.00%  ABE      libc.so.6                       [.] _pthread_cleanup_pop@@GLIBC_2.34
+     0.00%  ABE      libc.so.6                       [.] thread_start
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x00000000000283dc
+     0.00%  ABE      [unknown]                       [k] 0xffffb2dbc8bde6b8
+
+
+#
+# (Tip: System-wide collection from all CPUs: perf record -a)
+#

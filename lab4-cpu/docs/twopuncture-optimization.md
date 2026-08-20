@@ -107,8 +107,9 @@ const char *t = getenv("AMSS_TWOP_THREADS");
 if (t && atoi(t) > 0) omp_set_num_threads(atoi(t));
 ```
 
-`run.sh` / `4.sh` 已导出 `AMSS_TWOP_THREADS=24`（lab4 扫描的平台期最优值）。这样
-ABE 保持 `OMP_NUM_THREADS=1`，TwoPuncture 用 24 线程。
+最终入口将 `AMSS_TWOP_THREADS` 默认设为 20（`4.sh` 和 profiling 脚本也显式使用
+20）；ABE 仍保持自己的 `OMP_NUM_THREADS` 配置，TwoPuncture 不再被 ABE rank 的
+线程数牵连。线程数仍可通过环境变量覆盖。
 
 ## 3. 尝试过但回滚的项
 
@@ -128,8 +129,8 @@ ABE 保持 `OMP_NUM_THREADS=1`，TwoPuncture 用 24 线程。
 
 ## 5. 对 lab4 分区的建议
 
-- 提交脚本里保证 `AMSS_ENABLE_OPENMP=ON`；`run.sh` / `4.sh` 已默认
-  `AMSS_TWOP_THREADS=24`（lab4 扫描平台期）。
+- 提交脚本里保证 `AMSS_ENABLE_OPENMP=ON`；`run.sh` / `4.sh` 默认
+  `AMSS_TWOP_THREADS=20`（最终 twop20 配置）。
 - **预期收益：TwoPuncture 247s → 82s（2.94×），端到端省 ~159s**，占基线 1742s
   的 ~9%，且所有线程数结果逐位一致（5.33e-14），低风险。
 - 完整 `check.sh`（ABE 演化 + 轨迹/约束）仍需在 lab4 分区跑一次确认（初值级已

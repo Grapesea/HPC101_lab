@@ -1,0 +1,7 @@
+Perf config: MPI=5 OMP=12 TwoPuncture=20 cache=on steps=2
+Perf output: /home/h3240104505/HPC101_lab/lab4-cpu/results/perf-5x12-1787205375668221028
+Perf completed: /home/h3240104505/HPC101_lab/lab4-cpu/results/perf-5x12-1787205375668221028
+119: Timestep # 1: integrating to time: 1    Computer used 319.512 seconds! 
+127: Timestep # 2: integrating to time: 2    Computer used 321.01 seconds! 
+129: Total Evolve Time: 53.7254 seconds!
+275: This Program Cost = 58.183613777160645 Seconds

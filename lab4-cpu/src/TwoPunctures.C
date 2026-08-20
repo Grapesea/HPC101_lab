@@ -37,7 +37,8 @@ TwoPunctures::TwoPunctures(double mp, double mm, double b,
                            double Mp, double Mm, double admtol, double Newtontol,
                            int Newtonmaxit) : par_m_plus(mp), par_m_minus(mm), par_b(b), npoints_A(nA),
                                               npoints_B(nB), npoints_phi(nphi), target_M_plus(Mp), target_M_minus(Mm),
-                                              adm_tol(admtol), Newton_tol(Newtontol), Newton_maxit(Newtonmaxit)
+                                              adm_tol(admtol), Newton_tol(Newtontol), Newton_maxit(Newtonmaxit),
+                                              jop(0), jop_capacity(0)
 {
   par_P_plus[0] = P_plusx;
   par_P_plus[1] = P_plusy;
@@ -66,6 +67,8 @@ TwoPunctures::~TwoPunctures()
   free_dvector(F, 0, ntotal - 1);
   free_derivs(&u, ntotal);
   free_derivs(&v, ntotal);
+  if (jop)
+    free(jop);
 }
 
 void TwoPunctures::Solve()
@@ -1490,6 +1493,7 @@ int TwoPunctures::bicgstab(int const nvar, int const n1, int const n2, int const
   ncols = ivector(0, ntotal - 1);
 
   F_of_v(nvar, n1, n2, n3, v, F, u);
+  build_jop(nvar, n1, n2, n3, u);
   SetMatrix_JFD(nvar, n1, n2, n3, u, ncols, cols, JFD);
 
   /* temporary storage */
@@ -1850,6 +1854,30 @@ void TwoPunctures::J_times_dv(int nvar, int n1, int n2, int n3, derivs dv, doubl
   /*      and the function u (u.d0[]) as well as its derivatives*/
   /*      (u.d1[], u.d2[], u.d3[], u.d11[], u.d12[], u.d13[], u.d22[], u.d23[], u.d33[])*/
   /*      at interior points and at the boundaries "+/-"*/
+  const int ntotal = n1 * n2 * n3 * nvar;
+  if (jop && nvar == 1)
+  {
+    /* Cached Jacobian path: build_jop() precomputes the 10 local
+       coefficients per grid point once per Newton/BiCGSTAB solve, so
+       J*dv reduces to a contiguous dot product (SIMD/OpenMP friendly). */
+    Derivatives_AB3(nvar, n1, n2, n3, dv);
+#pragma omp parallel for schedule(static)
+    for (int idx = 0; idx < ntotal; idx++)
+    {
+      Jdv[idx] =
+          jop[10 * idx + 0] * dv.d0[idx] +
+          jop[10 * idx + 1] * dv.d1[idx] +
+          jop[10 * idx + 2] * dv.d2[idx] +
+          jop[10 * idx + 3] * dv.d3[idx] +
+          jop[10 * idx + 4] * dv.d11[idx] +
+          jop[10 * idx + 5] * dv.d12[idx] +
+          jop[10 * idx + 6] * dv.d13[idx] +
+          jop[10 * idx + 7] * dv.d22[idx] +
+          jop[10 * idx + 8] * dv.d23[idx] +
+          jop[10 * idx + 9] * dv.d33[idx];
+    }
+    return;
+  }
   int i, j, k, ivar, indx;
   double al, be, A, B, X, R, x, r, phi, y, z, Am1, *values;
   derivs dU, U;
@@ -1917,6 +1945,117 @@ void TwoPunctures::J_times_dv(int nvar, int n1, int n2, int n3, derivs dv, doubl
     free_dvector(values, 0, nvar - 1);
     free_derivs(&dU, nvar);
     free_derivs(&U, nvar);
+  }
+}
+/* --------------------------------------------------------------------------*/
+void TwoPunctures::build_jop(int nvar, int n1, int n2, int n3, derivs u)
+{
+  /* Precompute the 10 local Jacobian coefficients per grid point.
+     LinEquations() is linear in the 10 derivative arrays of dv, so at
+     every point J*dv = sum_q c_q * dv.dq where the c_q depend only on
+     the current solution u (fixed during one BiCGSTAB solve). Building
+     them once per solve removes all coordinate transforms and
+     LinEquations() calls from the ~2*itmax inner J_times_dv calls. */
+  if (nvar != 1)
+  {
+    /* Fall back to the generic J_times_dv path. */
+    if (jop)
+    {
+      free(jop);
+      jop = 0;
+      jop_capacity = 0;
+    }
+    return;
+  }
+
+  const int ntotal = n1 * n2 * n3 * nvar;
+  const int need = 10 * ntotal;
+  if (!jop || jop_capacity < need)
+  {
+    if (jop)
+      free(jop);
+    jop = (double *)malloc(sizeof(double) * need);
+    if (!jop)
+    {
+      fprintf(stderr, "TwoPunctures::build_jop: out of memory\n");
+      exit(1);
+    }
+    jop_capacity = need;
+  }
+
+  /* Basis mapping (matches J_times_dv's dU construction):
+       dU.d0  = Am1*dv.d0
+       dU.d1  = dv.d0 + Am1*dv.d1
+       dU.d2  = Am1*dv.d2
+       dU.d3  = Am1*dv.d3
+       dU.d11 = 2*dv.d1 + Am1*dv.d11
+       dU.d12 = dv.d2  + Am1*dv.d12
+       dU.d13 = dv.d3  + Am1*dv.d13
+       dU.d22 = Am1*dv.d22
+       dU.d23 = Am1*dv.d23
+       dU.d33 = Am1*dv.d33  */
+#pragma omp parallel
+  {
+    double al, be, A, B, X, R, x, r, phi, y, z, Am1; // thread-private scalars
+    double *thr_values = dvector(0, nvar - 1);
+    derivs thr_dU, thr_U;
+    allocate_derivs(&thr_dU, nvar);
+    allocate_derivs(&thr_U, nvar);
+#pragma omp for schedule(static)
+    for (int i = 0; i < n1; i++)
+    {
+      for (int j = 0; j < n2; j++)
+      {
+        for (int k = 0; k < n3; k++)
+        {
+          al = Pih * (2 * i + 1) / n1;
+          A = -cos(al);
+          be = Pih * (2 * j + 1) / n2;
+          B = -cos(be);
+          phi = 2. * Pi * k / n3;
+          Am1 = A - 1;
+          const int index = Index(0, i, j, k, nvar, n1, n2, n3);
+          thr_U.d0[0] = u.d0[index];
+          thr_U.d1[0] = u.d1[index];
+          thr_U.d2[0] = u.d2[index];
+          thr_U.d3[0] = u.d3[index];
+          thr_U.d11[0] = u.d11[index];
+          thr_U.d12[0] = u.d12[index];
+          thr_U.d13[0] = u.d13[index];
+          thr_U.d22[0] = u.d22[index];
+          thr_U.d23[0] = u.d23[index];
+          thr_U.d33[0] = u.d33[index];
+          for (int q = 0; q < 10; q++)
+          {
+            thr_dU.d0[0] = 0; thr_dU.d1[0] = 0; thr_dU.d2[0] = 0;
+            thr_dU.d3[0] = 0; thr_dU.d11[0] = 0; thr_dU.d12[0] = 0;
+            thr_dU.d13[0] = 0; thr_dU.d22[0] = 0; thr_dU.d23[0] = 0;
+            thr_dU.d33[0] = 0;
+            switch (q)
+            {
+              case 0: thr_dU.d0[0] += Am1; thr_dU.d1[0] += 1; break;
+              case 1: thr_dU.d1[0] += Am1; thr_dU.d11[0] += 2; break;
+              case 2: thr_dU.d2[0] += Am1; thr_dU.d12[0] += 1; break;
+              case 3: thr_dU.d3[0] += Am1; thr_dU.d13[0] += 1; break;
+              case 4: thr_dU.d11[0] += Am1; break;
+              case 5: thr_dU.d12[0] += Am1; break;
+              case 6: thr_dU.d13[0] += Am1; break;
+              case 7: thr_dU.d22[0] += Am1; break;
+              case 8: thr_dU.d23[0] += Am1; break;
+              case 9: thr_dU.d33[0] += Am1; break;
+            }
+            AB_To_XR(nvar, A, B, &X, &R, thr_dU);
+            C_To_c(nvar, X, R, &x, &r, thr_dU);
+            rx3_To_xyz(nvar, x, r, phi, &y, &z, thr_dU);
+            LinEquations(A, B, X, R, x, r, phi, y, z, thr_dU, thr_U, thr_values);
+            jop[10 * index + q] = thr_values[0] * FAC;
+          }
+        }
+      }
+    }
+    free_dvector(thr_values, 0, nvar - 1);
+    free_derivs(&thr_dU, nvar);
+    free_derivs(&thr_U, nvar);
   }
 }
 /* --------------------------------------------------------------------------*/

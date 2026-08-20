@@ -43,10 +43,25 @@ def _env_tokens():
     Uses `mpiexec -n N env VAR=... exe` form, which works on both OpenMPI
     and MPICH (the -x flag was OpenMPI-only)."""
     tokens = []
-    for var in ("OMP_NUM_THREADS", "LD_LIBRARY_PATH"):
+    for var in ("OMP_NUM_THREADS", "OMP_PROC_BIND", "OMP_PLACES",
+                "OMP_WAIT_POLICY", "GOMP_SPINCOUNT", "OPENBLAS_NUM_THREADS",
+                "LD_LIBRARY_PATH", "AMSS_PERF_PREFIX"):
         if var in os.environ:
             tokens.append(f"{var}={os.environ[var]}")
     return tokens
+
+
+def _wrapped_executable(exe):
+    """Return an optional per-rank wrapper followed by the executable.
+
+    Normal runs do not set ``AMSS_ABE_WRAPPER`` and are unchanged.  A wrapper
+    can inspect MPI rank variables and attach perf to one rank only while the
+    other ranks execute the binary directly.
+    """
+    wrapper = os.environ.get("AMSS_ABE_WRAPPER")
+    if not wrapper:
+        return [exe]
+    return shlex.split(wrapper) + [exe]
 
 
 def run_TwoPunctureABE():
@@ -74,7 +89,7 @@ def run_ABE():
     argv = (_mpiexec_argv()
             + ["-n", str(input_data.MPI_processes)]
             + ["env"] + _env_tokens()
-            + [exe])
+            + _wrapped_executable(exe))
     cmd = shlex.join(argv) + " < /dev/null"
 
     _run_and_tee(cmd, log)
