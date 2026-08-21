@@ -4,6 +4,7 @@
 #include "prolongrestrict.h"
 #include "misc.h"
 #include "parameters.h"
+#include <cstdlib>
 
 #ifdef USE_GPU
 #include "gpu_manager.h"
@@ -126,7 +127,37 @@ MyList<Block> *Parallel::distribute(
     bool periodic, int nodes
 ) {
     if (nodes == 0)
+    {
         nodes = cpusize;
+
+        // Keep the numerical block layout independent of the number of MPI
+        // ranks.  AMR ghost/prolong boundaries are part of the discretisation:
+        // changing them with cpusize measurably changes the near-zero puncture
+        // z coordinate which the checker compares with relative error.
+        const char *fixed_nodes = std::getenv("AMSS_DISTRIBUTION_NODES");
+        if (fixed_nodes && *fixed_nodes)
+        {
+            char *end = 0;
+            const long requested = std::strtol(fixed_nodes, &end, 10);
+            if (end != fixed_nodes && *end == '\0' && requested > 0)
+            {
+                // Never create fewer partitions than ranks: that would leave
+                // ranks idle when this diagnostic override is used elsewhere.
+                nodes = Mymax(cpusize, static_cast<int>(requested));
+                static bool reported = false;
+                if (!reported)
+                {
+                    int myrank = 0;
+                    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+                    if (myrank == 0)
+                        cout << " AMR distribution: " << nodes
+                             << " numerical partitions over " << cpusize
+                             << " MPI ranks" << endl;
+                    reported = true;
+                }
+            }
+        }
+    }
 
     if (dim != 3)
     {

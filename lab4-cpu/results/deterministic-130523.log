@@ -1,0 +1,37 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Fri Aug 21 09:25:55 UTC 2026
+Mode=CPU (ABE), MPI ranks=12, OMP threads=5
+Evolution time=5, steps=5, grid levels=9, moving grid=48, TwoPuncture threads=20, admtol=1.e-6
+Build=/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+OutputRoot=/home/h3240104505/HPC101_lab/lab4-cpu/runs/20260821-092555-793610651
+==> Hybrid toolchain build: GNU -> TwoPunctureABE, Arm Compiler -> ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=32 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_USE_RK3=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran -DAMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==========================================================
+-- Configuring done (11.9s)
+-- Generating done (0.4s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop" -j 60
+[ 10%] Built target TwoPunctureABE
+[ 13%] Building CXX object CMakeFiles/ABE.dir/src/Parallel.C.o
+[ 16%] Linking CXX executable ABE
+[100%] Built target ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=32 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_USE_RK3=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ -DCMAKE_Fortran_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++
+-- Fortran  : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=
+-- ==========================================================
+-- Configuring done (12.5s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -j 60
+[ 10%] Built target TwoPunctureABE
+[ 13%] Building CXX object CMakeFiles/ABE.dir/src/Parallel.C.o

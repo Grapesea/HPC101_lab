@@ -45,7 +45,8 @@ def _env_tokens():
     tokens = []
     for var in ("OMP_NUM_THREADS", "OMP_PROC_BIND", "OMP_PLACES",
                 "OMP_WAIT_POLICY", "GOMP_SPINCOUNT", "OPENBLAS_NUM_THREADS",
-                "LD_LIBRARY_PATH", "AMSS_PERF_PREFIX"):
+                "LD_LIBRARY_PATH", "AMSS_PERF_PREFIX",
+                "AMSS_DISTRIBUTION_NODES"):
         if var in os.environ:
             tokens.append(f"{var}={os.environ[var]}")
     return tokens

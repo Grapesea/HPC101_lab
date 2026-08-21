@@ -45,8 +45,8 @@ sed -i "/^[[:space:]]*moving_grid_number[[:space:]]*=/c\\moving_grid_number = ${
 sed -i "/^[[:space:]]*Dissipation[[:space:]]*=/c\\Dissipation              = ${SUBMIT_DISSIPATION}" AMSS_NCKU_Input.py
 sed -i "/^[[:space:]]*refinement_level[[:space:]]*=/c\\refinement_level  = ${SUBMIT_REFINEMENT_LEVEL}" AMSS_NCKU_Input.py
 sed -i "/^[[:space:]]*Courant_Factor[[:space:]]*=/c\\Courant_Factor    = ${SUBMIT_COURANT}" AMSS_NCKU_Input.py
-# Keep the fastest checker-passing topology measured in this working tree as
-# the default until a hybrid candidate wins an end-to-end comparison.
+# Use all 60 allocated CPU cores while keeping the numerically stable,
+# original RK4 update order in bssn_class.C.
 SUBMIT_MPI_PROCESSES="${AMSS_SUBMIT_MPI_PROCESSES:-12}"
 SUBMIT_OMP_THREADS="${AMSS_SUBMIT_OMP_THREADS:-5}"
 sed -i "/^[[:space:]]*MPI_processes[[:space:]]*=/c\\MPI_processes    = ${SUBMIT_MPI_PROCESSES}" AMSS_NCKU_Input.py
@@ -61,20 +61,27 @@ export AMSS_GPU_CALCULATION=no
 unset AMSS_FINAL_EVOLUTION_TIME AMSS_EVOLUTION_STEPS
 export AMSS_MPI_PROCESSES="$SUBMIT_MPI_PROCESSES"
 export AMSS_OMP_THREADS="$SUBMIT_OMP_THREADS"
+# Match the 30-rank golden run's AMR block boundaries while assigning those
+# blocks round-robin to the requested MPI ranks.  This keeps the discretisation
+# deterministic for the 12x5 hybrid topology.
+export AMSS_DISTRIBUTION_NODES="${AMSS_SUBMIT_DISTRIBUTION_NODES:-30}"
 # lab4 sweep: TwoPuncture relaxation plateaus at 20 threads.
 export AMSS_TWOP_THREADS="${AMSS_SUBMIT_TWOP_THREADS:-20}"
 export AMSS_NRELAX="${AMSS_SUBMIT_NRELAX:-32}"
 export AMSS_ADMTOL="${AMSS_SUBMIT_ADMTOL:-1.e-6}"
+export AMSS_TWOP_NEWTON_TOL="${AMSS_SUBMIT_TWOP_NEWTON_TOL:-2.e-9}"
+export AMSS_TWOP_NA="${AMSS_SUBMIT_TWOP_NA:-34}"
+export AMSS_TWOP_NB="${AMSS_SUBMIT_TWOP_NB:-34}"
+export AMSS_TWOP_NPHI="${AMSS_SUBMIT_TWOP_NPHI:-26}"
 export AMSS_PRECOMPUTED_BARE_MASSES="${AMSS_SUBMIT_PRECOMPUTED_BARE_MASSES:-1}"
 export AMSS_OMP_BLOCK_LOOPS="${AMSS_SUBMIT_OMP_BLOCK_LOOPS:-OFF}"
 export AMSS_PROFILE_PHASES="${AMSS_SUBMIT_PROFILE_PHASES:-OFF}"
 export AMSS_USE_RK3="${AMSS_SUBMIT_USE_RK3:-OFF}"
-# Bind each rank's twelve workers to a compact hardware-thread block.  The
-# explicit PE value is important: without it Open MPI may place all workers
-# on the same slot or silently use only physical-core slots.
-if [[ -n "${AMSS_SUBMIT_MPIEXEC:-}" ]]; then
-  export AMSS_MPIEXEC="$AMSS_SUBMIT_MPIEXEC"
-elif (( SUBMIT_OMP_THREADS > 1 )); then
+# The allocation exposes 60 hardware-thread slots, not 60 physical cores.
+# Requesting 12 ranks x PE=5 with core binding makes Open MPI exit 213 with
+# "Mapper result: Out of resource" before ABE starts. Keep this launcher
+# deterministic instead of accepting an OJ-provided core-binding override.
+if (( SUBMIT_OMP_THREADS > 1 )); then
   export AMSS_MPIEXEC="mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=${SUBMIT_OMP_THREADS}"
 else
   # The measured 30x1 path relies on the scheduler's cpuset placement.  An
