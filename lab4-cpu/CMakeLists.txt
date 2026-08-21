@@ -6,9 +6,9 @@ option(AMSS_ENABLE_GPU "Enable CUDA GPU build (ABEGPU target)" OFF)
 # Default CPU build for the ARM TaiShan-v120 evaluation node.  Keep CUDA
 # architecture selection separate below; AMSS_OPT applies to C++/Fortran.
 set(AMSS_OPT "-Ofast -ffast-math" CACHE STRING "C/C++/Fortran optimization level")
-set(AMSS_ARCH_FLAGS "-mcpu=native" CACHE STRING "Architecture-specific compiler flags")
+set(AMSS_ARCH_FLAGS "-mcpu=tsv110 -msve-vector-bits=256" CACHE STRING "Architecture-specific compiler flags")
 # Default ON: the lab4 CPU sweep (results/4-96927.log) relies on OpenMP for
-# TwoPunctureABE's 24-thread relaxation, so the submitted build must enable
+# TwoPunctureABE's 20-thread relaxation, so the submitted build must enable
 # it even when compile.sh is invoked with no extra AMSS_* environment set.
 option(AMSS_ENABLE_OPENMP "Enable OpenMP in CPU solvers" ON)
 option(AMSS_OMP_BLOCK_LOOPS "Parallelize ABE over blocks instead of inside stencil kernels" OFF)
@@ -32,12 +32,16 @@ set_property(CACHE AMSS_MPI_CUDA_AWARE PROPERTY STRINGS 0 1)
 # once relocated. Colon-separated, e.g. "/opt/arm/.../lib:/opt/arm/.../lib64".
 set(AMSS_EXTRA_RPATH "" CACHE STRING "Extra colon-separated runtime library search paths for ABE/TwoPunctureABE RPATH")
 set(AMSS_TWOP_THREADS 20 CACHE STRING "OpenMP threads for TwoPunctureABE (runtime env AMSS_TWOP_THREADS overrides; final twop20 setting)")
-set(AMSS_NRELAX 2 CACHE STRING "TwoPuncture BiCGSTAB preconditioner relaxation sweeps")
+set(AMSS_NRELAX 32 CACHE STRING "TwoPuncture BiCGSTAB preconditioner relaxation sweeps")
+set(AMSS_DISTRIBUTION_NODES 30 CACHE STRING "Numerical AMR partitions (kept independent of MPI rank count)")
 if(NOT AMSS_TWOP_THREADS MATCHES "^[0-9]+$")
   message(FATAL_ERROR "AMSS_TWOP_THREADS must be a positive integer, got '${AMSS_TWOP_THREADS}'")
 endif()
 if(NOT AMSS_NRELAX MATCHES "^[1-9][0-9]*$")
   message(FATAL_ERROR "AMSS_NRELAX must be a positive integer, got '${AMSS_NRELAX}'")
+endif()
+if(NOT AMSS_DISTRIBUTION_NODES MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR "AMSS_DISTRIBUTION_NODES must be a positive integer, got '${AMSS_DISTRIBUTION_NODES}'")
 endif()
 
 # --- Compile flags ----------------------------------------------------------
@@ -105,6 +109,8 @@ set(ABE_SOURCES
 )
 add_executable(ABE ${ABE_SOURCES})
 target_link_libraries(ABE PRIVATE MPI::MPI_CXX)
+target_compile_definitions(ABE PRIVATE
+  AMSS_DEFAULT_DISTRIBUTION_NODES=${AMSS_DISTRIBUTION_NODES})
 # The Fortran stencil kernels below are linked with OpenMP when requested.
 
 # --- TwoPunctureABE: initial-data solver -----------------------------------

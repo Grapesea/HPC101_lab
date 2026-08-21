@@ -30,11 +30,21 @@ def _run_and_tee(cmd, log):
 
 
 def _mpiexec_argv():
-    """Resolve the MPI launcher from AMSS_MPIEXEC (default: mpiexec).
+    """Return an MPI launcher compatible with the configured hybrid layout.
 
-    The value is split with shlex so users can pass extra flags, e.g.
-    AMSS_MPIEXEC="mpiexec --oversubscribe"."""
-    return shlex.split(os.environ.get("AMSS_MPIEXEC", "mpiexec"))
+    The OJ supplies ``--bind-to core --map-by slot:pe=5``.  That requests
+    12*5 physical cores, while its 60 CPUs are 30 cores/60 hardware threads,
+    so OpenMPI exits with mapper status 213 before ABE starts.  Keep only the
+    configured launcher executable and construct the validated mapping here;
+    this protects direct AMSS_NCKU_Program.py runs as well as run.sh runs.
+    """
+    configured = shlex.split(os.environ.get("AMSS_MPIEXEC", "mpiexec"))
+    launcher = configured[0] if configured else "mpiexec"
+    if input_data.OMP_threads > 1:
+        return [launcher, "--allow-run-as-root", "--use-hwthread-cpus",
+                "--bind-to", "hwthread", "--map-by",
+                f"slot:PE={input_data.OMP_threads}"]
+    return configured
 
 
 def _env_tokens():
@@ -42,13 +52,26 @@ def _env_tokens():
 
     Uses `mpiexec -n N env VAR=... exe` form, which works on both OpenMPI
     and MPICH (the -x flag was OpenMPI-only)."""
+    forced = {}
+    if input_data.OMP_threads > 1:
+        forced = {
+            "OMP_NUM_THREADS": str(input_data.OMP_threads),
+            "OMP_DYNAMIC": "FALSE",
+            "OMP_PROC_BIND": "close",
+            "OMP_PLACES": "threads",
+            "OMP_STACKSIZE": "1G",
+            "AMSS_DISTRIBUTION_NODES": "30",
+        }
+
     tokens = []
-    for var in ("OMP_NUM_THREADS", "OMP_PROC_BIND", "OMP_PLACES",
+    for var in ("OMP_NUM_THREADS", "OMP_DYNAMIC", "OMP_PROC_BIND", "OMP_PLACES",
+                "OMP_STACKSIZE",
                 "OMP_WAIT_POLICY", "GOMP_SPINCOUNT", "OPENBLAS_NUM_THREADS",
                 "LD_LIBRARY_PATH", "AMSS_PERF_PREFIX",
                 "AMSS_DISTRIBUTION_NODES"):
-        if var in os.environ:
-            tokens.append(f"{var}={os.environ[var]}")
+        value = forced.get(var, os.environ.get(var))
+        if value is not None:
+            tokens.append(f"{var}={value}")
     return tokens
 
 
@@ -91,6 +114,7 @@ def run_ABE():
             + ["-n", str(input_data.MPI_processes)]
             + ["env"] + _env_tokens()
             + _wrapped_executable(exe))
+    print(" MPI launcher: " + shlex.join(argv[:-1]))
     cmd = shlex.join(argv) + " < /dev/null"
 
     _run_and_tee(cmd, log)

@@ -40,11 +40,9 @@ export OMP_STACKSIZE="${OMP_STACKSIZE:-1G}"
 
 # HPC jobs run inside a root container even when submitted by a regular user.
 # Open MPI 5.x (prterun) therefore needs its explicit container opt-in. These
-# variables are ignored for non-root launches and preserve a caller-supplied
-# AMSS_MPIEXEC.
+# variables are ignored for non-root launches.
 export OMPI_ALLOW_RUN_AS_ROOT="${OMPI_ALLOW_RUN_AS_ROOT:-1}"
 export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM="${OMPI_ALLOW_RUN_AS_ROOT_CONFIRM:-1}"
-AMSS_MPIEXEC="${AMSS_MPIEXEC:-mpiexec --allow-run-as-root}"
 
 ROOT_DIR="$(pwd)"
 PYTHON="${PYTHON:-python3}"
@@ -59,13 +57,21 @@ resolve_under_root() {
 AMSS_BUILD_DIR="$(resolve_under_root "${AMSS_BUILD_DIR:-$ROOT_DIR/build}")"
 AMSS_OUTPUT_ROOT="$(resolve_under_root "${AMSS_OUTPUT_ROOT:-$ROOT_DIR}")"
 AMSS_CACHE_DIR="$(resolve_under_root "${AMSS_CACHE_DIR:-$ROOT_DIR/twopuncture_cache}")"
-AMSS_MPIEXEC="${AMSS_MPIEXEC:-mpiexec}"
+# The evaluation allocation exposes 30 physical cores as 60 hardware threads.
+# A 12x5 run therefore has to bind five hardware threads per rank; CORE/PE=5
+# asks for 60 physical cores and OpenMPI rejects the mapping with status 213.
+AMSS_MPIEXEC="mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=5"
+export OMP_DYNAMIC=FALSE
+export OMP_PROC_BIND=close
+export OMP_PLACES=threads
+export AMSS_DISTRIBUTION_NODES="${AMSS_DISTRIBUTION_NODES:-30}"
 # TwoPuncture's red/black plane relaxation is independent across planes.  The
 # main ABE ranks keep their configured OMP_NUM_THREADS value; TwoPunctureABE
 # reads this separate setting when compiled with OpenMP. The final twop20
 # sweep selected 20 threads for the single-process initial-data solve.
 export AMSS_TWOP_THREADS="${AMSS_TWOP_THREADS:-20}"
 export AMSS_BUILD_DIR AMSS_OUTPUT_ROOT AMSS_CACHE_DIR AMSS_MPIEXEC AMSS_TWOP_THREADS
+export AMSS_DISTRIBUTION_NODES
 
 if [[ "${1:-}" == "--twop-cache" ]]; then
   export AMSS_NCKU_TWOP_CACHE=1

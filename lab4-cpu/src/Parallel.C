@@ -128,7 +128,14 @@ MyList<Block> *Parallel::distribute(
 ) {
     if (nodes == 0)
     {
-        nodes = cpusize;
+        // This is part of the numerical discretisation, not merely a load
+        // balancing choice.  Keep the validated 30-partition block geometry
+        // when the OJ runs 12 MPI ranks without the 4.sh environment.
+#ifdef AMSS_DEFAULT_DISTRIBUTION_NODES
+        nodes = Mymax(cpusize, AMSS_DEFAULT_DISTRIBUTION_NODES);
+#else
+        nodes = Mymax(cpusize, 30);
+#endif
 
         // Keep the numerical block layout independent of the number of MPI
         // ranks.  AMR ghost/prolong boundaries are part of the discretisation:
@@ -144,18 +151,19 @@ MyList<Block> *Parallel::distribute(
                 // Never create fewer partitions than ranks: that would leave
                 // ranks idle when this diagnostic override is used elsewhere.
                 nodes = Mymax(cpusize, static_cast<int>(requested));
-                static bool reported = false;
-                if (!reported)
-                {
-                    int myrank = 0;
-                    MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
-                    if (myrank == 0)
-                        cout << " AMR distribution: " << nodes
-                             << " numerical partitions over " << cpusize
-                             << " MPI ranks" << endl;
-                    reported = true;
-                }
             }
+        }
+
+        static bool reported = false;
+        if (!reported)
+        {
+            int myrank = 0;
+            MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+            if (myrank == 0)
+                cout << " AMR distribution: " << nodes
+                     << " numerical partitions over " << cpusize
+                     << " MPI ranks" << endl;
+            reported = true;
         }
     }
 

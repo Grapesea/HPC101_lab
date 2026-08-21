@@ -1,0 +1,2 @@
+resolved: ['mpiexec', '--allow-run-as-root', '--use-hwthread-cpus', '--bind-to', 'hwthread', '--map-by', 'slot:PE=5', '-n', '12', 'env', 'OMP_NUM_THREADS=5', 'OMP_DYNAMIC=FALSE', 'OMP_PROC_BIND=close', 'OMP_PLACES=threads', 'LD_LIBRARY_PATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib:/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib/clang/19/armpl_links/lib', 'AMSS_DISTRIBUTION_NODES=30', '/bin/true']
+MAPPING_OK
