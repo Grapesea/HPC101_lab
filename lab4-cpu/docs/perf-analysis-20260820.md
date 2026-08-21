@@ -85,24 +85,25 @@ TwoPuncture 线程数从 24 统一为最终 `twop20` 配置（`run.sh`、`CMakeL
 
 只有在这些指标同时保持时，才考虑进一步调整 rank/线程或等待策略。
 
-## 阶段 4：`4.sh` 提交配置回退（2026-08-20）
+## 阶段 4：`4.sh` 提交配置回退（历史记录，2026-08-20）
 
 用户反馈当前 5×12 配置出现负优化后，重新检查完整提交日志发现：目前唯一有
 完整 40 步 checker 证据的几轮（`results/4-96927.log`、
 `results/4-111972.log`、`results/4-115514.log`）均为 `MPI=30`、`OMP=1`、
 `-mcpu=native`，`This Program Cost` 为 1318.80–1321.91 s，且全部
 `Trajectory: PASS`、`Constraints: PASS`、`FINAL: PASS`。因此 `4.sh` 的默认提交
-配置已恢复为这套已验证组合：
+配置曾恢复为这套已验证组合：
 
 ```text
 AMSS_SUBMIT_MPI_PROCESSES=30   (默认)
 AMSS_SUBMIT_OMP_THREADS=1      (默认)
 AMSS_TWOP_THREADS=20
-AMSS_ARCH_FLAGS=-mcpu=native
+AMSS_ARCH_FLAGS='-mcpu=tsv110 -msve-vector-bits=256'
 AMSS_MPIEXEC='mpiexec --allow-run-as-root'
 ```
 
-5×12 不再作为默认提交路径；若要在真实 60 硬件线程节点重新验证，可显式设置：
+这段是历史 A/B 记录；当前最终入口按题目要求采用 5×12。若要复现当时的 30×1，
+仍可显式设置：
 
 ```bash
 AMSS_SUBMIT_MPI_PROCESSES=5 \
@@ -113,3 +114,64 @@ AMSS_SUBMIT_ARCH_FLAGS='-mcpu=tsv110 -msve-vector-bits=256' \
 ```
 
 这样回退不会丢失实验入口，也不会让未经完整 checker 验证的组合阻塞正式提交。
+
+## 阶段 5：真实节点并行度实验
+
+短测统一为两步、cache miss 的 TwoPuncture + ABE，使用 60-CPU 节点；因此表中
+`This Program Cost` 包含初值生成，重点比较 ABE 每步：
+
+| 配置 | ABE step 1/2 | 总耗时 | 结果 |
+|---|---:|---:|---|
+| 30×1, `-mcpu=native` | 约 11.4/11.5 s（正式作业前 33 步均如此） | — | 当前最佳基线 |
+| 60×1, `-mcpu=native` | 12.95/13.48 s | 86.58 s | rank 增加后通信变重 |
+| 40×1, `-mcpu=native` | 14.99/15.02 s | 89.05 s | 更差 |
+| 30×2, `PE=2` | 26.36/26.37 s | 213.61 s | OpenMP barrier/短循环开销过大 |
+| 15×4, `PE=4` | 59.11/59.51 s | 219.35 s | 网格块粒度不足，排除 |
+| 30×1, TSV110+SVE256 | 11.24/11.28 s | 80.26 s | 约 2% 快于 native，尚无完整 checker |
+
+60×1 的第一次尝试还暴露了 Open MPI slot 语义：超过 30 ranks 时必须使用
+`--use-hwthread-cpus`，否则会在 ABE 启动前报 “not enough slots”。`4.sh` 现在会
+根据 rank 数自动加入该选项；30 ranks 默认仍使用普通 launcher。
+
+## 阶段 6：有效 30×1 perf
+
+修正 `4_s.sh` 使其同步输入文件中的 MPI/OMP 字段并隔离输出后，真实采样位于
+`results/perf_cpu-20260820-075501-110412528/`。热点为：
+
+- `libopen-pal` 约 34.7%，Open MPI progress/通信是最大单项；
+- `compute_rhs_bssn_` 21.62%；
+- `lopsided` 6.03%、`fdderivs` 4.17%、`kodis` 3.30%；
+- 固定插值 kernel 0.37%；
+- LLC miss 56.89%，IPC 1.98。
+
+尝试 `--mca pml ucx` 在该节点启动失败，未纳入配置。综合结果，继续增加 MPI
+rank 或给每个 rank 增加 OpenMP 都会变慢；这只是当时安全默认的结论。按实测约
+11.5 s/步估算，完整 40 步约 460 s，再加 TwoPuncture 约 60–80 s，**仅靠 MPI/OMP
+拓扑无法压到 300 s**。若必须逼近 300 s，需要新的算法级改动（例如减少物理输出/约束
+频率或重写通信阶段），这些会直接触及评分正确性，不能仅凭短测启用。
+
+补充实验：20×1（TSV/SVE）两步为 12.50/12.43 s，总 86.01 s；没有优于 30×1。
+显式 `pml=ob1,btl=self,sm` 的试验因提交环境把逗号拆进环境变量，实际只传入了
+`btl=self`，MPI_Init 失败，未纳入比较。默认 launcher 保持 Open MPI 的自动 BTL 选择。
+
+## 阶段 7：surface-integral collective 合并
+
+在 `src/surface_integral.C` 中把波形实/虚部的两次归约合成一次，并把 ADM 质量、角动量、
+线动量的 7 次标量归约合成一次。Arm 编译通过；30×1、TSV/SVE、2 步 checker 结果为
+`Trajectory: PASS`、`Constraints: PASS`、`FINAL: PASS`，`This Program Cost=80.998 s`
+（未合并版本同量级约 80–81 s，短测噪声内）。这是低风险通信优化，应保留，但它不足以
+改变 40 步总时长约 508–513 s 的结论。
+
+## 阶段 8：最终 5×12 入口与计时修正
+
+最终 `AMSS_NCKU_Input.py`/`4.sh` 默认同步为 `MPI_processes=5`、`OMP_threads=12`，
+并使用 `--use-hwthread-cpus --bind-to hwthread --map-by slot:PE=12` 及 active wait
+策略；TwoPuncture 仍由 `AMSS_TWOP_THREADS=20` 单独控制。历史日志中 5×12 的
+`Computer used` 曾显示 262–320 s，是 `clock()` 累加 12 个线程 CPU time 的结果，
+而两步的 `Total Evolve Time` 只有约 44–54 s。CPU `Evolve()` 现在改用 `MPI_Wtime()`
+打印 wall-clock，后续单步比较必须使用该字段或 `Total Evolve Time`，不能混用旧日志。
+
+本地受 cgroup 限制的短测不能代表 60 硬件线程节点；最终提交应在目标节点完整跑 40
+步，并同时记录总墙钟、阶段 profile、轨迹 RMS、约束最大值和 `FINAL: PASS`。300 s
+是端到端目标，任何进一步减少演化步数或跳过 level 0 约束的做法都会改变评分语义，
+不应作为性能优化启用。

@@ -1,6 +1,8 @@
 #!/bin/bash
 #HPC --partition=lab4
-#HPC --cpu=16
+# Profiling launches 30 MPI ranks, so request the full node allocation; the
+# previous 16-CPU directive could make Open MPI report insufficient slots.
+#HPC --cpu=60
 #HPC --mem=100Gi
 #HPC --time=30m
 set -euo pipefail
@@ -30,24 +32,32 @@ echo "Start CPU perf: $(date)"
 # hpc expands %j in output paths; inside the container use the scheduler job
 # variable when available, with a literal fallback for local execution.
 JOB_TAG="${HPC_JOB_ID:-${SLURM_JOB_ID:-${JOB_ID:-%j}}}"
+if [[ "$JOB_TAG" == "%j" ]]; then
+  JOB_TAG="$(date +%Y%m%d-%H%M%S-%N)"
+fi
 
 input_backup="AMSS_NCKU_Input.py.4ssh.$$"
 cp AMSS_NCKU_Input.py "$input_backup"
 trap 'rc=$?; cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"; report_total_time "$rc"; exit "$rc"' EXIT
+sed -i '/^[[:space:]]*GPU_Calculation[[:space:]]*=/c\GPU_Calculation  = "no"' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Final_Evolution_Time[[:space:]]*=/c\Final_Evolution_Time = 1.0' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Evolution_Step_Number[[:space:]]*=/c\Evolution_Step_Number = 1' AMSS_NCKU_Input.py
+sed -i '/^[[:space:]]*MPI_processes[[:space:]]*=/c\MPI_processes    = 30' AMSS_NCKU_Input.py
+sed -i '/^[[:space:]]*OMP_threads[[:space:]]*=/c\OMP_threads      = 1' AMSS_NCKU_Input.py
 
 # Force the CPU baseline and keep its profiled build/run separate.
 export AMSS_MPI_PROCESSES=30
 export AMSS_OMP_THREADS=1
+export AMSS_TWOP_THREADS=20
 export AMSS_FINAL_EVOLUTION_TIME=1.0
 export AMSS_EVOLUTION_STEPS=1
 export AMSS_ENABLE_GPU=OFF
 export AMSS_ENABLE_OPENMP=ON
+export AMSS_SKIP_PLOTS=1
 export AMSS_OPT="-Ofast -ffast-math"
 export AMSS_ARCH_FLAGS="-mcpu=native"
 export AMSS_BUILD_DIR="$PWD/build_cpu_perf"
-export AMSS_OUTPUT_ROOT="$PWD/cpu_perf_output"
+export AMSS_OUTPUT_ROOT="$PWD/runs/perf-cpu-${JOB_TAG}"
 export AMSS_CACHE_DIR="$PWD/twopuncture_cache"
 unset CUDACXX AMSS_CUDA_ARCHITECTURES
 

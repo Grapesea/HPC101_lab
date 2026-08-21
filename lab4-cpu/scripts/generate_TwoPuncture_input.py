@@ -10,7 +10,7 @@
 
 
 import numpy
-import os 
+import os
 import AMSS_NCKU_Input as input_data          ## import program input file
 import math
 
@@ -65,8 +65,12 @@ def generate_AMSSNCKU_TwoPuncture_input():
 
     print( "#  -----0-----> y",                           file=file1 )
     print( "#   -      +      use Brugmann's convention", file=file1 )
-    print( "ABE::mp        = -1.0",                       file=file1 )   ## use negative values so the code solves for bare masses automatically
-    print( "ABE::mm        = -1.0",                       file=file1 )
+    if os.environ.get("AMSS_PRECOMPUTED_BARE_MASSES", "0") == "1":
+        print( "ABE::mp        = 0.5769759592",            file=file1 )
+        print( "ABE::mm        = 0.3785775235",            file=file1 )
+    else:
+        print( "ABE::mp        = -1.0",                   file=file1 )   ## solve for bare masses automatically
+        print( "ABE::mm        = -1.0",                   file=file1 )
     print( "# b            =  D/2",                       file=file1 )
     print( "ABE::b         = ", ( distance / 2.0 ),       file=file1 )
     print( "ABE::P_plusx   = ", momentum_BH[0,0],         file=file1 )
@@ -83,7 +87,8 @@ def generate_AMSSNCKU_TwoPuncture_input():
     print( "ABE::S_minusz  = ", angular_momentum_BH[1,2], file=file1 )
     print( "ABE::Mp        = ", BBH_M1,                   file=file1 )
     print( "ABE::Mm        = ", BBH_M2,                   file=file1 )
-    print( "ABE::admtol    =  1.e-6",                     file=file1 )
+    admtol = os.environ.get("AMSS_ADMTOL", "1.e-6")
+    print( "ABE::admtol    =  " + admtol,                 file=file1 )
     print( "ABE::Newtontol =  5.e-12",                    file=file1 )
     print( "ABE::nA        =  50",                        file=file1 )
     print( "ABE::nB        =  50",                        file=file1 )

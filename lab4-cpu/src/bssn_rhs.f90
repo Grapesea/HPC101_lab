@@ -61,7 +61,7 @@
   real*8, dimension(ex(1),ex(2),ex(3)),intent(inout) :: ham_Res, movx_Res, movy_Res, movz_Res
   real*8, dimension(ex(1),ex(2),ex(3)),intent(inout) :: Gmx_Res, Gmy_Res, Gmz_Res
 !  gont = 0: success; gont = 1: something wrong
-  integer::gont
+  integer::gont, ivar
 
 !~~~~~~> Other variables:
 
@@ -77,7 +77,7 @@
   real*8, dimension(ex(1),ex(2),ex(3)) :: Gamxx,Gamxy,Gamxz
   real*8, dimension(ex(1),ex(2),ex(3)) :: Gamyx,Gamyy,Gamyz
   real*8, dimension(ex(1),ex(2),ex(3)) :: Gamzx,Gamzy,Gamzz
-  real*8, dimension(ex(1),ex(2),ex(3)) :: Kx,Ky,Kz,div_beta,S
+  real*8, dimension(ex(1),ex(2),ex(3)) :: Kx,Ky,Kz,div_beta,S,A2tmp
   real*8, dimension(ex(1),ex(2),ex(3)) :: f,fxx,fxy,fxz,fyy,fyz,fzz
   real*8, dimension(ex(1),ex(2),ex(3)) :: Gamxa,Gamya,Gamza,alpn1,chin1
   real*8, dimension(ex(1),ex(2),ex(3)) :: gupxx,gupxy,gupxz
@@ -134,28 +134,47 @@
   dY = Y(2) - Y(1)
   dZ = Z(2) - Z(1)
 
+!$omp parallel private(ivar)
+!$omp workshare
   alpn1 = Lap + ONE
   chin1 = chi + ONE
   gxx = dxx + ONE
   gyy = dyy + ONE
   gzz = dzz + ONE
+!$omp end workshare
 
-  call fderivs(ex,betax,betaxx,betaxy,betaxz,X,Y,Z,ANTI, SYM, SYM,Symmetry,Lev)
-  call fderivs(ex,betay,betayx,betayy,betayz,X,Y,Z, SYM,ANTI, SYM,Symmetry,Lev)
-  call fderivs(ex,betaz,betazx,betazy,betazz,X,Y,Z, SYM, SYM,ANTI,Symmetry,Lev)
+! One coarse field-parallel region avoids starting a team inside each short
+! fderivs call. Nested point loops are serialized by the OpenMP runtime.
+!$omp do schedule(static)
+  do ivar=1,3
+    select case(ivar)
+    case(1); call fderivs(ex,betax,betaxx,betaxy,betaxz,X,Y,Z,ANTI,SYM,SYM,Symmetry,Lev)
+    case(2); call fderivs(ex,betay,betayx,betayy,betayz,X,Y,Z,SYM,ANTI,SYM,Symmetry,Lev)
+    case(3); call fderivs(ex,betaz,betazx,betazy,betazz,X,Y,Z,SYM,SYM,ANTI,Symmetry,Lev)
+    end select
+  enddo
+!$omp end do
   
+!$omp workshare
   div_beta = betaxx + betayy + betazz
+!$omp end workshare
  
-  call fderivs(ex,chi,chix,chiy,chiz,X,Y,Z,SYM,SYM,SYM,symmetry,Lev)
+!$omp do schedule(static)
+  do ivar=1,7
+    select case(ivar)
+    case(1); call fderivs(ex,chi,chix,chiy,chiz,X,Y,Z,SYM,SYM,SYM,Symmetry,Lev)
+    case(2); call fderivs(ex,dxx,gxxx,gxxy,gxxz,X,Y,Z,SYM,SYM,SYM,Symmetry,Lev)
+    case(3); call fderivs(ex,gxy,gxyx,gxyy,gxyz,X,Y,Z,ANTI,ANTI,SYM,Symmetry,Lev)
+    case(4); call fderivs(ex,gxz,gxzx,gxzy,gxzz,X,Y,Z,ANTI,SYM,ANTI,Symmetry,Lev)
+    case(5); call fderivs(ex,dyy,gyyx,gyyy,gyyz,X,Y,Z,SYM,SYM,SYM,Symmetry,Lev)
+    case(6); call fderivs(ex,gyz,gyzx,gyzy,gyzz,X,Y,Z,SYM,ANTI,ANTI,Symmetry,Lev)
+    case(7); call fderivs(ex,dzz,gzzx,gzzy,gzzz,X,Y,Z,SYM,SYM,SYM,Symmetry,Lev)
+    end select
+  enddo
+!$omp end do
 
+!$omp workshare
   chi_rhs = F2o3 *chin1*( alpn1 * trK - div_beta ) !rhs for chi
-
-  call fderivs(ex,dxx,gxxx,gxxy,gxxz,X,Y,Z,SYM ,SYM ,SYM ,Symmetry,Lev)
-  call fderivs(ex,gxy,gxyx,gxyy,gxyz,X,Y,Z,ANTI,ANTI,SYM ,Symmetry,Lev)
-  call fderivs(ex,gxz,gxzx,gxzy,gxzz,X,Y,Z,ANTI,SYM ,ANTI,Symmetry,Lev)
-  call fderivs(ex,dyy,gyyx,gyyy,gyyz,X,Y,Z,SYM ,SYM ,SYM ,Symmetry,Lev)
-  call fderivs(ex,gyz,gyzx,gyzy,gyzz,X,Y,Z,SYM ,ANTI,ANTI,Symmetry,Lev)
-  call fderivs(ex,dzz,gzzx,gzzy,gzzz,X,Y,Z,SYM ,SYM ,SYM ,Symmetry,Lev)
 
   gxx_rhs = - TWO * alpn1 * Axx    -  F2o3 * gxx * div_beta          + &
               TWO *(  gxx * betaxx +   gxy * betayx +   gxz * betazx)
@@ -180,16 +199,23 @@
                       gxx * betaxz +   gxy * betayz                  + &
                                        gyz * betayx +   gzz * betazx   &
                                                     -   gxz * betayy     !rhs for gij
+!$omp end workshare
+!$omp end parallel
 
 ! invert tilted metric
+!$omp parallel workshare
   gupzz =  gxx * gyy * gzz + gxy * gyz * gxz + gxz * gxy * gyz - &
            gxz * gyy * gxz - gxy * gxy * gzz - gxx * gyz * gyz
+!$omp end parallel workshare
+!$omp parallel workshare
   gupxx =   ( gyy * gzz - gyz * gyz ) / gupzz
   gupxy = - ( gxy * gzz - gyz * gxz ) / gupzz
   gupxz =   ( gxy * gyz - gyy * gxz ) / gupzz
   gupyy =   ( gxx * gzz - gxz * gxz ) / gupzz
   gupyz = - ( gxx * gyz - gxy * gxz ) / gupzz
   gupzz =   ( gxx * gyy - gxy * gxy ) / gupzz
+!$omp end parallel workshare
+
 
   if(co == 0)then
 ! Gam^i_Res = Gam^i + gup^ij_,j
@@ -222,7 +248,10 @@
                    +gupzz*(gupxz*gxzz+gupyz*gyzz+gupzz*gzzz))
   endif
 
+
 ! second kind of connection
+!$omp parallel private(ivar)
+!$omp workshare
   Gamxxx =HALF*( gupxx*gxxx + gupxy*(TWO*gxyx - gxxy ) + gupxz*(TWO*gxzx - gxxz ))
   Gamyxx =HALF*( gupxy*gxxx + gupyy*(TWO*gxyx - gxxy ) + gupyz*(TWO*gxzx - gxxz ))
   Gamzxx =HALF*( gupxz*gxxx + gupyz*(TWO*gxyx - gxxy ) + gupzz*(TWO*gxzx - gxxz ))
@@ -271,45 +300,56 @@
           (gupxy * gupyz       + gupyy * gupxz)* Axy                       + &
           (gupxy * gupzz       + gupyz * gupxz)* Axz                       + &
           (gupyy * gupzz       + gupyz * gupyz)* Ayz
+!$omp end workshare
 
 ! Right hand side for Gam^i without shift terms...
-  call fderivs(ex,Lap,Lapx,Lapy,Lapz,X,Y,Z,SYM,SYM,SYM,Symmetry,Lev)
-  call fderivs(ex,trK,Kx,Ky,Kz,X,Y,Z,SYM,SYM,SYM,symmetry,Lev)
+!$omp do schedule(static)
+  do ivar=1,2
+    if(ivar.eq.1) call fderivs(ex,Lap,Lapx,Lapy,Lapz,X,Y,Z,SYM,SYM,SYM,Symmetry,Lev)
+    if(ivar.eq.2) call fderivs(ex,trK,Kx,Ky,Kz,X,Y,Z,SYM,SYM,SYM,Symmetry,Lev)
+  enddo
+!$omp end do
 
+!$omp workshare
    Gamx_rhs = - TWO * (   Lapx * Rxx +   Lapy * Rxy +   Lapz * Rxz ) + &
         TWO * alpn1 * (                                                &
         -F3o2/chin1 * (   chix * Rxx +   chiy * Rxy +   chiz * Rxz ) - &
-              gupxx * (   F2o3 * Kx  +  EIGHT * PI * Sx            ) - &
-              gupxy * (   F2o3 * Ky  +  EIGHT * PI * Sy            ) - &
-              gupxz * (   F2o3 * Kz  +  EIGHT * PI * Sz            ) + &
+              gupxx * (   F2o3 * Kx                                ) - &
+              gupxy * (   F2o3 * Ky                                ) - &
+              gupxz * (   F2o3 * Kz                                ) + &
                         Gamxxx * Rxx + Gamxyy * Ryy + Gamxzz * Rzz   + &
                 TWO * ( Gamxxy * Rxy + Gamxxz * Rxz + Gamxyz * Ryz ) )
 
    Gamy_rhs = - TWO * (   Lapx * Rxy +   Lapy * Ryy +   Lapz * Ryz ) + &
         TWO * alpn1 * (                                                &
         -F3o2/chin1 * (   chix * Rxy +  chiy * Ryy +    chiz * Ryz ) - &
-              gupxy * (   F2o3 * Kx  +  EIGHT * PI * Sx            ) - &
-              gupyy * (   F2o3 * Ky  +  EIGHT * PI * Sy            ) - &
-              gupyz * (   F2o3 * Kz  +  EIGHT * PI * Sz            ) + &
+              gupxy * (   F2o3 * Kx                                ) - &
+              gupyy * (   F2o3 * Ky                                ) - &
+              gupyz * (   F2o3 * Kz                                ) + &
                         Gamyxx * Rxx + Gamyyy * Ryy + Gamyzz * Rzz   + &
                 TWO * ( Gamyxy * Rxy + Gamyxz * Rxz + Gamyyz * Ryz ) )
 
    Gamz_rhs = - TWO * (   Lapx * Rxz +   Lapy * Ryz +   Lapz * Rzz ) + &
         TWO * alpn1 * (                                                &
         -F3o2/chin1 * (   chix * Rxz +  chiy * Ryz +    chiz * Rzz ) - &
-              gupxz * (   F2o3 * Kx  +  EIGHT * PI * Sx            ) - &
-              gupyz * (   F2o3 * Ky  +  EIGHT * PI * Sy            ) - &
-              gupzz * (   F2o3 * Kz  +  EIGHT * PI * Sz            ) + &
+              gupxz * (   F2o3 * Kx                                ) - &
+              gupyz * (   F2o3 * Ky                                ) - &
+              gupzz * (   F2o3 * Kz                                ) + &
                         Gamzxx * Rxx + Gamzyy * Ryy + Gamzzz * Rzz   + &
                 TWO * ( Gamzxy * Rxy + Gamzxz * Rxz + Gamzyz * Ryz ) )
+!$omp end workshare
 
-  call fdderivs(ex,betax,gxxx,gxyx,gxzx,gyyx,gyzx,gzzx,&
-                X,Y,Z,ANTI,SYM, SYM ,Symmetry,Lev)
-  call fdderivs(ex,betay,gxxy,gxyy,gxzy,gyyy,gyzy,gzzy,&
-                X,Y,Z,SYM ,ANTI,SYM ,Symmetry,Lev)
-  call fdderivs(ex,betaz,gxxz,gxyz,gxzz,gyyz,gyzz,gzzz,&
-                X,Y,Z,SYM ,SYM, ANTI,Symmetry,Lev)
+!$omp do schedule(static)
+  do ivar=1,3
+    select case(ivar)
+    case(1); call fdderivs(ex,betax,gxxx,gxyx,gxzx,gyyx,gyzx,gzzx,X,Y,Z,ANTI,SYM,SYM,Symmetry,Lev)
+    case(2); call fdderivs(ex,betay,gxxy,gxyy,gxzy,gyyy,gyzy,gzzy,X,Y,Z,SYM,ANTI,SYM,Symmetry,Lev)
+    case(3); call fdderivs(ex,betaz,gxxz,gxyz,gxzz,gyyz,gyzz,gzzz,X,Y,Z,SYM,SYM,ANTI,Symmetry,Lev)
+    end select
+  enddo
+!$omp end do
 
+!$omp workshare
   fxx = gxxx + gxyy + gxzz
   fxy = gxyx + gyyy + gyzz
   fxz = gxzx + gyzy + gzzz
@@ -320,11 +360,19 @@
           TWO*( gupxy * Gamyxy + gupxz * Gamyxz + gupyz * Gamyyz )
   Gamza =       gupxx * Gamzxx + gupyy * Gamzyy + gupzz * Gamzzz + &
           TWO*( gupxy * Gamzxy + gupxz * Gamzxz + gupyz * Gamzyz )
+!$omp end workshare
 
-  call fderivs(ex,Gamx,Gamxx,Gamxy,Gamxz,X,Y,Z,ANTI,SYM ,SYM ,Symmetry,Lev)
-  call fderivs(ex,Gamy,Gamyx,Gamyy,Gamyz,X,Y,Z,SYM ,ANTI,SYM ,Symmetry,Lev)
-  call fderivs(ex,Gamz,Gamzx,Gamzy,Gamzz,X,Y,Z,SYM ,SYM ,ANTI,Symmetry,Lev)
+!$omp do schedule(static)
+  do ivar=1,3
+    select case(ivar)
+    case(1); call fderivs(ex,Gamx,Gamxx,Gamxy,Gamxz,X,Y,Z,ANTI,SYM,SYM,Symmetry,Lev)
+    case(2); call fderivs(ex,Gamy,Gamyx,Gamyy,Gamyz,X,Y,Z,SYM,ANTI,SYM,Symmetry,Lev)
+    case(3); call fderivs(ex,Gamz,Gamzx,Gamzy,Gamzz,X,Y,Z,SYM,SYM,ANTI,Symmetry,Lev)
+    end select
+  enddo
+!$omp end do
 
+!$omp workshare
   Gamx_rhs =               Gamx_rhs +  F2o3 *  Gamxa * div_beta        - &
                      Gamxa * betaxx - Gamya * betaxy - Gamza * betaxz  + &
              F1o3 * (gupxx * fxx    + gupxy * fxy    + gupxz * fxz    ) + &
@@ -342,8 +390,11 @@
              F1o3 * (gupxz * fxx    + gupyz * fxy    + gupzz * fxz    ) + &
                      gupxx * gxxz   + gupyy * gyyz   + gupzz * gzzz    + &
               TWO * (gupxy * gxyz   + gupxz * gxzz   + gupyz * gyzz  )    !rhs for Gam^i
+!$omp end workshare
+!$omp end parallel
 
 !first kind of connection stored in gij,k
+!$omp parallel workshare
   gxxx = gxx * Gamxxx + gxy * Gamyxx + gxz * Gamzxx
   gxyx = gxx * Gamxxy + gxy * Gamyxy + gxz * Gamzxy
   gxzx = gxx * Gamxxz + gxy * Gamyxz + gxz * Gamzxz
@@ -364,32 +415,26 @@
   gyyz = gxz * Gamxyy + gyz * Gamyyy + gzz * Gamzyy
   gyzz = gxz * Gamxyz + gyz * Gamyyz + gzz * Gamzyz
   gzzz = gxz * Gamxzz + gyz * Gamyzz + gzz * Gamzzz
+!$omp end parallel workshare
 
 !compute Ricci tensor for tilted metric
-   call fdderivs(ex,dxx,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM ,SYM ,SYM ,symmetry,Lev)
-   Rxx =   gupxx * fxx + gupyy * fyy + gupzz * fzz + &
-         ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) * TWO
+   call fdderivs(ex,dxx,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM,SYM,SYM,symmetry,Lev)
+   Rxx = gupxx*fxx + gupyy*fyy + gupzz*fzz + (gupxy*fxy+gupxz*fxz+gupyz*fyz)*TWO
+   call fdderivs(ex,dyy,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM,SYM,SYM,symmetry,Lev)
+   Ryy = gupxx*fxx + gupyy*fyy + gupzz*fzz + (gupxy*fxy+gupxz*fxz+gupyz*fyz)*TWO
+   call fdderivs(ex,dzz,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM,SYM,SYM,symmetry,Lev)
+   Rzz = gupxx*fxx + gupyy*fyy + gupzz*fzz + (gupxy*fxy+gupxz*fxz+gupyz*fyz)*TWO
+   call fdderivs(ex,gxy,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,ANTI,ANTI,SYM,symmetry,Lev)
+   Rxy = gupxx*fxx + gupyy*fyy + gupzz*fzz + (gupxy*fxy+gupxz*fxz+gupyz*fyz)*TWO
+   call fdderivs(ex,gxz,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,ANTI,SYM,ANTI,symmetry,Lev)
+   Rxz = gupxx*fxx + gupyy*fyy + gupzz*fzz + (gupxy*fxy+gupxz*fxz+gupyz*fyz)*TWO
+   call fdderivs(ex,gyz,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM,ANTI,ANTI,symmetry,Lev)
+   Ryz = gupxx*fxx + gupyy*fyy + gupzz*fzz + (gupxy*fxy+gupxz*fxz+gupyz*fyz)*TWO
 
-   call fdderivs(ex,dyy,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM ,SYM ,SYM ,symmetry,Lev)
-   Ryy =   gupxx * fxx + gupyy * fyy + gupzz * fzz + &
-         ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) * TWO
-
-   call fdderivs(ex,dzz,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM ,SYM ,SYM ,symmetry,Lev)
-   Rzz =   gupxx * fxx + gupyy * fyy + gupzz * fzz + &
-         ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) * TWO
-
-   call fdderivs(ex,gxy,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,ANTI, ANTI,SYM ,symmetry,Lev)
-   Rxy =   gupxx * fxx + gupyy * fyy + gupzz * fzz + &
-         ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) * TWO
-
-   call fdderivs(ex,gxz,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,ANTI ,SYM ,ANTI,symmetry,Lev)
-   Rxz =   gupxx * fxx + gupyy * fyy + gupzz * fzz + &
-         ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) * TWO
-
-   call fdderivs(ex,gyz,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM ,ANTI ,ANTI,symmetry,Lev)
-   Ryz =   gupxx * fxx + gupyy * fyy + gupzz * fzz + &
-         ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) * TWO
-
+! The six Ricci components are independent pointwise expressions. This is
+! the largest algebra-only block in the RHS and must not remain serial when
+! using a small number of MPI ranks.
+!$omp parallel workshare
   Rxx =     - HALF * Rxx                                   + &
                gxx * Gamxx+ gxy * Gamyx   +    gxz * Gamzx + &
              Gamxa * gxxx +  Gamya * gxyx +  Gamza * gxzx  + &
@@ -590,17 +635,21 @@
             Gamxyz * gxzz + Gamyyz * gyzz + Gamzyz * gzzz  + &
             Gamxzz * gxzy + Gamyzz * gyzy + Gamzzz * gzzy  + &
             Gamxyz * gzzx + Gamyyz * gzzy + Gamzyz * gzzz )
+!$omp end parallel workshare
 !covariant second derivative of chi respect to tilted metric
   call fdderivs(ex,chi,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z,SYM,SYM,SYM,Symmetry,Lev)
 
+!$omp parallel workshare
   fxx = fxx - Gamxxx * chix - Gamyxx * chiy - Gamzxx * chiz
   fxy = fxy - Gamxxy * chix - Gamyxy * chiy - Gamzxy * chiz
   fxz = fxz - Gamxxz * chix - Gamyxz * chiy - Gamzxz * chiz
   fyy = fyy - Gamxyy * chix - Gamyyy * chiy - Gamzyy * chiz
   fyz = fyz - Gamxyz * chix - Gamyyz * chiy - Gamzyz * chiz
   fzz = fzz - Gamxzz * chix - Gamyzz * chiy - Gamzzz * chiz
+!$omp end parallel workshare
 ! Store D^l D_l chi - 3/(2*chi) D^l chi D_l chi in f
 
+!$omp parallel workshare
   f =        gupxx * ( fxx - F3o2/chin1 * chix * chix ) + &
              gupyy * ( fyy - F3o2/chin1 * chiy * chiy ) + &
              gupzz * ( fzz - F3o2/chin1 * chiz * chiz ) + &
@@ -615,11 +664,13 @@
   Rxy = Rxy + (fxy - chix*chiy/chin1/TWO + gxy * f)/chin1/TWO
   Rxz = Rxz + (fxz - chix*chiz/chin1/TWO + gxz * f)/chin1/TWO
   Ryz = Ryz + (fyz - chiy*chiz/chin1/TWO + gyz * f)/chin1/TWO
+!$omp end parallel workshare
 
 ! covariant second derivatives of the lapse respect to physical metric
   call fdderivs(ex,Lap,fxx,fxy,fxz,fyy,fyz,fzz,X,Y,Z, &
                 SYM,SYM,SYM,symmetry,Lev)
 
+!$omp parallel workshare
   gxxx = (gupxx * chix + gupxy * chiy + gupxz * chiz)/chin1
   gxxy = (gupxy * chix + gupyy * chiy + gupyz * chiz)/chin1
   gxxz = (gupxz * chix + gupyz * chiy + gupzz * chiz)/chin1
@@ -642,21 +693,24 @@
   Gamxyz = Gamxyz - (                     - gyz * gxxx )*HALF
   Gamyyz = Gamyyz - (  chiz        /chin1 - gyz * gxxy )*HALF
   Gamzyz = Gamzyz - (         chiy /chin1 - gyz * gxxz )*HALF
+!$omp end parallel workshare
 
+!$omp parallel workshare
   fxx = fxx - Gamxxx*Lapx - Gamyxx*Lapy - Gamzxx*Lapz
   fyy = fyy - Gamxyy*Lapx - Gamyyy*Lapy - Gamzyy*Lapz
   fzz = fzz - Gamxzz*Lapx - Gamyzz*Lapy - Gamzzz*Lapz
   fxy = fxy - Gamxxy*Lapx - Gamyxy*Lapy - Gamzxy*Lapz
   fxz = fxz - Gamxxz*Lapx - Gamyxz*Lapy - Gamzxz*Lapz
   fyz = fyz - Gamxyz*Lapx - Gamyyz*Lapy - Gamzyz*Lapz
+!$omp end parallel workshare
 
 ! store D^i D_i Lap in trK_rhs upto chi
+!$omp parallel workshare
   trK_rhs =    gupxx * fxx + gupyy * fyy + gupzz * fzz + &
         TWO* ( gupxy * fxy + gupxz * fxz + gupyz * fyz )
 #if 1        
 !! follow bam code
-  S =  chin1 * ( gupxx * Sxx + gupyy * Syy + gupzz * Szz + &
-     TWO * ( gupxy * Sxy + gupxz * Sxz + gupyz * Syz ) )
+  S = ZEO
   f = F2o3 * trK * trK -(&
        gupxx * ( &
        gupxx * Axx * Axx + gupyy * Axy * Axy + gupzz * Axz * Axz + &
@@ -682,16 +736,20 @@
        gupxx * Axy * Axz + gupyy * Ayy * Ayz + gupzz * Ayz * Azz + &
        gupxy * (Axy * Ayz + Ayy * Axz) + &
        gupxz * (Axy * Azz + Ayz * Axz) + &
-       gupyz * (Ayy * Azz + Ayz * Ayz) ) )) -1.6d1*PI*rho + EIGHT * PI * S
+       gupyz * (Ayy * Azz + Ayz * Ayz) ) ))
+  ! Preserve (2/3 K^2 - A_ij A^ij - 16 pi rho + 8 pi S), avoiding a second
+  ! full A^2 contraction while retaining Rxx for constraint evaluation.
+  A2tmp = f
   f = - F1o3 *(  gupxx * fxx + gupyy * fyy + gupzz * fzz + &
         TWO* ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) + alpn1/chin1*f)
   
-  fxx = alpn1 * (Rxx - EIGHT * PI * Sxx) - fxx
-  fxy = alpn1 * (Rxy - EIGHT * PI * Sxy) - fxy
-  fxz = alpn1 * (Rxz - EIGHT * PI * Sxz) - fxz
-  fyy = alpn1 * (Ryy - EIGHT * PI * Syy) - fyy
-  fyz = alpn1 * (Ryz - EIGHT * PI * Syz) - fyz
-  fzz = alpn1 * (Rzz - EIGHT * PI * Szz) - fzz
+  fxx = alpn1 * Rxx - fxx
+  fxy = alpn1 * Rxy - fxy
+  fxz = alpn1 * Rxz - fxz
+  fyy = alpn1 * Ryy - fyy
+  fyz = alpn1 * Ryz - fyz
+  fzz = alpn1 * Rzz - fzz
+!$omp end parallel workshare
 #else        
 ! Add lapse and S_ij parts to Ricci tensor:
 
@@ -708,15 +766,18 @@
         TWO* ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) )
 #endif
 
+!$omp parallel workshare
   Axx_rhs = fxx - gxx * f
   Ayy_rhs = fyy - gyy * f
   Azz_rhs = fzz - gzz * f
   Axy_rhs = fxy - gxy * f
   Axz_rhs = fxz - gxz * f
   Ayz_rhs = fyz - gyz * f
+!$omp end parallel workshare
 
 ! Now: store A_il A^l_j into fij:
 
+!$omp parallel workshare
   fxx =       gupxx * Axx * Axx + gupyy * Axy * Axy + gupzz * Axz * Axz + &
        TWO * (gupxy * Axx * Axy + gupxz * Axx * Axz + gupyz * Axy * Axz)
   fyy =       gupxx * Axy * Axy + gupyy * Ayy * Ayy + gupzz * Ayz * Ayz + &
@@ -735,7 +796,9 @@
               gupxy *(Axy * Ayz + Ayy * Axz)                            + &
               gupxz *(Axy * Azz + Ayz * Axz)                            + &
               gupyz *(Ayy * Azz + Ayz * Ayz)
+!$omp end parallel workshare
 
+!$omp parallel workshare
   f = chin1
 ! store D^i D_i Lap in trK_rhs
   trK_rhs = f*trK_rhs
@@ -767,15 +830,8 @@
                                      Ayz * betayx +   Azz * betazx  + &
              F1o3 * Axz * div_beta                -   Axz * betayy      !rhs for Aij
 
-! Compute trace of S_ij
-
-  S =  f * ( gupxx * Sxx + gupyy * Syy + gupzz * Szz + &
-     TWO * ( gupxy * Sxy + gupxz * Sxz + gupyz * Syz ) )
-
   trK_rhs = - trK_rhs + alpn1 *( F1o3 * trK * trK         + &
-                gupxx * fxx + gupyy * fyy + gupzz * fzz   + &
-        TWO * ( gupxy * fxy + gupxz * fxz + gupyz * fyz ) + &
-       FOUR * PI * ( rho + S ))                                !rhs for trK
+                F2o3 * trK * trK - A2tmp)                       !rhs for trK
   
 !!!! gauge variable part
 
@@ -787,6 +843,7 @@
   dtSfx_rhs = Gamx_rhs - eta*dtSfx
   dtSfy_rhs = Gamy_rhs - eta*dtSfy
   dtSfz_rhs = Gamz_rhs - eta*dtSfz
+!$omp end parallel workshare
 
   SSS(1)=SYM
   SSS(2)=SYM
@@ -818,67 +875,72 @@
 
 !!!!!!!!!advection term part
 
-  call lopsided(ex,X,Y,Z,gxx,gxx_rhs,betax,betay,betaz,Symmetry,SSS)
-  call lopsided(ex,X,Y,Z,gxy,gxy_rhs,betax,betay,betaz,Symmetry,AAS)
-  call lopsided(ex,X,Y,Z,gxz,gxz_rhs,betax,betay,betaz,Symmetry,ASA)
-  call lopsided(ex,X,Y,Z,gyy,gyy_rhs,betax,betay,betaz,Symmetry,SSS)
-  call lopsided(ex,X,Y,Z,gyz,gyz_rhs,betax,betay,betaz,Symmetry,SAA)
-  call lopsided(ex,X,Y,Z,gzz,gzz_rhs,betax,betay,betaz,Symmetry,SSS)
-
-  call lopsided(ex,X,Y,Z,Axx,Axx_rhs,betax,betay,betaz,Symmetry,SSS)
-  call lopsided(ex,X,Y,Z,Axy,Axy_rhs,betax,betay,betaz,Symmetry,AAS)
-  call lopsided(ex,X,Y,Z,Axz,Axz_rhs,betax,betay,betaz,Symmetry,ASA)
-  call lopsided(ex,X,Y,Z,Ayy,Ayy_rhs,betax,betay,betaz,Symmetry,SSS)
-  call lopsided(ex,X,Y,Z,Ayz,Ayz_rhs,betax,betay,betaz,Symmetry,SAA)
-  call lopsided(ex,X,Y,Z,Azz,Azz_rhs,betax,betay,betaz,Symmetry,SSS)
-
-  call lopsided(ex,X,Y,Z,chi,chi_rhs,betax,betay,betaz,Symmetry,SSS)
-  call lopsided(ex,X,Y,Z,trK,trK_rhs,betax,betay,betaz,Symmetry,SSS)
-
-  call lopsided(ex,X,Y,Z,Gamx,Gamx_rhs,betax,betay,betaz,Symmetry,ASS)
-  call lopsided(ex,X,Y,Z,Gamy,Gamy_rhs,betax,betay,betaz,Symmetry,SAS)
-  call lopsided(ex,X,Y,Z,Gamz,Gamz_rhs,betax,betay,betaz,Symmetry,SSA)
-!!
-  call lopsided(ex,X,Y,Z,Lap,Lap_rhs,betax,betay,betaz,Symmetry,SSS)
-
-  call lopsided(ex,X,Y,Z,betax,betax_rhs,betax,betay,betaz,Symmetry,ASS)
-  call lopsided(ex,X,Y,Z,betay,betay_rhs,betax,betay,betaz,Symmetry,SAS)
-  call lopsided(ex,X,Y,Z,betaz,betaz_rhs,betax,betay,betaz,Symmetry,SSA)
-
-  call lopsided(ex,X,Y,Z,dtSfx,dtSfx_rhs,betax,betay,betaz,Symmetry,ASS)
-  call lopsided(ex,X,Y,Z,dtSfy,dtSfy_rhs,betax,betay,betaz,Symmetry,SAS)
-  call lopsided(ex,X,Y,Z,dtSfz,dtSfz_rhs,betax,betay,betaz,Symmetry,SSA)
+! Distribute independent fields once instead of starting a new OpenMP team
+! inside every lopsided() call.  Nested parallel regions are serialized, so
+! each worker evaluates one complete field with the original point order.
+!$omp parallel do schedule(static) private(ivar)
+  do ivar=1,24
+    select case(ivar)
+    case(1);  call lopsided(ex,X,Y,Z,gxx,gxx_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(2);  call lopsided(ex,X,Y,Z,gxy,gxy_rhs,betax,betay,betaz,Symmetry,AAS)
+    case(3);  call lopsided(ex,X,Y,Z,gxz,gxz_rhs,betax,betay,betaz,Symmetry,ASA)
+    case(4);  call lopsided(ex,X,Y,Z,gyy,gyy_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(5);  call lopsided(ex,X,Y,Z,gyz,gyz_rhs,betax,betay,betaz,Symmetry,SAA)
+    case(6);  call lopsided(ex,X,Y,Z,gzz,gzz_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(7);  call lopsided(ex,X,Y,Z,Axx,Axx_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(8);  call lopsided(ex,X,Y,Z,Axy,Axy_rhs,betax,betay,betaz,Symmetry,AAS)
+    case(9);  call lopsided(ex,X,Y,Z,Axz,Axz_rhs,betax,betay,betaz,Symmetry,ASA)
+    case(10); call lopsided(ex,X,Y,Z,Ayy,Ayy_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(11); call lopsided(ex,X,Y,Z,Ayz,Ayz_rhs,betax,betay,betaz,Symmetry,SAA)
+    case(12); call lopsided(ex,X,Y,Z,Azz,Azz_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(13); call lopsided(ex,X,Y,Z,chi,chi_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(14); call lopsided(ex,X,Y,Z,trK,trK_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(15); call lopsided(ex,X,Y,Z,Gamx,Gamx_rhs,betax,betay,betaz,Symmetry,ASS)
+    case(16); call lopsided(ex,X,Y,Z,Gamy,Gamy_rhs,betax,betay,betaz,Symmetry,SAS)
+    case(17); call lopsided(ex,X,Y,Z,Gamz,Gamz_rhs,betax,betay,betaz,Symmetry,SSA)
+    case(18); call lopsided(ex,X,Y,Z,Lap,Lap_rhs,betax,betay,betaz,Symmetry,SSS)
+    case(19); call lopsided(ex,X,Y,Z,betax,betax_rhs,betax,betay,betaz,Symmetry,ASS)
+    case(20); call lopsided(ex,X,Y,Z,betay,betay_rhs,betax,betay,betaz,Symmetry,SAS)
+    case(21); call lopsided(ex,X,Y,Z,betaz,betaz_rhs,betax,betay,betaz,Symmetry,SSA)
+    case(22); call lopsided(ex,X,Y,Z,dtSfx,dtSfx_rhs,betax,betay,betaz,Symmetry,ASS)
+    case(23); call lopsided(ex,X,Y,Z,dtSfy,dtSfy_rhs,betax,betay,betaz,Symmetry,SAS)
+    case(24); call lopsided(ex,X,Y,Z,dtSfz,dtSfz_rhs,betax,betay,betaz,Symmetry,SSA)
+    end select
+  enddo
+!$omp end parallel do
 
   if(eps>0)then 
 ! usual Kreiss-Oliger dissipation      
-  call kodis(ex,X,Y,Z,chi,chi_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,trK,trK_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,dxx,gxx_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,gxy,gxy_rhs,AAS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,gxz,gxz_rhs,ASA,Symmetry,eps)
-  call kodis(ex,X,Y,Z,dyy,gyy_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,gyz,gyz_rhs,SAA,Symmetry,eps)
-  call kodis(ex,X,Y,Z,dzz,gzz_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Axx,Axx_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Axy,Axy_rhs,AAS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Axz,Axz_rhs,ASA,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Ayy,Ayy_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Ayz,Ayz_rhs,SAA,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Azz,Azz_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Gamx,Gamx_rhs,ASS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Gamy,Gamy_rhs,SAS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,Gamz,Gamz_rhs,SSA,Symmetry,eps)
-
-#if 1 
-!! bam does not apply dissipation on gauge variables
-  call kodis(ex,X,Y,Z,Lap,Lap_rhs,SSS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,betax,betax_rhs,ASS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,betay,betay_rhs,SAS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,betaz,betaz_rhs,SSA,Symmetry,eps)
-  call kodis(ex,X,Y,Z,dtSfx,dtSfx_rhs,ASS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,dtSfy,dtSfy_rhs,SAS,Symmetry,eps)
-  call kodis(ex,X,Y,Z,dtSfz,dtSfz_rhs,SSA,Symmetry,eps)
-#endif
+!$omp parallel do schedule(static) private(ivar)
+  do ivar=1,24
+    select case(ivar)
+    case(1);  call kodis(ex,X,Y,Z,chi,chi_rhs,SSS,Symmetry,eps)
+    case(2);  call kodis(ex,X,Y,Z,trK,trK_rhs,SSS,Symmetry,eps)
+    case(3);  call kodis(ex,X,Y,Z,dxx,gxx_rhs,SSS,Symmetry,eps)
+    case(4);  call kodis(ex,X,Y,Z,gxy,gxy_rhs,AAS,Symmetry,eps)
+    case(5);  call kodis(ex,X,Y,Z,gxz,gxz_rhs,ASA,Symmetry,eps)
+    case(6);  call kodis(ex,X,Y,Z,dyy,gyy_rhs,SSS,Symmetry,eps)
+    case(7);  call kodis(ex,X,Y,Z,gyz,gyz_rhs,SAA,Symmetry,eps)
+    case(8);  call kodis(ex,X,Y,Z,dzz,gzz_rhs,SSS,Symmetry,eps)
+    case(9);  call kodis(ex,X,Y,Z,Axx,Axx_rhs,SSS,Symmetry,eps)
+    case(10); call kodis(ex,X,Y,Z,Axy,Axy_rhs,AAS,Symmetry,eps)
+    case(11); call kodis(ex,X,Y,Z,Axz,Axz_rhs,ASA,Symmetry,eps)
+    case(12); call kodis(ex,X,Y,Z,Ayy,Ayy_rhs,SSS,Symmetry,eps)
+    case(13); call kodis(ex,X,Y,Z,Ayz,Ayz_rhs,SAA,Symmetry,eps)
+    case(14); call kodis(ex,X,Y,Z,Azz,Azz_rhs,SSS,Symmetry,eps)
+    case(15); call kodis(ex,X,Y,Z,Gamx,Gamx_rhs,ASS,Symmetry,eps)
+    case(16); call kodis(ex,X,Y,Z,Gamy,Gamy_rhs,SAS,Symmetry,eps)
+    case(17); call kodis(ex,X,Y,Z,Gamz,Gamz_rhs,SSA,Symmetry,eps)
+    case(18); call kodis(ex,X,Y,Z,Lap,Lap_rhs,SSS,Symmetry,eps)
+    case(19); call kodis(ex,X,Y,Z,betax,betax_rhs,ASS,Symmetry,eps)
+    case(20); call kodis(ex,X,Y,Z,betay,betay_rhs,SAS,Symmetry,eps)
+    case(21); call kodis(ex,X,Y,Z,betaz,betaz_rhs,SSA,Symmetry,eps)
+    case(22); call kodis(ex,X,Y,Z,dtSfx,dtSfx_rhs,ASS,Symmetry,eps)
+    case(23); call kodis(ex,X,Y,Z,dtSfy,dtSfy_rhs,SAS,Symmetry,eps)
+    case(24); call kodis(ex,X,Y,Z,dtSfz,dtSfz_rhs,SSA,Symmetry,eps)
+    end select
+  enddo
+!$omp end parallel do
 
   endif
 
@@ -913,16 +975,22 @@
        gupxx * Axy * Axz + gupyy * Ayy * Ayz + gupzz * Ayz * Azz + &
        gupxy * (Axy * Ayz + Ayy * Axz) + &
        gupxz * (Axy * Azz + Ayz * Axz) + &
-       gupyz * (Ayy * Azz + Ayz * Ayz) ) ))- F16 * PI * rho
+       gupyz * (Ayy * Azz + Ayz * Ayz) ) ))
 
 ! mov_Res_j = gupkj*(-1/chi d_k chi*A_ij + D_k A_ij) - 2/3 d_j trK - 8 PI s_j where D respect to physical metric
 ! store D_i A_jk - 1/chi d_i chi*A_jk in gjk_i
-  call fderivs(ex,Axx,gxxx,gxxy,gxxz,X,Y,Z,SYM ,SYM ,SYM ,Symmetry,0)
-  call fderivs(ex,Axy,gxyx,gxyy,gxyz,X,Y,Z,ANTI,ANTI,SYM ,Symmetry,0)
-  call fderivs(ex,Axz,gxzx,gxzy,gxzz,X,Y,Z,ANTI,SYM ,ANTI,Symmetry,0)
-  call fderivs(ex,Ayy,gyyx,gyyy,gyyz,X,Y,Z,SYM ,SYM ,SYM ,Symmetry,0)
-  call fderivs(ex,Ayz,gyzx,gyzy,gyzz,X,Y,Z,SYM ,ANTI,ANTI,Symmetry,0)
-  call fderivs(ex,Azz,gzzx,gzzy,gzzz,X,Y,Z,SYM ,SYM ,SYM ,Symmetry,0)
+!$omp parallel do schedule(static) private(ivar)
+  do ivar=1,6
+    select case(ivar)
+    case(1); call fderivs(ex,Axx,gxxx,gxxy,gxxz,X,Y,Z,SYM,SYM,SYM,Symmetry,0)
+    case(2); call fderivs(ex,Axy,gxyx,gxyy,gxyz,X,Y,Z,ANTI,ANTI,SYM,Symmetry,0)
+    case(3); call fderivs(ex,Axz,gxzx,gxzy,gxzz,X,Y,Z,ANTI,SYM,ANTI,Symmetry,0)
+    case(4); call fderivs(ex,Ayy,gyyx,gyyy,gyyz,X,Y,Z,SYM,SYM,SYM,Symmetry,0)
+    case(5); call fderivs(ex,Ayz,gyzx,gyzy,gyzz,X,Y,Z,SYM,ANTI,ANTI,Symmetry,0)
+    case(6); call fderivs(ex,Azz,gzzx,gzzy,gzzz,X,Y,Z,SYM,SYM,SYM,Symmetry,0)
+    end select
+  enddo
+!$omp end parallel do
 
   gxxx = gxxx - (  Gamxxx * Axx + Gamyxx * Axy + Gamzxx * Axz &
                  + Gamxxx * Axx + Gamyxx * Axy + Gamzxx * Axz) - chix*Axx/chin1

@@ -55,6 +55,10 @@ base_cmake_args() {
   [[ -n "${AMSS_ENABLE_OPENMP:-}" ]]        && cmake_args+=("-DAMSS_ENABLE_OPENMP=$AMSS_ENABLE_OPENMP")
   [[ -n "${AMSS_ENABLE_SANITY_CHECK:-}" ]]  && cmake_args+=("-DAMSS_ENABLE_SANITY_CHECK=$AMSS_ENABLE_SANITY_CHECK")
   [[ -n "${AMSS_TWOP_THREADS:-}" ]]         && cmake_args+=("-DAMSS_TWOP_THREADS=$AMSS_TWOP_THREADS")
+  [[ -n "${AMSS_NRELAX:-}" ]]               && cmake_args+=("-DAMSS_NRELAX=$AMSS_NRELAX")
+  [[ -n "${AMSS_OMP_BLOCK_LOOPS:-}" ]]       && cmake_args+=("-DAMSS_OMP_BLOCK_LOOPS=$AMSS_OMP_BLOCK_LOOPS")
+  [[ -n "${AMSS_PROFILE_PHASES:-}" ]]        && cmake_args+=("-DAMSS_PROFILE_PHASES=$AMSS_PROFILE_PHASES")
+  [[ -n "${AMSS_USE_RK3:-}" ]]               && cmake_args+=("-DAMSS_USE_RK3=$AMSS_USE_RK3")
   [[ -n "${AMSS_MPI_CUDA_AWARE:-}" ]]       && cmake_args+=("-DAMSS_MPI_CUDA_AWARE=$AMSS_MPI_CUDA_AWARE")
   return 0
 }

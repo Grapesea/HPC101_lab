@@ -1,0 +1,277 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 3K of event 'cycles:Pu'
+# Event count (approx.): 1234531110837
+#
+# Overhead  Command  Shared Object                   Symbol                                                                                                                                                                                           
+# ........  .......  ..............................  .................................................................................................................................................................................................
+#
+    34.70%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f13c4
+    21.62%  ABE      ABE                             [.] compute_rhs_bssn_
+     6.03%  ABE      ABE                             [.] __nv_lopsided__F1L80_1_
+     4.17%  ABE      ABE                             [.] __nv_fdderivs__F1L483_2_
+     4.06%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c1c
+     3.46%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f24
+     3.30%  ABE      ABE                             [.] __nv_kodis__F1L67_1_
+     2.67%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f13b0
+     2.58%  ABE      ABE                             [.] prolong3_
+     2.54%  ABE      ABE                             [.] __nv_fderivs__F1L77_1_
+     2.28%  ABE      ABE                             [.] copy_
+     1.55%  ABE      ABE                             [.] symmetry_bd_
+     1.43%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1324
+     0.91%  ABE      libastring.so                   [.] memset
+     0.59%  ABE      libopen-pal.so.80.0.5           [.] opal_progress
+     0.55%  ABE      ABE                             [.] enforce_ga_
+     0.46%  ABE      ABE                             [.] rungekutta4_rout_
+     0.44%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f50
+     0.37%  ABE      ABE                             [.] restrict3_
+     0.37%  ABE      ABE                             [.] (anonymous namespace)::amss_eval_plan6(int const*, double const*, (anonymous namespace)::AmssInterpPlan6 const&, double const*)
+     0.36%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000608c8
+     0.24%  ABE      libc.so.6                       [.] _int_malloc
+     0.23%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c28
+     0.23%  ABE      ABE                             [.] average2_
+     0.23%  ABE      libastring.so                   [.] memcpy
+     0.23%  ABE      ABE                             [.] Parallel::build_gstl(MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>**, MyList<Parallel::gridseg>**)
+     0.22%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230be0
+     0.21%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000271f8
+     0.20%  ABE      libc.so.6                       [.] malloc
+     0.19%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1308
+     0.18%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f124c
+     0.14%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f14c8
+     0.14%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f114c
+     0.14%  ABE      libc.so.6                       [.] cfree@GLIBC_2.17
+     0.14%  ABE      libopen-pal.so.80.0.5           [.] 0x0000000000027238
+     0.14%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1270
+     0.14%  ABE      libamath.so                     [.] optr_pl_gcc_vpowq_f64
+     0.14%  ABE      libc.so.6                       [.] _int_free_chunk
+     0.14%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1348
+     0.14%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1148
+     0.09%  ABE      libmpi.so.40.40.7               [.] 0x00000000001f1f90
+     0.09%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000608cc
+     0.09%  ABE      libomp.so                       [.] __kmp_fork_call
+     0.09%  ABE      ABE                             [.] sommerfeld_rout_
+     0.09%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1300
+     0.09%  ABE      ABE                             [.] Parallel::data_packer(double*, MyList<Parallel::gridseg>*, MyList<Parallel::gridseg>*, int, int, MyList<var>*, MyList<var>*, int)
+     0.09%  ABE      ABE                             [.] surface_integral::surf_Wave(double, int, cgh*, var*, var*, int, int, int, double*, double*, monitor*)
+     0.09%  ABE      ABE                             [.] Patch::Interp_Points(MyList<var>*, int, double**, double*, int)
+     0.06%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f18
+     0.05%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230f48
+     0.05%  ABE      libmpi.so.40.40.7               [.] 0x0000000000241b58
+     0.05%  ABE      libmpi.so.40.40.7               [.] 0x0000000000287ecc
+     0.05%  ABE      libmpi.so.40.40.7               [.] opal_progress@plt
+     0.05%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1328
+     0.05%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1230
+     0.05%  ABE      ABE                             [.] perf::sample_mem_usage(int)
+     0.05%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000fdb40
+     0.05%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1170
+     0.05%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230bfc
+     0.05%  ABE      libmpi.so.40.40.7               [.] mca_pml_ob1_send_request_start_rdma
+     0.05%  ABE      libmpi.so.40.40.7               [.] mca_pml_ob1_recv_frag_callback_match
+     0.05%  ABE      libopen-pal.so.80.0.5           [.] mca_btl_sm_get
+     0.05%  ABE      ABE                             [.] Block::getdX(int)
+     0.05%  ABE      ABE                             [.] Parallel::Sync(Patch*, MyList<var>*, int)
+     0.05%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1120
+     0.05%  ABE      ABE                             [.] bssn_class::Step(int, int) [clone .omp_outlined.237]
+     0.05%  ABE      ABE                             [.] surface_integral::surf_MassPAng(double, int, cgh*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, var*, double*, monitor*)
+     0.05%  ABE      ABE                             [.] average_
+     0.05%  ABE      libmpi.so.40.40.7               [.] ompi_request_check_same_instance
+     0.05%  ABE      [unknown]                       [k] 0xffffb68ab18ce194
+     0.05%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1174
+     0.04%  ABE      ABE                             [.] admmass_bssn_
+     0.04%  ABE      ABE                             [.] misc::Wigner_d_function(int, int, int, double)
+     0.04%  ABE      ABE                             [.] misc::fact(int)
+     0.04%  ABE      libmpi.so.40.40.7               [.] 0x0000000000241b5c
+     0.04%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230c0c
+     0.04%  ABE      libmpi.so.40.40.7               [.] 0x0000000000287ec0
+     0.03%  python3  python3.13                      [.] 0x000000000009b5e0
+     0.02%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f123c
+     0.01%  ABE      ABE                             [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
+     0.01%  ABE      libstdc++.so.6.0.33             [.] malloc@plt
+     0.00%  python3  python3.13                      [.] 0x000000000008d484
+     0.00%  ABE      ABE                             [.] get_ansorg_nbhs_
+     0.00%  python3  [unknown]                       [k] 0xffffb68ab18ce984
+     0.00%  prterun  [unknown]                       [k] 0xffffb68ab18ce194
+     0.00%  prterun  ld-linux-aarch64.so.1           [.] do_lookup_x
+     0.00%  prterun  libc.so.6                       [.] _int_free_chunk
+     0.00%  prterun  ld-linux-aarch64.so.1           [.] check_match
+     0.00%  prterun  [unknown]                       [k] 0xffffb68ab18ce984
+     0.00%  prterun  [unknown]                       [k] 0xffffb68ab18ce6b8
+     0.00%  prterun  ld-linux-aarch64.so.1           [.] _dl_fixup
+     0.00%  prterun  libc.so.6                       [.] malloc
+     0.00%  ABE      libpmix.so.2.13.7               [.] pmix_ptl_base_send_recv
+     0.00%  prterun  ld-linux-aarch64.so.1           [.] _dl_lookup_symbol_x
+     0.00%  prterun  libc.so.6                       [.] _int_free_create_chunk
+     0.00%  prterun  libc.so.6                       [.] memcmp
+     0.00%  prterun  ld-linux-aarch64.so.1           [.] __aarch64_swp4_rel
+     0.00%  prterun  libc.so.6                       [.] strcmp
+     0.00%  prterun  libc.so.6                       [.] __GI_____strtoull_l_internal
+     0.00%  prterun  libhwloc.so.15.9.0              [.] hwloc_linux_get_tid_cpubind
+     0.00%  fuse     ld-linux-aarch64.so.1           [.] _dl_fixup
+     0.00%  prterun  libc.so.6                       [.] _int_malloc
+     0.00%  ABE      libastring.so                   [.] memchr
+     0.00%  ABE      ld-linux-aarch64.so.1           [.] do_lookup_x
+     0.00%  prterun  libc.so.6                       [.] pthread_mutex_lock@@GLIBC_2.17
+     0.00%  prterun  libprrte.so.3.0.8               [.] fileno@plt
+     0.00%  prterun  libhwloc.so.15.9.0              [.] 0x0000000000036068
+     0.00%  fuse     libc.so.6                       [.] __GI_____strtoull_l_internal
+     0.00%  ABE      [unknown]                       [k] 0xffffb68ab18ce984
+     0.00%  tee      libc.so.6                       [.] __GI___fileno
+     0.00%  prterun  libc.so.6                       [.] __libc_fork
+     0.00%  prterun  libc.so.6                       [.] strncmp
+     0.00%  prterun  libc.so.6                       [.] unlink_chunk.isra.0
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x000000000001848c
+     0.00%  prterun  libevent_core-2.1.so.7.0.1      [.] 0x0000000000028300
+     0.00%  run.sh   [unknown]                       [k] 0xffffb68ab18ce6b8
+     0.00%  prterun  libc.so.6                       [.] __GI_____strtoll_l_internal
+     0.00%  prterun  libpmix.so.2.13.7               [.] strcmp@plt
+     0.00%  prterun  libprrte.so.3.0.8               [.] __fdelt_chk@plt
+     0.00%  fuse     ld-linux-aarch64.so.1           [.] _dl_lookup_symbol_x
+     0.00%  prterun  libc.so.6                       [.] __isoc23_strtol
+     0.00%  prterun  libpmix.so.2.13.7               [.] 0x0000000000073708
+     0.00%  python3  libopenblasp-r0.3.29.so         [.] 0x0000000000753ff0
+     0.00%  run.sh   [unknown]                       [k] 0xffffb68ab18ce984
+     0.00%  python3  ld-linux-aarch64.so.1           [.] strcmp
+     0.00%  prterun  libpmix.so.2.13.7               [.] 0x0000000000086e78
+     0.00%  ABE      libpmix.so.2.13.7               [.] 0x00000000000b32f4
+     0.00%  ABE      libastring.so                   [.] strcmp
+     0.00%  prterun  libpmix.so.2.13.7               [.] 0x0000000000073704
+     0.00%  prterun  libc.so.6                       [.] _IO_sputbackc
+     0.00%  fuse     [unknown]                       [k] 0xffffb68ab18ce984
+     0.00%  python3  python3.13                      [.] _PyEval_EvalFrameDefault
+     0.00%  ABE      libc.so.6                       [.] pthread_mutex_lock@@GLIBC_2.17
+     0.00%  python3  libopenblasp-r0.3.29.so         [.] 0x0000000000754000
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] event_changelist_remove_all_
+     0.00%  run.sh   [unknown]                       [k] 0xffffb68ab18ce194
+     0.00%  ABE      libpmix.so.2.13.7               [.] 0x0000000000187fc4
+     0.00%  ABE      libc.so.6                       [.] malloc_consolidate
+     0.00%  ABE      libstdc++.so.6.0.33             [.] std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_erase(unsigned long, unsigned long)
+     0.00%  env      ld-linux-aarch64.so.1           [.] __GI___tunables_init
+     0.00%  ABE      libc.so.6                       [.] __sigsetjmp
+     0.00%  ABE      libpmix.so.2.13.7               [.] PMIx_Init
+     0.00%  prterun  libc.so.6                       [.] __memset_sve_zva64
+     0.00%  fuse     libc.so.6                       [.] __sysconf
+     0.00%  ABE      libpmix.so.2.13.7               [.] pmix_deregister_event_hdlr
+     0.00%  run.sh   libc.so.6                       [.] _int_free_chunk
+     0.00%  ABE      libc.so.6                       [.] __set_vma_name
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] event_base_loop
+     0.00%  ABE      [vdso]                          [.] __kernel_clock_gettime
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] event_add_nolock_
+     0.00%  prterun  libhwloc.so.15.9.0              [.] readdir@plt
+     0.00%  tee      libc.so.6                       [.] _IO_file_overflow@@GLIBC_2.17
+     0.00%  fuse     libc.so.6                       [.] __errno_location
+     0.00%  ABE      ld-linux-aarch64.so.1           [.] _dl_lookup_symbol_x
+     0.00%  ABE      libc.so.6                       [.] start_thread
+     0.00%  prterun  libevent_core-2.1.so.7.0.1      [.] event_assign
+     0.00%  ABE      ld-linux-aarch64.so.1           [.] _dl_fixup
+     0.00%  ABE      libpmix.so.2.13.7               [.] 0x00000000001217d0
+     0.00%  ABE      libc.so.6                       [.] __libc_arm_za_disable
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x000000000001d5f4
+     0.00%  fuse     libucs_fuse.so.0.0.0            [.] .plt
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] mca_btl_sm_poll_handle_frag
+     0.00%  fuse     ld-linux-aarch64.so.1           [.] _dl_runtime_resolve
+     0.00%  ABE      ld-linux-aarch64.so.1           [.] __GI___tunables_init
+     0.00%  prterun  libc.so.6                       [.] _IO_proc_file_chain_resetlock
+     0.00%  ABE      libc.so.6                       [.] __fstat64
+     0.00%  prterun  libc.so.6                       [.] _IO_list_resetlock
+     0.00%  bash     [unknown]                       [k] 0xffffb68ab18ce984
+     0.00%  python3  [unknown]                       [k] 0xffffb68ab18d446c
+     0.00%  run.sh   ld-linux-aarch64.so.1           [.] __GI___tunables_init
+     0.00%  prterun  libevent_core-2.1.so.7.0.1      [.] event_active_nolock_
+     0.00%  prterun  libc.so.6                       [.] __malloc_fork_unlock_child
+     0.00%  bash     libc.so.6                       [.] __getpid
+     0.00%  fuse     ld-linux-aarch64.so.1           [.] do_lookup_x
+     0.00%  ABE      libc.so.6                       [.] __aarch64_swp4_acq
+     0.00%  ABE      libpmix.so.2.13.7               [.] 0x00000000000b32fc
+     0.00%  ABE      libpmix.so.2.13.7               [.] .plt
+     0.00%  fuse     libucs_fuse.so.0.0.0            [.] 0x0000000000002900
+     0.00%  fuse     libucs_fuse.so.0.0.0            [.] 0x0000000000002918
+     0.00%  fuse     libc.so.6                       [.] __sigsetjmp
+     0.00%  python3  libc.so.6                       [.] start_thread
+     0.00%  python3  libc.so.6                       [.] __printf_buffer
+     0.00%  python3  libc.so.6                       [.] __GI___clone3
+     0.00%  python3  [unknown]                       [k] 0xffffb68ab18ce194
+     0.00%  ABE      libc.so.6                       [.] __ctype_init
+     0.00%  ABE      libc.so.6                       [.] __internal_syscall_cancel
+     0.00%  prterun  libhwloc.so.15.9.0              [.] hwloc_linux_set_tid_cpubind
+     0.00%  prterun  libhwloc.so.15.9.0              [.] __sched_cpufree@plt
+     0.00%  prterun  libc.so.6                       [.] sched_setaffinity@@GLIBC_2.17
+     0.00%  prterun  libc.so.6                       [.] _Fork
+     0.00%  prterun  libc.so.6                       [.] __internal_syscall_cancel
+     0.00%  python3  libc.so.6                       [.] __GI___strchrnul
+     0.00%  fuse     libc.so.6                       [.] __ctype_init
+     0.00%  prterun  libc.so.6                       [.] __syscall_cancel_arch
+     0.00%  python3  libc.so.6                       [.] thread_start
+     0.00%  ABE      libc.so.6                       [.] __GI___snprintf
+     0.00%  ABE      libc.so.6                       [.] __vsnprintf_internal
+     0.00%  fuse     libc.so.6                       [.] start_thread
+     0.00%  run.sh   libc.so.6                       [.] _Fork
+     0.00%  ABE      libc.so.6                       [.] strstr
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f13c0
+     0.00%  fuse     [unknown]                       [k] 0xffffb68ab18ce194
+     0.00%  ABE      libc.so.6                       [.] __printf_buffer
+     0.00%  prterun  libhwloc.so.15.9.0              [.] .plt
+     0.00%  python3  libc.so.6                       [.] __printf_buffer_write
+     0.00%  tee      tee                             [.] 0x0000000000002ccc
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] evmap_io_active_
+     0.00%  python3  libc.so.6                       [.] __memcpy_generic
+     0.00%  ABE      libc.so.6                       [.] _IO_file_open
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f133c
+     0.00%  bash     [unknown]                       [k] 0xffffb68ab18ce6b8
+     0.00%  fuse     libc.so.6                       [.] __printf_buffer
+     0.00%  prterun  libc.so.6                       [.] __GI___clone3
+     0.00%  prterun  libc.so.6                       [.] epoll_pwait
+     0.00%  python3  libc.so.6                       [.] __GI___snprintf
+     0.00%  tee      libc.so.6                       [.] __internal_syscall_cancel
+     0.00%  ABE      libc.so.6                       [.] _IO_file_fopen@@GLIBC_2.17
+     0.00%  ABE      libc.so.6                       [.] __GI___libc_open
+     0.00%  ABE      libc.so.6                       [.] __aarch64_cas4_acq
+     0.00%  ABE      libc.so.6                       [.] _pthread_cleanup_pop@@GLIBC_2.34
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x00000000000283dc
+     0.00%  env      ld-linux-aarch64.so.1           [.] _dl_start
+     0.00%  env      [unknown]                       [k] 0xffffb68ab18ce194
+     0.00%  env      [unknown]                       [k] 0xffffb68ab18ce6b8
+     0.00%  fuse     libc.so.6                       [.] __GI___snprintf
+     0.00%  prterun  libc.so.6                       [.] start_thread
+     0.00%  python3  libc.so.6                       [.] __ctype_init
+     0.00%  python3  libc.so.6                       [.] __vfork
+     0.00%  ABE      ABE                             [.] Ansorg::Ansorg(char*, int)
+     0.00%  ABE      ld-linux-aarch64.so.1           [.] _dl_start
+     0.00%  ABE      libc.so.6                       [.] __GI___strchrnul
+     0.00%  ABE      libc.so.6                       [.] clock_nanosleep@@GLIBC_2.17
+     0.00%  ABE      libc.so.6                       [.] pthread_cond_wait@@GLIBC_2.17
+     0.00%  ABE      libc.so.6                       [.] thread_start
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] evmap_io_active_@plt
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x00000000000283e0
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x00000000000283e8
+     0.00%  ABE      libevent_core-2.1.so.7.0.1      [.] 0x00000000000283f4
+     0.00%  ABE      libevent_pthreads-2.1.so.7.0.1  [.] pthread_mutex_lock@plt
+     0.00%  ABE      libevent_pthreads-2.1.so.7.0.1  [.] 0x0000000000001100
+     0.00%  ABE      libmpi.so.40.40.7               [.] 0x0000000000230bf4
+     0.00%  ABE      libmpi.so.40.40.7               [.] 0x0000000000241b60
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000608c0
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1130
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f1320
+     0.00%  ABE      libopen-pal.so.80.0.5           [.] 0x00000000000f14ac
+     0.00%  ABE      [unknown]                       [k] 0xffffb68ab18ce6b8
+     0.00%  bash     libc.so.6                       [.] _Fork
+     0.00%  fuse     libc.so.6                       [.] __GI___strchrnul
+     0.00%  fuse     libc.so.6                       [.] __vsnprintf_internal
+     0.00%  prterun  libc.so.6                       [.] __close
+     0.00%  prterun  libevent_pthreads-2.1.so.7.0.1  [.] 0x0000000000001110
+     0.00%  python3  libc.so.6                       [.] __GI___futex_abstimed_wait_cancelable64
+     0.00%  python3  libc.so.6                       [.] __aarch64_swp4_rel
+     0.00%  python3  libc.so.6                       [.] __internal_syscall_cancel
+     0.00%  python3  libc.so.6                       [.] _pthread_cleanup_pop@@GLIBC_2.34
+     0.00%  python3  python3.13                      [.] 0x0000000000102fc4
+     0.00%  python3  python3.13                      [.] 0x000000000016d678
+     0.00%  python3  python3.13                      [.] 0x00000000002b58b8
+     0.00%  run.sh   ld-linux-aarch64.so.1           [.] _dl_start
+     0.00%  tee      libc.so.6                       [.] __syscall_cancel
+
+
+#
+# (Tip: To compare hot regions in two workloads use perf record -b -o file ... ; perf diff --stream file1 file2)
+#

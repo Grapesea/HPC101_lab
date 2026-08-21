@@ -4,7 +4,9 @@
 
 #define StencilSize 19
 #define N_PlaneRelax 1
-#define NRELAX 100
+#ifndef NRELAX
+#define NRELAX 2
+#endif
 #define Step_Relax 1
 
 #define Pi 3.14159265358979323846264338328

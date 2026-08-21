@@ -1,0 +1,70 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Thu Aug 20 16:33:09 UTC 2026
+Mode=CPU (ABE), MPI ranks=5, OMP threads=12
+Evolution time=2.0, steps=2, TwoPuncture threads=20
+Build=/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+OutputRoot=/home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-163310-036922742
+==> Hybrid toolchain build: GNU -> TwoPunctureABE, Arm Compiler -> ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=2 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran -DAMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==========================================================
+-- Configuring done (12.4s)
+-- Generating done (0.4s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop" -j 60
+[  6%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctureABE.C.o
+[  6%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctures.C.o
+[ 10%] Building CXX object CMakeFiles/ABE.dir/src/bssn_class.C.o
+[ 13%] Building Fortran object CMakeFiles/ABE.dir/src/bssn_rhs.f90.o
+/home/h3240104505/HPC101_lab/lab4-cpu/src/TwoPunctureABE.C: In function ‘int main(int, char**)’:
+/home/h3240104505/HPC101_lab/lab4-cpu/src/TwoPunctureABE.C:237:13: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+  237 |   ADM->Save("Ansorg.psid");
+      |             ^~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C: In member function ‘virtual void bssn_class::Read_Ansorg()’:
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C:1477:24: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+ 1477 |     Ansorg read_ansorg("Ansorg.psid", order);
+      |                        ^~~~~~~~~~~~~
+[ 16%] Linking CXX executable TwoPunctureABE
+[ 16%] Built target TwoPunctureABE
+[ 20%] Linking CXX executable ABE
+[100%] Built target ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=2 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ -DCMAKE_Fortran_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++
+-- Fortran  : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=
+-- ==========================================================
+-- Configuring done (10.8s)
+-- Generating done (0.4s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -j 60
+[  6%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctureABE.C.o
+[  6%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctures.C.o
+[ 10%] Building CXX object CMakeFiles/ABE.dir/src/bssn_class.C.o
+[ 13%] Building Fortran object CMakeFiles/ABE.dir/src/bssn_rhs.f90.o
+/home/h3240104505/HPC101_lab/lab4-cpu/src/TwoPunctureABE.C:237:13: warning: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+  237 |   ADM->Save("Ansorg.psid");
+      |             ^
+1 warning generated.
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C:1477:24: warning: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+ 1477 |     Ansorg read_ansorg("Ansorg.psid", order);
+      |                        ^
+[ 16%] Linking CXX executable TwoPunctureABE
+[ 16%] Built target TwoPunctureABE
+1 warning generated.
+[ 20%] Linking CXX executable ABE
+[100%] Built target ABE
+==> Staging GNU-built TwoPunctureABE (faster relaxation) into the Arm build tree (faster evolution)
+==> Built executables:
+-rwxr-xr-x 1 root root 746K Aug 20 16:33 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang/ABE
+-rwxr-xr-x 1 root root 210K Aug 20 16:33 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang/TwoPunctureABE
+./4.sh: line 113: time.: command not found
+Total wall time: 39s (0m 39s)
+Time budget remaining: 1461s

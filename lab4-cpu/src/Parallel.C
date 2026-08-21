@@ -2384,40 +2384,59 @@ int Parallel::data_packer(double *data, MyList<Parallel::gridseg> *src, MyList<P
     if ((dir == PACK && dst->data->Bg->rank == rank_in && src->data->Bg->rank == myrank) ||
         (dir == UNPACK && src->data->Bg->rank == rank_in && dst->data->Bg->rank == myrank))
     {
-      varls = VarLists;
-      varld = VarListd;
-      while (varls && varld)
+      const int field_size = dst->data->shape[0] * dst->data->shape[1] * dst->data->shape[2];
+      int field_count = 0;
+      for (varls = VarLists, varld = VarListd; varls && varld;
+           varls = varls->next, varld = varld->next)
+        ++field_count;
+
+      MyList<var> **source_fields = new MyList<var> *[field_count];
+      MyList<var> **target_fields = new MyList<var> *[field_count];
+      int field = 0;
+      for (varls = VarLists, varld = VarListd; varls && varld;
+           varls = varls->next, varld = varld->next, ++field)
       {
-        if (data)
+        source_fields[field] = varls;
+        target_fields[field] = varld;
+      }
+
+      const int segment_offset = size_out;
+      if (data)
+      {
+#pragma omp parallel for schedule(static) if(field_count > 1)
+        for (field = 0; field < field_count; ++field)
         {
+          MyList<var> *field_source = source_fields[field];
+          MyList<var> *field_target = target_fields[field];
+          double *field_data = data + segment_offset + field * field_size;
           if (dir == PACK)
             switch (type)
             {
               // attention must be paied to the difference between src's llb,uub and dst's llb,uub
             case 1:
-              f_copy(DIM, dst->data->llb, dst->data->uub, dst->data->shape, data + size_out,
-                     src->data->Bg->bbox, src->data->Bg->bbox + dim, src->data->Bg->shape, src->data->Bg->fgfs[varls->data->sgfn],
+              f_copy(DIM, dst->data->llb, dst->data->uub, dst->data->shape, field_data,
+                     src->data->Bg->bbox, src->data->Bg->bbox + dim, src->data->Bg->shape, src->data->Bg->fgfs[field_source->data->sgfn],
                      dst->data->llb, dst->data->uub);
               break;
             case 2:
-              f_restrict3(DIM, dst->data->llb, dst->data->uub, dst->data->shape, data + size_out,
-                          src->data->Bg->bbox, src->data->Bg->bbox + dim, src->data->Bg->shape, src->data->Bg->fgfs[varls->data->sgfn],
-                          dst->data->llb, dst->data->uub, varls->data->SoA, Symmetry);
+              f_restrict3(DIM, dst->data->llb, dst->data->uub, dst->data->shape, field_data,
+                          src->data->Bg->bbox, src->data->Bg->bbox + dim, src->data->Bg->shape, src->data->Bg->fgfs[field_source->data->sgfn],
+                          dst->data->llb, dst->data->uub, field_source->data->SoA, Symmetry);
               break;
             case 3:
-              f_prolong3(DIM, src->data->Bg->bbox, src->data->Bg->bbox + dim, src->data->Bg->shape, src->data->Bg->fgfs[varls->data->sgfn],
-                         dst->data->llb, dst->data->uub, dst->data->shape, data + size_out,
-                         dst->data->llb, dst->data->uub, varls->data->SoA, Symmetry);
+              f_prolong3(DIM, src->data->Bg->bbox, src->data->Bg->bbox + dim, src->data->Bg->shape, src->data->Bg->fgfs[field_source->data->sgfn],
+                         dst->data->llb, dst->data->uub, dst->data->shape, field_data,
+                         dst->data->llb, dst->data->uub, field_source->data->SoA, Symmetry);
             }
           if (dir == UNPACK) // from target data to corresponding grid
-            f_copy(DIM, dst->data->Bg->bbox, dst->data->Bg->bbox + dim, dst->data->Bg->shape, dst->data->Bg->fgfs[varld->data->sgfn],
-                   dst->data->llb, dst->data->uub, dst->data->shape, data + size_out,
+            f_copy(DIM, dst->data->Bg->bbox, dst->data->Bg->bbox + dim, dst->data->Bg->shape, dst->data->Bg->fgfs[field_target->data->sgfn],
+                   dst->data->llb, dst->data->uub, dst->data->shape, field_data,
                    dst->data->llb, dst->data->uub);
         }
-        size_out += dst->data->shape[0] * dst->data->shape[1] * dst->data->shape[2];
-        varls = varls->next;
-        varld = varld->next;
       }
+      size_out += field_count * field_size;
+      delete[] source_fields;
+      delete[] target_fields;
     }
     dst = dst->next;
     src = src->next;
@@ -2480,27 +2499,44 @@ int Parallel::data_packermix(double *data, MyList<Parallel::gridseg> *src, MyLis
         if ((dir == PACK && dst->data->Bg->rank == rank_in && src->data->Bg->rank == myrank) ||
                 (dir == UNPACK && src->data->Bg->rank == rank_in && dst->data->Bg->rank == myrank))
         {
-            varls = VarLists;
-            varld = VarListd;
-            while (varls && varld)
+            const int field_size = (src->data->shape[0] + 2 * ghost_width) *
+                                   (src->data->shape[1] + 2 * ghost_width) *
+                                   (src->data->shape[2] + 2 * ghost_width);
+            int field_count = 0;
+            for (varls = VarLists, varld = VarListd; varls && varld;
+                 varls = varls->next, varld = varld->next)
+                ++field_count;
+            MyList<var> **source_fields = new MyList<var> *[field_count];
+            MyList<var> **target_fields = new MyList<var> *[field_count];
+            int field = 0;
+            for (varls = VarLists, varld = VarListd; varls && varld;
+                 varls = varls->next, varld = varld->next, ++field)
             {
-                if (data)
-                {
-                    if (dir == PACK)
-                        f_prolongcopy3(DIM, src->data->Bg->bbox, src->data->Bg->bbox + dim, src->data->Bg->shape, src->data->Bg->fgfs[varls->data->sgfn],
-                                                     dst->data->llb, dst->data->uub, src->data->shape, data + size_out,
-                                                     src->data->llb, src->data->uub, varls->data->SoA, Symmetry);
-                    if (dir == UNPACK) // from target data to corresponding grid
-                        f_prolongmix3(DIM, dst->data->Bg->bbox, dst->data->Bg->bbox + dim, dst->data->Bg->shape, dst->data->Bg->fgfs[varld->data->sgfn],
-                                                    src->data->llb, src->data->uub, src->data->shape, data + size_out,
-                                                    dst->data->llb, dst->data->uub, varls->data->SoA, Symmetry, dst->data->illb, dst->data->iuub);
-                }
-                // the symmetry problem should be dealt in prolongcopy3,
-                // so we always have ghost_width for both sides
-                size_out += (src->data->shape[0] + 2 * ghost_width) * (src->data->shape[1] + 2 * ghost_width) * (src->data->shape[2] + 2 * ghost_width);
-                varls = varls->next;
-                varld = varld->next;
+                source_fields[field] = varls;
+                target_fields[field] = varld;
             }
+            const int segment_offset = size_out;
+            if (data)
+            {
+#pragma omp parallel for schedule(static) if(field_count > 1)
+                for (field = 0; field < field_count; ++field)
+                {
+                    MyList<var> *field_source = source_fields[field];
+                    MyList<var> *field_target = target_fields[field];
+                    double *field_data = data + segment_offset + field * field_size;
+                    if (dir == PACK)
+                        f_prolongcopy3(DIM, src->data->Bg->bbox, src->data->Bg->bbox + dim, src->data->Bg->shape, src->data->Bg->fgfs[field_source->data->sgfn],
+                                                     dst->data->llb, dst->data->uub, src->data->shape, field_data,
+                                                     src->data->llb, src->data->uub, field_source->data->SoA, Symmetry);
+                    if (dir == UNPACK) // from target data to corresponding grid
+                        f_prolongmix3(DIM, dst->data->Bg->bbox, dst->data->Bg->bbox + dim, dst->data->Bg->shape, dst->data->Bg->fgfs[field_target->data->sgfn],
+                                                    src->data->llb, src->data->uub, src->data->shape, field_data,
+                                                    dst->data->llb, dst->data->uub, field_source->data->SoA, Symmetry, dst->data->illb, dst->data->iuub);
+                }
+            }
+            size_out += field_count * field_size;
+            delete[] source_fields;
+            delete[] target_fields;
         }
         dst = dst->next;
         src = src->next;
@@ -2531,46 +2567,46 @@ void Parallel::transfer(MyList<Parallel::gridseg> **src, MyList<Parallel::gridse
     int length;
 
     for (node = 0; node < cpusize; node++)
-    {
         send_data[node] = rec_data[node] = 0;
-        if (node == myrank)
+
+    // Post every receive first. Packing a field bundle can be substantial, so
+    // the old per-neighbour send-then-receive order unnecessarily delayed
+    // receive matching until after earlier bundles had been packed.
+    for (node = 0; node < cpusize; node++)
+    {
+        if (node == myrank) continue;
+        length = data_packer(0, src[node], dst[node], node, UNPACK,
+                             VarList1, VarList2, Symmetry);
+        if (length)
         {
-            if (length = data_packer(0, src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry))
-            {
-                rec_data[node] = new double[length];
-                if (!rec_data[node])
-                {
-                    cout << "out of memory when new in short transfer, place 1" << endl;
-                    MPI_Abort(MPI_COMM_WORLD, 1);
-                }
-                data_packer(rec_data[node], src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry);
-            }
+            rec_data[node] = new double[length];
+            MPI_Irecv((void *)rec_data[node], length, MPI_DOUBLE, node, 1,
+                      MPI_COMM_WORLD, reqs + req_no++);
         }
-        else
+    }
+
+    // Local copy needs no MPI and can run while remote receives are active.
+    length = data_packer(0, src[myrank], dst[myrank], myrank, PACK,
+                         VarList1, VarList2, Symmetry);
+    if (length)
+    {
+        rec_data[myrank] = new double[length];
+        data_packer(rec_data[myrank], src[myrank], dst[myrank], myrank, PACK,
+                    VarList1, VarList2, Symmetry);
+    }
+
+    for (node = 0; node < cpusize; node++)
+    {
+        if (node == myrank) continue;
+        length = data_packer(0, src[myrank], dst[myrank], node, PACK,
+                             VarList1, VarList2, Symmetry);
+        if (length)
         {
-            // send from this cpu to cpu#node
-            if (length = data_packer(0, src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry))
-            {
-                send_data[node] = new double[length];
-                if (!send_data[node])
-                {
-                    cout << "out of memory when new in short transfer, place 2" << endl;
-                    MPI_Abort(MPI_COMM_WORLD, 1);
-                }
-                data_packer(send_data[node], src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry);
-                MPI_Isend((void *)send_data[node], length, MPI_DOUBLE, node, 1, MPI_COMM_WORLD, reqs + req_no++);
-            }
-            // receive from cpu#node to this cpu
-            if (length = data_packer(0, src[node], dst[node], node, UNPACK, VarList1, VarList2, Symmetry))
-            {
-                rec_data[node] = new double[length];
-                if (!rec_data[node])
-                {
-                    cout << "out of memory when new in short transfer, place 3" << endl;
-                    MPI_Abort(MPI_COMM_WORLD, 1);
-                }
-                MPI_Irecv((void *)rec_data[node], length, MPI_DOUBLE, node, 1, MPI_COMM_WORLD, reqs + req_no++);
-            }
+            send_data[node] = new double[length];
+            data_packer(send_data[node], src[myrank], dst[myrank], node, PACK,
+                        VarList1, VarList2, Symmetry);
+            MPI_Isend((void *)send_data[node], length, MPI_DOUBLE, node, 1,
+                      MPI_COMM_WORLD, reqs + req_no++);
         }
     }
     // wait for all requests to complete
@@ -2689,32 +2725,19 @@ void Parallel::Sync(Patch *Pat, MyList<var> *VarList, int Symmetry)
     src = new MyList<Parallel::gridseg> *[cpusize];
     transfer_src = new MyList<Parallel::gridseg> *[cpusize];
     transfer_dst = new MyList<Parallel::gridseg> *[cpusize];
-
-    dst = build_ghost_gsl(Pat); // ghost region only
-    for (int node = 0; node < cpusize; node++)
-    {
-        src[node] = build_owned_gsl0(Pat, node);                              // for the part without ghost points and do not extend
-        build_gstl(src[node], dst, &transfer_src[node], &transfer_dst[node]); // for transfer_src[node], data locate on cpu#node;
-                                                                                                                                                    // but for transfer_dst[node] the data may locate on any node
+    dst = build_ghost_gsl(Pat);
+    for (int node = 0; node < cpusize; node++) {
+        src[node] = build_owned_gsl0(Pat, node);
+        build_gstl(src[node], dst, &transfer_src[node], &transfer_dst[node]);
     }
-
     transfer(transfer_src, transfer_dst, VarList, VarList, Symmetry);
-
-    if (dst)
-        dst->destroyList();
-    for (int node = 0; node < cpusize; node++)
-    {
-        if (src[node])
-            src[node]->destroyList();
-        if (transfer_src[node])
-            transfer_src[node]->destroyList();
-        if (transfer_dst[node])
-            transfer_dst[node]->destroyList();
+    if (dst) dst->destroyList();
+    for (int node = 0; node < cpusize; node++) {
+        if (src[node]) src[node]->destroyList();
+        if (transfer_src[node]) transfer_src[node]->destroyList();
+        if (transfer_dst[node]) transfer_dst[node]->destroyList();
     }
-
-    delete[] src;
-    delete[] transfer_src;
-    delete[] transfer_dst;
+    delete[] src; delete[] transfer_src; delete[] transfer_dst;
 }
 void Parallel::Sync(MyList<Patch> *PatL, MyList<var> *VarList, int Symmetry)
 {
@@ -2735,31 +2758,19 @@ void Parallel::Sync(MyList<Patch> *PatL, MyList<var> *VarList, int Symmetry)
     src = new MyList<Parallel::gridseg> *[cpusize];
     transfer_src = new MyList<Parallel::gridseg> *[cpusize];
     transfer_dst = new MyList<Parallel::gridseg> *[cpusize];
-
-    dst = build_buffer_gsl(PatL); // buffer region only
-    for (int node = 0; node < cpusize; node++)
-    {
-        src[node] = build_owned_gsl(PatL, node, 5, Symmetry);                 // for the part without ghost nor buffer points and do not extend
-        build_gstl(src[node], dst, &transfer_src[node], &transfer_dst[node]); // for transfer[node], data locate on cpu#node
+    dst = build_buffer_gsl(PatL);
+    for (int node = 0; node < cpusize; node++) {
+        src[node] = build_owned_gsl(PatL, node, 5, Symmetry);
+        build_gstl(src[node], dst, &transfer_src[node], &transfer_dst[node]);
     }
-
     transfer(transfer_src, transfer_dst, VarList, VarList, Symmetry);
-
-    if (dst)
-        dst->destroyList();
-    for (int node = 0; node < cpusize; node++)
-    {
-        if (src[node])
-            src[node]->destroyList();
-        if (transfer_src[node])
-            transfer_src[node]->destroyList();
-        if (transfer_dst[node])
-            transfer_dst[node]->destroyList();
+    if (dst) dst->destroyList();
+    for (int node = 0; node < cpusize; node++) {
+        if (src[node]) src[node]->destroyList();
+        if (transfer_src[node]) transfer_src[node]->destroyList();
+        if (transfer_dst[node]) transfer_dst[node]->destroyList();
     }
-
-    delete[] src;
-    delete[] transfer_src;
-    delete[] transfer_dst;
+    delete[] src; delete[] transfer_src; delete[] transfer_dst;
 }
 // collect buffer grid segments or blocks for the periodic boundary condition of given patch
 // ---------------------------------------------------

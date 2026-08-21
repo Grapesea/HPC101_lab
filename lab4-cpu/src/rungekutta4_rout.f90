@@ -134,9 +134,30 @@
 
   endif
 
-  return   
+  return  
 
   end subroutine rungekutta4_rout
+
+  subroutine rungekutta3_rout(ex,dT,f0,f1,f_rhs,RK3)
+  implicit none
+  integer, intent(in) :: ex(1:3),RK3
+  real*8, intent(in) :: dT
+  real*8, dimension(ex(1),ex(2),ex(3)), intent(in) :: f0
+  real*8, dimension(ex(1),ex(2),ex(3)), intent(inout) :: f_rhs,f1
+  real*8, parameter :: F1o6=1.d0/6.d0
+
+  if (RK3 == 0) then
+    f1 = f0 + dT * f_rhs
+  elseif (RK3 == 1) then
+    f_rhs = f_rhs + f1
+    f1 = f0 + 0.25d0 * dT * f_rhs
+  elseif (RK3 == 2) then
+    f1 = f0 + dT * (F1o6 * f_rhs + (2.d0/3.d0) * f1)
+  else
+    write(*,*) "rungekutta3_rout: something is wrong in RK counting!!"
+    stop
+  endif
+  end subroutine rungekutta3_rout
 !-----------------------------------------------------------------------------
 ! icn for scalar
   subroutine icn_scalar(dT,f0,f1,f_rhs,RK4)

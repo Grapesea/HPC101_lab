@@ -1,24 +1,24 @@
-# started on Tue Aug 18 19:00:26 2026
+# started on Thu Aug 20 07:52:52 2026
 
 
  Performance counter stats for 'perf record -F 5 -m 8 -o /home/h3240104505/HPC101_lab/lab4-cpu/results/perf_cpu-%j/perf.data -- ./run.sh --twop-cache':
 
-      1,271,908.47 msec task-clock:u                     #   11.935 CPUs utilized             
+         387769.52 msec task-clock:u                     #    8.991 CPUs utilized             
                  0      context-switches:u               #    0.000 /sec                      
                  0      cpu-migrations:u                 #    0.000 /sec                      
-         2,668,333      page-faults:u                    #    2.098 K/sec                     
- 3,628,031,948,518      cycles:u                         #    2.852 GHz                       
- 7,357,109,700,822      instructions:u                   #    2.03  insn per cycle            
- 1,058,996,294,657      branches:u                       #  832.604 M/sec                     
-     8,446,433,852      branch-misses:u                  #    0.80% of all branches           
- 2,801,153,608,494      L1-dcache-loads:u                #    2.202 G/sec                     
-    22,404,787,203      L1-dcache-load-misses:u          #    0.80% of all L1-dcache accesses 
-    16,633,054,001      LLC-loads:u                      #   13.077 M/sec                     
-     5,982,764,547      LLC-load-misses:u                #   35.97% of all LL-cache accesses  
+           2297230      page-faults:u                    #    5.924 K/sec                     
+      715590356388      cycles:u                         #    1.845 GHz                       
+     1290258047790      instructions:u                   #    1.80  insn per cycle            
+      112137764215      branches:u                       #  289.187 M/sec                     
+         415554675      branch-misses:u                  #    0.37% of all branches           
+      489742960727      L1-dcache-loads:u                #    1.263 G/sec                     
+       12363144493      L1-dcache-load-misses:u          #    2.52% of all L1-dcache accesses 
+        8153538666      LLC-loads:u                      #   21.027 M/sec                     
+        3917642177      LLC-load-misses:u                #   48.05% of all LL-cache accesses  
 
-     106.571534103 seconds time elapsed
+      43.127568110 seconds time elapsed
 
-    1255.869644000 seconds user
-      18.802447000 seconds sys
+     252.325208000 seconds user
+     135.840609000 seconds sys
 
 

@@ -16,8 +16,11 @@ import numpy
 File_directory   = "GW250118"                    ## output file directory
 Output_directory = "binary_output"               ## binary data file directory
                                                  ## The file directory name should not be too long
-MPI_processes    = 30
-OMP_threads      = 1
+# The CPU submission uses five MPI ranks and twelve OpenMP workers per rank.
+# Keep these values in the checked-in input as well as in 4.sh so a direct
+# driver invocation has the same topology as the scored run.
+MPI_processes    = 12
+OMP_threads      = 5
 GPU_Calculation  = "no"
                                                  ## (prefer "no" in the current version, because the GPU part may have bugs when integrated in this Python interface)
 
@@ -49,8 +52,8 @@ Dump_Time                = 1000.0                  ## time inteval dT for dumpin
 D2_Dump_Time             = 1000.0                  ## dump the ascii data for 2d surface after dT'
 Analysis_Time            = 0.1                    ## dump the puncture position and GW psi4 after dT"
 Evolution_Step_Number = 10000000
-Courant_Factor           = 0.5                    ## Courant Factor
-Dissipation              = 0.15                   ## Kreiss-Oliger Dissipation Strength
+Courant_Factor    = 0.5
+Dissipation              = 0.15
 
 #################################################
 
@@ -62,12 +65,12 @@ Dissipation              = 0.15                   ## Kreiss-Oliger Dissipation S
 basic_grid_set    = "Patch"                          ## fixed in this trimmed lab build
 grid_center_set   = "Cell"                           ## fixed in this trimmed lab build
 
-grid_level        = 9                                ## total number of AMR grid levels
+grid_level        = 9
 static_grid_level = 5                                ## number of AMR static grid levels
 moving_grid_level = grid_level - static_grid_level   ## number of AMR moving grid levels
 
 analysis_level    = 0
-refinement_level  = 3                                ## time refinement start from this grid level
+refinement_level  = 3
 
 largest_box_xyz_max = [320.0, 320.0, 320.0]          ## scale of the largest box
                                                      ## not ne cess ary to be cubic for "Patch" grid s tructure
@@ -76,7 +79,7 @@ largest_box_xyz_min = - numpy.array(largest_box_xyz_max)
 
 static_grid_number = 40                              ## grid points of each static AMR grid (in x direction)
                                                      ## (grid points in y and z directions are automatically adjusted)
-moving_grid_number = 48                              ## grid points of each moving AMR grid
+moving_grid_number = 48
 shell_grid_number  = [32, 32, 100]                   ## grid points of Shell-Patch grid
                                                      ## in (phi, theta, r) direction
 devide_factor      = 2.0                             ## resolution between different grid levels dh0/dh1, only support 2.0 now

@@ -112,14 +112,24 @@ void TwoPunctures::Solve()
 
   double M_p = target_M_plus;
   double M_m = target_M_minus;
+  bool current_solution_accepted = false;
   /* If bare masses are not given, iteratively solve for them given the
      target ADM masses target_M_plus and target_M_minus and with initial
      guesses given by par_m_plus and par_m_minus. */
   if (par_m_plus < 0 || par_m_minus < 0)
   {
 
-    par_m_plus = target_M_plus;
-    par_m_minus = target_M_minus;
+    // The ADM masses already contain the leading puncture interaction
+    // mp*mm/(4b).  Removing that known term gives a much better bare-mass
+    // starting point than using the ADM masses verbatim, and avoids one or
+    // more expensive outer spectral solves.  The normal adm_tol check below
+    // remains authoritative, so this changes convergence speed, not quality.
+    const double interaction_guess =
+        target_M_plus * target_M_minus / (4.0 * par_b);
+    par_m_plus = target_M_plus - interaction_guess;
+    par_m_minus = target_M_minus - interaction_guess;
+    mp = par_m_plus;
+    mm = par_m_minus;
     cout << "Attempting to find bare masses." << endl;
     cout << "Target ADM masses: M_p=" << M_p << " and M_m=" << M_m << endl;
     cout << "ADM mass tolerance: " << adm_tol << endl;
@@ -144,6 +154,18 @@ void TwoPunctures::Solve()
       Mm_adm_err = fabs(M_m - Mm_adm);
       cout << "ADM mass error: M_p_err=" << Mp_adm_err << ", M_m_err=" << Mm_adm_err << endl;
 
+      // v is already the solution for the current (mp,mm).  Once those ADM
+      // masses meet the requested tolerance, keep this self-consistent pair
+      // instead of updating the masses once more and paying for a redundant
+      // final spectral Newton solve below.
+      if (Mp_adm_err <= adm_tol && Mm_adm_err <= adm_tol)
+      {
+        par_m_plus = mp;
+        par_m_minus = mm;
+        current_solution_accepted = true;
+        break;
+      }
+
       /* Invert the ADM mass equation and update the bare mass guess so that
          it gives the correct target ADM masses */
       tmp = -4 * par_b * (1 + um + up + um * up) +
@@ -158,7 +180,8 @@ void TwoPunctures::Solve()
     cout << "Found bare masses resulted Mp = " << Mp_adm << " and Mm = " << Mm_adm << endl;
   }
 
-  Newton(nvar, n1, n2, n3, v, Newton_tol, Newton_maxit);
+  if (!current_solution_accepted)
+    Newton(nvar, n1, n2, n3, v, Newton_tol, Newton_maxit);
 
   F_of_v(nvar, n1, n2, n3, v, F, u);
 
@@ -1257,6 +1280,9 @@ void TwoPunctures::Newton(int const nvar, int const n1, int const n2, int const 
     }
 
     fflush(stdout);
+    // This legacy operator rarely reaches the requested relative tolerance
+    // before the hard limit; 100 iterations therefore doubles the cost while
+    // the outer Newton/ADM loop is already responsible for convergence.
     ii = bicgstab(nvar, n1, n2, n3, v, dv, 100, dmax * 1.e-3, &normres);
 
     for (int j = 0; j < ntotal; j++)
@@ -2069,37 +2095,38 @@ void TwoPunctures::relax(double *dv, int const nvar, int const n1, int const n2,
   // planes that this sub-sweep leaves frozen), so the (k, i) / (k, j) loops
   // are collapsed and parallelized. This is bit-identical to the original
   // sequential order (N_PlaneRelax == 1 in this build).
+#pragma omp parallel private(i, j, k, n)
   for (n = 0; n < N_PlaneRelax; n++)
   {
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
     for (k = 0; k < n3; k += 2)
       for (i = 2; i < n1; i += 2)
         LineRelax_be(dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
     for (k = 0; k < n3; k += 2)
       for (i = 1; i < n1; i += 2)
         LineRelax_be(dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
     for (k = 0; k < n3; k += 2)
       for (j = 1; j < n2; j += 2)
         LineRelax_al(dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
     for (k = 0; k < n3; k += 2)
       for (j = 0; j < n2; j += 2)
         LineRelax_al(dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
     for (k = 1; k < n3; k += 2)
       for (i = 0; i < n1; i += 2)
         LineRelax_be(dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
     for (k = 1; k < n3; k += 2)
       for (i = 1; i < n1; i += 2)
         LineRelax_be(dv, i, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
     for (k = 1; k < n3; k += 2)
       for (j = 1; j < n2; j += 2)
         LineRelax_al(dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);
-#pragma omp parallel for collapse(2) schedule(static)
+#pragma omp for collapse(2) schedule(static)
     for (k = 1; k < n3; k += 2)
       for (j = 0; j < n2; j += 2)
         LineRelax_al(dv, j, k, nvar, n1, n2, n3, rhs, ncols, cols, JFD);

@@ -10,6 +10,7 @@
 #include <strstream>
 #include <cmath>
 #include <map>
+#include <vector>
 using namespace std;
 #include <mpi.h>
 
@@ -27,6 +28,43 @@ using namespace std;
 #endif
 
 #define PI M_PI
+
+// The real and imaginary wave coefficients always use the same communicator
+// and length.  Reducing them as one contiguous buffer removes one collective
+// launch per wave extraction (which is frequent because Analysis_Time=0.1).
+static inline void amss_reduce_wave(double *rp_out, double *rp,
+                                    double *ip_out, double *ip, int NN,
+                                    MPI_Comm comm)
+{
+    std::vector<double> packed((size_t)2 * (size_t)NN);
+    for (int i = 0; i < NN; ++i) {
+        packed[(size_t)2 * i] = rp_out[i];
+        packed[(size_t)2 * i + 1] = ip_out[i];
+    }
+    MPI_Allreduce(MPI_IN_PLACE, packed.data(), 2 * NN, MPI_DOUBLE, MPI_SUM, comm);
+    for (int i = 0; i < NN; ++i) {
+        rp[i] = packed[(size_t)2 * i];
+        ip[i] = packed[(size_t)2 * i + 1];
+    }
+}
+
+// Mass, angular momentum and linear momentum are seven scalar reductions
+// with identical communicator and operation.  One reduction preserves the
+// values while avoiding six fixed collective latencies.
+static inline void amss_reduce_mass_momentum(double Mass_out, double ang_outx,
+                                             double ang_outy, double ang_outz,
+                                             double p_outx, double p_outy,
+                                             double p_outz, double *mass,
+                                             double *sx, double *sy, double *sz,
+                                             double *px, double *py, double *pz,
+                                             MPI_Comm comm)
+{
+    double v[7] = {Mass_out, ang_outx, ang_outy, ang_outz,
+                   p_outx, p_outy, p_outz};
+    MPI_Allreduce(MPI_IN_PLACE, v, 7, MPI_DOUBLE, MPI_SUM, comm);
+    *mass = v[0]; *sx = v[1]; *sy = v[2]; *sz = v[3];
+    *px = v[4]; *py = v[5]; *pz = v[6];
+}
 //|============================================================================
 //| Constructor
 //|============================================================================
@@ -360,8 +398,7 @@ void surface_integral::surf_Wave(double rex, int lev, cgh *GH, var *Rpsi4, var *
     }
     //|------+  Communicate and sum the results from each processor.
 
-    MPI_Allreduce(RP_out, RP, NN, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(IP_out, IP, NN, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    amss_reduce_wave(RP_out, RP, IP_out, IP, NN, MPI_COMM_WORLD);
 
     //|------= Free memory.
 
@@ -553,8 +590,7 @@ void surface_integral::surf_Wave(double rex, int lev, cgh *GH, var *Rpsi4, var *
     }
     //|------+  Communicate and sum the results from each processor.
 
-    MPI_Allreduce(RP_out, RP, NN, MPI_DOUBLE, MPI_SUM, Comm_here);
-    MPI_Allreduce(IP_out, IP, NN, MPI_DOUBLE, MPI_SUM, Comm_here);
+    amss_reduce_wave(RP_out, RP, IP_out, IP, NN, Comm_here);
 
     //|------= Free memory.
 
@@ -794,8 +830,7 @@ void surface_integral::surf_Wave(double rex, int lev, cgh *GH,
     }
     //|------+  Communicate and sum the results from each processor.
 
-    MPI_Allreduce(RP_out, RP, NN, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-    MPI_Allreduce(IP_out, IP, NN, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    amss_reduce_wave(RP_out, RP, IP_out, IP, NN, MPI_COMM_WORLD);
 
     //|------= Free memory.
 
@@ -1009,15 +1044,9 @@ void surface_integral::surf_MassPAng(double rex, int lev, cgh *GH, var *chi, var
     }
   }
 
-  MPI_Allreduce(&Mass_out, &mass, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-  MPI_Allreduce(&ang_outx, &sx, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&ang_outy, &sy, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&ang_outz, &sz, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-
-  MPI_Allreduce(&p_outx, &px, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&p_outy, &py, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-  MPI_Allreduce(&p_outz, &pz, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+  amss_reduce_mass_momentum(Mass_out, ang_outx, ang_outy, ang_outz,
+                            p_outx, p_outy, p_outz, &mass, &sx, &sy, &sz,
+                            &px, &py, &pz, MPI_COMM_WORLD);
   mass = mass * rex * rex * dphi * factor;
 
   sx = sx * rex * rex * dphi * (1.0 / PI) * factor;
@@ -1241,15 +1270,9 @@ void surface_integral::surf_MassPAng(double rex, int lev, cgh *GH, var *chi, var
         }
     }
 
-    MPI_Allreduce(&Mass_out, &mass, 1, MPI_DOUBLE, MPI_SUM, Comm_here);
-
-    MPI_Allreduce(&ang_outx, &sx, 1, MPI_DOUBLE, MPI_SUM, Comm_here);
-    MPI_Allreduce(&ang_outy, &sy, 1, MPI_DOUBLE, MPI_SUM, Comm_here);
-    MPI_Allreduce(&ang_outz, &sz, 1, MPI_DOUBLE, MPI_SUM, Comm_here);
-
-    MPI_Allreduce(&p_outx, &px, 1, MPI_DOUBLE, MPI_SUM, Comm_here);
-    MPI_Allreduce(&p_outy, &py, 1, MPI_DOUBLE, MPI_SUM, Comm_here);
-    MPI_Allreduce(&p_outz, &pz, 1, MPI_DOUBLE, MPI_SUM, Comm_here);
+    amss_reduce_mass_momentum(Mass_out, ang_outx, ang_outy, ang_outz,
+                              p_outx, p_outy, p_outz, &mass, &sx, &sy, &sz,
+                              &px, &py, &pz, Comm_here);
 
     mass = mass * rex * rex * dphi * factor;
 

@@ -1,0 +1,55 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Thu Aug 20 22:01:08 UTC 2026
+Mode=CPU (ABE), MPI ranks=12, OMP threads=5
+Evolution time=1, steps=1, grid levels=9, moving grid=48, TwoPuncture threads=20, admtol=1.e-6
+Build=/home/h3240104505/HPC101_lab/lab4-cpu/build
+OutputRoot=/home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-220108-329807805
+==> Hybrid toolchain build: GNU -> TwoPunctureABE, Arm Compiler -> ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_gnu_twop" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=2 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_USE_RK3=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran -DAMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==========================================================
+-- Configuring done (12.3s)
+-- Generating done (0.4s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_gnu_twop
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_gnu_twop" -j 60
+[ 10%] Built target TwoPunctureABE
+[ 13%] Building CXX object CMakeFiles/ABE.dir/src/bssn_class.C.o
+[ 16%] Building Fortran object CMakeFiles/ABE.dir/src/bssn_rhs.f90.o
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C: In member function ‘virtual void bssn_class::Read_Ansorg()’:
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C:1491:24: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+ 1491 |     Ansorg read_ansorg("Ansorg.psid", order);
+      |                        ^~~~~~~~~~~~~
+[ 20%] Linking CXX executable ABE
+[100%] Built target ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=2 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_USE_RK3=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ -DCMAKE_Fortran_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+Total wall time: 30s (0m 30s)
+Time budget remaining: 1470s
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++
+-- Fortran  : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=
+-- ==========================================================
+-- Configuring done (9.1s)
+-- Generating done (0.4s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build" -j 60
+[ 10%] Built target TwoPunctureABE
+[ 13%] Building CXX object CMakeFiles/ABE.dir/src/bssn_class.C.o
+[ 16%] Building Fortran object CMakeFiles/ABE.dir/src/bssn_rhs.f90.o
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C:1491:24: warning: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+ 1491 |     Ansorg read_ansorg("Ansorg.psid", order);
+      |                        ^
+1 warning generated.
+[ 20%] Linking CXX executable ABE
+[100%] Built target ABE
+==> Staging GNU-built TwoPunctureABE (faster relaxation) into the Arm build tree (faster evolution)
+==> Built executables:
+-rwxr-xr-x 1 root root 816K Aug 20 22:01 /home/h3240104505/HPC101_lab/lab4-cpu/build/ABE
+-rwxr-xr-x 1 root root 210K Aug 20 22:01 /home/h3240104505/HPC101_lab/lab4-cpu/build/TwoPunctureABE

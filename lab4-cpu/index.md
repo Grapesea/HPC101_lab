@@ -876,6 +876,45 @@ $$
 
 ### 性能评分
 
+#### CPU 端到端优化记录（最终配置与计时口径）
+
+CPU 评分统计的是 `AMSS_NCKU_Program.py` 打印的 `This Program Cost`，因此不能只优化
+`ABE` 的一个 stencil。当前提交路径把整条链拆成 Four 个阶段：TwoPuncture 初值、
+ABE 多层 AMR 演化、约束/插值/MPI 通信，以及不参与判分的绘图。默认运行配置为
+`5 MPI × 12 OpenMP`（60 个硬件线程），TwoPuncture 单独使用
+`AMSS_TWOP_THREADS=20`，并设置 `OMP_PROC_BIND=close`、`OMP_PLACES=threads`、
+`OMP_WAIT_POLICY=ACTIVE`、`GOMP_SPINCOUNT=INFINITE` 和
+`OPENBLAS_NUM_THREADS=1`。编译使用 `-Ofast`、TSV110/SVE256 目标和
+`-fno-strict-aliasing`；绘图通过 `AMSS_SKIP_PLOTS=1` 关闭。
+
+主要热点改动如下：
+
+- `MPatch.C` 为常用六阶全局插值预先生成网格起点、stencil、Lagrange 权重和对称
+  符号，多个变量复用同一计划，并用固定张量积 kernel 和 `schedule(static)` 并行；
+  权重附加在数据缓冲区末尾，使字段和权重只需一次 `MPI_Allreduce`。
+- `TwoPunctures.C` 在一次 Newton/BiCGSTAB 线性求解中缓存每个点 10 个 Jacobian
+  局部系数；`J_times_dv` 退化为连续内存点积。红黑线松弛按独立 `(k,i)`/`(k,j)`
+  线并行，`NRELAX` 保持为 2，质量修正容差由输入生成器设为 `admtol=1e-6`。
+- `bssn_class.C` 在 level>0 跳过预测阶段随后会被 `Constraint_Out()` 重算的约束，
+  并合并 surface-integral 的标量归约；level 0 及最终输出仍计算完整约束。
+- 非评分绘图不再进入计时；数值输出、轨迹和约束 checker 保持不变。
+
+**为什么 `4-123742` 中第一步约 11 s，而另一些 5×12 日志显示单步数百秒？**
+旧版 `ABE` 用 C 标准库 `clock()` 打印 `Computer used`。`clock()` 是进程 CPU 时间，
+在 OpenMP 下会把同一 rank 的 12 个线程时间相加；因此 5×12 日志中看到的 262--320 s
+并不是墙钟耗时。对应日志的 `Total Evolve Time` 只有约 44--54 s（两步），即每步约
+22--27 s。30×1 的 `4-123742` 没有线程时间累加，所以 11 s 数值接近墙钟。现在
+`ABE` 改用 `MPI_Wtime()`，每个 timestep 明确打印 wall-clock seconds；阶段 profiling
+还会把 `RecursiveStep`、`Constraint_Out`、每层 `Step`/`RestrictProlong`/`Regrid`
+分开，避免把 CPU time、MPI 等待和真实 elapsed time 混为一谈。后期若单步确实变慢，
+应优先检查 level 8 的细网格递归、prolong/restrict 和通信负载，而不是仅依据旧的
+`Computer used` 字段判断。
+
+完整优化步骤、A/B 数据和失败尝试见 `docs/twopuncture-optimization.md`、
+`docs/abe-openmp-block-parallel.md`、`docs/perf-analysis-20260820.md` 和仓库根目录
+的 `lab4.md`。每次正式提交仍必须同时检查 `This Program Cost`、轨迹 RMS、
+Hamiltonian/Momentum 约束以及 `FINAL: PASS`。
+
 !!! warning "TODO：评分占比待定"
 
     关于任务一和任务二对于总分的占比仍在商讨中，请等待😭

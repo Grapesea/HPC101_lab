@@ -1,0 +1,388 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Thu Aug 20 07:39:20 UTC 2026
+Mode=CPU (ABE), MPI ranks=60, OMP threads=1
+Evolution time=2.0, steps=2, TwoPuncture threads=20
+Build=/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+OutputRoot=/home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-073920-732032103
+==> Hybrid toolchain build: GNU -> TwoPunctureABE, Arm Compiler -> ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=native -DAMSS_TWOP_THREADS=20 -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran -DAMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=native OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==========================================================
+-- Configuring done (2.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop" -j 60
+[ 10%] Built target TwoPunctureABE
+[100%] Built target ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=native -DAMSS_TWOP_THREADS=20 -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ -DCMAKE_Fortran_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++
+-- Fortran  : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=native OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=
+-- ==========================================================
+-- Configuring done (2.4s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -j 60
+[ 10%] Built target TwoPunctureABE
+[100%] Built target ABE
+==> Staging GNU-built TwoPunctureABE (faster relaxation) into the Arm build tree (faster evolution)
+==> Built executables:
+-rwxr-xr-x 1 root root 813K Aug 20 06:57 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang/ABE
+-rwxr-xr-x 1 root root 146K Aug 20 07:39 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang/TwoPunctureABE
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-073920-732032103
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/twopuncture_cache
+==> MPI exec : mpiexec --allow-run-as-root
+///////////////////////////////////////////////////////////////
+     mp     = -1
+     mm     = -1
+     b      = 3
+  P_plusx   = -0.00514081
+  P_plusy   = 0.1275
+  P_plusz   = 0
+  P_minusx  = 0.00514081
+  P_minusy  = -0.1275
+  P_minusz  = 0
+  S_plusx   = 0
+  S_plusy   = -0
+  S_plusz   = 0
+  S_minusx  = 0
+  S_minusy  = -0
+  S_minusz  = 0
+     Mp     = 0.598837
+     Mm     = 0.401163
+   admtol   = 1e-06
+ Newtontol  = 5e-12
+    nA      = 50
+    nB      = 50
+   nphi     = 26
+Newtonmaxit = 50
+///////////////////////////////////////////////////////////////
+TwoPuncture OpenMP: using 20 thread(s)
+Attempting to find bare masses.
+Target ADM masses: M_p=0.598837 and M_m=0.401163
+ADM mass tolerance: 1e-06
+Bare masses: mp=-1, mm=-1
+Newton: it=0 	 |F|=9.566257e-03
+bare mass: mp=0.598837 	 mm=0.401163
+bicgstab:  itmax 100, tol 9.566257e-06
+bicgstab:     0   2.018e-01
+bicgstab:     1   5.986e-01   1.209e+00   0.000e+00   4.338e-01
+bicgstab:     2   1.639e+00   2.688e+00   8.688e-02  -2.321e-01
+bicgstab:     3   1.869e+01   2.774e+01   6.209e-01   5.143e-01
+bicgstab:     4   7.247e-01   5.458e-02  -4.287e+02   5.543e+00
+bicgstab:     5   3.351e-01   1.321e+00  -6.422e-04   8.845e-01
+bicgstab:     6   2.189e-01   9.897e-01   3.542e-01   1.710e-01
+bicgstab:     7   1.223e-01   1.548e+00   2.625e-01   6.928e-01
+bicgstab:     8   1.554e-02   2.089e+00   1.021e+00   4.115e-01
+bicgstab:     9   3.504e-02   2.252e+00   2.806e-01   1.167e+00
+bicgstab:    10   1.108e-02   7.359e-02  -3.259e+01   3.641e-01
+bicgstab:    11   1.913e-03  -6.007e-01   1.062e-01   4.864e+00
+bicgstab:    12   4.525e-04   1.298e+00  -8.781e-02   8.033e-01
+bicgstab:    13   2.438e-04   1.557e+00   3.985e-01   5.417e-01
+bicgstab:    14   4.134e-04   1.124e+00   9.128e-01   1.255e+00
+bicgstab:    15   4.555e-04   2.857e-01   1.704e+00   6.692e-01
+bicgstab:    16   4.112e-04   8.499e-01   1.701e-01   8.173e-01
+bicgstab:    17   2.915e-04   1.864e+00   2.035e-01   4.538e-01
+bicgstab:    18   2.875e-04  -3.468e-01   3.058e-01   7.784e-01
+bicgstab:    19   8.877e-05  -2.473e+00  -2.327e+00   2.320e+00
+bicgstab:    20   2.185e-05   1.310e+00  -5.686e-01   1.896e+00
+bicgstab:    21   9.511e-06   9.138e-01   2.280e-01   4.678e-01
+Newton: it=1 	 |F|=9.053783e-06 
+ADM mass error: M_p_err=1.52135, M_m_err=1.32813
+Bare masses: mp=0.577232, mm=0.379027
+Newton: it=0 	 |F|=1.792929e-03
+bare mass: mp=0.577232 	 mm=0.379027
+bicgstab:  itmax 100, tol 1.792929e-06
+bicgstab:     0   3.319e-02
+bicgstab:     1   8.135e-02   1.151e+00   0.000e+00   4.461e-01
+bicgstab:     2   2.251e-01   2.833e+00   6.335e-02   1.340e-01
+bicgstab:     3   3.286e-01  -6.846e+00   6.495e-01   5.393e-01
+bicgstab:     4   4.267e-02  -2.069e-01  -5.375e+01   4.997e+00
+bicgstab:     5   2.518e-02   1.184e+00  -4.092e-03   1.455e+00
+bicgstab:     6   1.609e-02   9.530e-01   2.908e-01   2.833e-01
+bicgstab:     7   1.080e-02   2.003e+00   1.920e-01   5.166e-01
+bicgstab:     8   1.309e-02  -7.670e-01   8.796e-01   3.275e-01
+bicgstab:     9   4.412e-02  -4.782e+00  -4.031e+00   2.517e+00
+bicgstab:    10   7.071e-03   6.673e-02   3.776e+01   1.935e+00
+bicgstab:    11   6.306e-03   3.228e-01  -3.025e-03   2.303e-01
+bicgstab:    12   1.150e-02   2.585e+01  -6.145e-01   1.230e+00
+bicgstab:    13   1.947e-04   2.475e-01  -6.592e+01   3.970e-01
+bicgstab:    14   5.267e-05   7.223e-01   7.686e-03   7.661e-01
+bicgstab:    15   5.882e-05   2.053e+00   5.918e-02   3.612e-01
+bicgstab:    16   3.061e-05   1.879e-01  -1.841e+00   4.796e+00
+bicgstab:    17   1.303e-05   3.948e+00  -1.956e-01   8.759e-01
+bicgstab:    18   9.165e-06   1.236e+00   1.300e+00   4.680e-01
+bicgstab:    19   4.284e-06   5.998e-01   7.109e-01   5.047e+00
+bicgstab:    20   2.152e-06   9.839e-01   3.582e-01   4.220e-01
+bicgstab:    21   1.843e-06   1.245e-01  -6.396e-01   2.181e+00
+bicgstab:    22   9.651e-07   2.557e+00  -2.512e-01   4.268e-01
+Newton: it=1 	 |F|=2.148842e-07 
+ADM mass error: M_p_err=0.000283624, M_m_err=0.000474282
+Bare masses: mp=0.57698, mm=0.378587
+Newton: it=0 	 |F|=3.916542e-05
+bare mass: mp=0.57698 	 mm=0.378587
+bicgstab:  itmax 100, tol 3.916542e-08
+bicgstab:     0   7.033e-04
+bicgstab:     1   1.687e-03   1.146e+00   0.000e+00   4.478e-01
+bicgstab:     2   4.614e-03   2.813e+00   5.986e-02   1.671e-01
+bicgstab:     3   3.663e-03  -2.903e+00   5.903e-01   4.962e-01
+bicgstab:     4   7.511e-04  -4.677e-01  -1.555e+01   5.092e+00
+bicgstab:     5   4.208e-04   1.087e+00  -1.272e-02   1.663e+00
+bicgstab:     6   2.744e-04   9.253e-01   2.667e-01   3.451e-01
+bicgstab:     7   1.889e-04   1.757e+00   1.575e-01   6.239e-01
+bicgstab:     8   1.882e-04  -2.641e-01   4.885e-01   3.875e-01
+bicgstab:     9   5.296e-04  -2.323e+01  -1.878e+00   5.130e+00
+bicgstab:    10   3.243e-04   2.076e-01  -1.168e+01   9.523e-01
+bicgstab:    11   3.176e-04  -2.431e-01  -2.651e-01   1.156e+00
+bicgstab:    12   3.543e-05  -3.638e+00  -1.902e+00   5.203e-01
+bicgstab:    13   2.383e-06   6.372e-01   5.373e-01   5.002e-01
+bicgstab:    14   2.704e-07   7.128e-01   6.656e-02   8.569e-01
+bicgstab:    15   3.398e-07   9.643e-01   8.808e-02   6.630e-01
+bicgstab:    16   3.924e-07   2.179e+00   3.605e-01   4.892e-01
+bicgstab:    17   3.627e-07   1.106e+00   1.094e+00   1.450e+00
+bicgstab:    18   1.090e-07   8.314e-01   6.641e-01   8.272e+00
+bicgstab:    19   6.224e-08   1.280e+00   3.780e-01   4.017e-01
+bicgstab:    20   4.940e-08   1.071e-01  -8.310e-02   1.237e+00
+bicgstab:    21   1.051e-08   8.924e+00  -6.715e-01   1.237e+00
+Newton: it=1 	 |F|=2.086449e-09 
+ADM mass error: M_p_err=4.11751e-06, M_m_err=9.81512e-06
+Bare masses: mp=0.576976, mm=0.378578
+Newton: it=0 	 |F|=8.106847e-07
+bare mass: mp=0.576976 	 mm=0.378578
+bicgstab:  itmax 100, tol 8.106847e-10
+bicgstab:     0   1.443e-05
+bicgstab:     1   3.438e-05   1.143e+00   0.000e+00   4.482e-01
+bicgstab:     2   8.586e-05   2.455e+00   5.803e-02   8.041e-02
+bicgstab:     3   1.246e-04   1.678e+00   6.671e-01   5.718e-01
+bicgstab:     4   2.026e-05   8.067e-01   1.349e+00   5.857e+00
+bicgstab:     5   1.068e-05   1.657e+00   1.063e-01   4.984e-01
+bicgstab:     6   6.432e-06   1.396e+00   6.405e-01   6.079e-01
+bicgstab:     7   3.846e-06   9.199e-01   7.514e-01   1.698e+00
+bicgstab:     8   2.487e-06   1.454e-01   1.733e+00   7.282e-01
+bicgstab:     9   1.459e-06   8.185e-01   5.483e-01   4.420e-01
+bicgstab:    10   1.312e-06  -8.452e-01   4.718e-02   1.915e+00
+bicgstab:    11   2.945e-07  -7.306e-01  -4.789e+00   6.132e+00
+bicgstab:    12   1.595e-07   2.342e+00  -8.993e-02   4.050e-01
+bicgstab:    13   7.996e-08   3.848e+00   8.951e-01   8.437e-01
+bicgstab:    14   1.026e-08   2.179e-01  -5.447e+00   7.475e-01
+bicgstab:    15   1.074e-08   1.062e+00  -3.893e-02   2.603e+00
+bicgstab:    16   6.695e-09   1.403e+00   8.542e-02   2.394e-01
+bicgstab:    17   3.355e-09   2.410e+00   6.824e-01   5.144e-01
+bicgstab:    18   1.706e-09   1.266e+00   2.847e+00   7.543e-01
+bicgstab:    19   1.908e-09   9.088e-01   4.247e-01   2.178e+00
+bicgstab:    20   1.130e-09   5.607e-01  -9.692e-01   6.278e-01
+bicgstab:    21   7.303e-10   2.273e+00   5.359e-01   6.278e-01
+Newton: it=1 	 |F|=1.797271e-10 
+ADM mass error: M_p_err=6.77869e-08, M_m_err=2.00124e-07
+Found bare masses resulted Mp = 0.598837 and Mm = 0.401163
+Newton: it=0 	 |F|=1.652991e-08
+bare mass: mp=0.576976 	 mm=0.378578
+bicgstab:  itmax 100, tol 1.652991e-11
+bicgstab:     0   2.933e-07
+bicgstab:     1   6.973e-07   1.143e+00   0.000e+00   4.482e-01
+bicgstab:     2   1.813e-06   2.616e+00   5.778e-02   1.313e-01
+bicgstab:     3   7.445e-06   1.234e+01   5.720e-01   5.742e-01
+bicgstab:     4   3.218e-07   9.786e-02  -9.129e+01   5.764e+00
+bicgstab:     5   1.851e-07   1.227e+00  -1.599e-03   4.348e-01
+bicgstab:     6   1.058e-07   1.038e+00   4.628e-01   1.132e+00
+bicgstab:     7   6.795e-08   1.142e+00   3.996e-01   3.771e-01
+bicgstab:     8   5.546e-08   1.341e+00   6.280e-01   1.087e+00
+bicgstab:     9   2.533e-08   5.246e-01   6.002e-01   1.051e+01
+bicgstab:    10   4.831e-09   2.312e-01   1.110e+00   4.077e-01
+bicgstab:    11   2.221e-09   8.748e-01   1.263e-01   1.834e+00
+bicgstab:    12   1.649e-09   1.199e+00   3.000e-01   9.818e-01
+bicgstab:    13   7.171e-10   2.291e+00   6.257e-01   5.462e-01
+bicgstab:    14   4.039e-10   1.868e+00   1.883e+00   2.529e+00
+bicgstab:    15   3.345e-10   7.610e-01   4.484e-01   1.159e+00
+bicgstab:    16   2.994e-10  -1.110e-01  -7.870e-03   4.710e-01
+bicgstab:    17   1.377e-10  -2.878e+01  -1.134e+00   3.891e-01
+bicgstab:    18   8.135e-11   8.841e-01  -5.917e+01   4.306e+00
+bicgstab:    19   1.527e-11   6.604e-01  -5.445e-01   9.514e-01
+Newton: it=1 	 |F|=4.154531e-12 
+The two puncture masses are mp = 0.576976 and mm = 0.378578
+                   resulted Mp = 0.598837 and Mm = 0.401163
+The total ADM mass is 0.983557
+===============================================================
+Initial data is successfully producede!!
+--------------------------------------------------------------------------
+There are not enough slots available in the system to satisfy the 60
+slots that were requested by the application:
+
+  env
+
+Either request fewer procs for your application, or make more slots
+available for use.
+
+A "slot" is the PRRTE term for an allocatable unit where we can
+launch a process.  The number of slots available are defined by the
+environment in which PRRTE processes are run:
+
+  1. Hostfile, via "slots=N" clauses (N defaults to number of
+     processor cores if not provided)
+  2. The --host command line parameter, via a ":N" suffix on the
+     hostname (N defaults to 1 if not provided)
+  3. Resource manager (e.g., SLURM, PBS/Torque, LSF, etc.)
+  4. If none of a hostfile, the --host command line parameter, or an
+     RM is present, PRRTE defaults to the number of processor cores
+
+In all the above cases, if you want PRRTE to default to the number
+of hardware threads instead of the number of processor cores, use the
+--use-hwthread-cpus option.
+
+Alternatively, you can use the --map-by :OVERSUBSCRIBE option to ignore the
+number of available slots when deciding the number of processes to
+launch.
+--------------------------------------------------------------------------
+ ==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-073920-732032103/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/twopuncture_cache
+ Output directory has been generated
+
+------------------------------------------------------------------------------------------
+
+ Printing the basic parameter and setting in the AMSS-NCKU simulation 
+
+ The number of MPI processes in the AMSS-NCKU simulation =  60
+
+ The form of computational equation  =  BSSN
+ The initial data in this simulation =  Ansorg-TwoPuncture
+
+ Starting evolution time   =  0.0
+ Final evolution time      =  2.0
+ Maximal iteration number  =  2
+ Courant factor            =  0.5
+ Strength of dissipation   =  0.15
+ Symmetry of system        =  equatorial-symmetry
+ The Runge-Kutta scheme in the time evolution   =  runge-kutta-45
+ The finite-difference scheme in the simulation =  4th-order
+
+ The static AMR grid type =  Linear
+ The moving AMR grid type =  Linear
+
+ The number of static AMR grid levels =  5
+ The number of moving AMR grid levels =  4
+ The number of total  AMR grid levels =  9
+
+ The grid number of each static AMR grid level =  40
+ The grid number of each moving AMR grid level =  48
+
+ The scale for largest  static AMR grid in X direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Y direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Z direction =  [-320.  320.]
+ The scale for smallest static AMR grid in X direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Y direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Z direction =  [-20.  20.]
+
+ The scale for largest  moving AMR grid =  [-12.  12.]
+ The scale for smallest moving AMR grid =  [-1.5  1.5]
+
+ The coarest resolution for static AMR grid =  16.0
+ The finest  resolution for static AMR grid =  1.0
+ The coarest resolution for moving AMR grid =  0.5
+ The finest  resolution for moving AMR grid =  0.0625
+
+ The time refinement starts from AMR grid level =  4
+ The time interval in each step for coarest AMR grid during time evaluation =  1.0
+
+ This simulation uses the Patch AMR grid structure 
+
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+ Printing the puncture information 
+
+ The information for 1 puncture 
+ Mass(1) =   0.598837,  Charge(1) =   0.000000,  a(1)  =   0.000000
+ X(1)    =   0.000000,  Y(1)      =   2.406977,  Z(1)  =   0.000000
+ Px(1)   =  -0.127500,  Py(1)     =  -0.005141,  Pz(1) =   0.000000
+ Jx(1)   =   0.000000,  Jy(1)     =   0.000000,  Jz(1) =   0.000000
+
+ The information for 2 puncture 
+ Mass(2) =   0.401163,  Charge(2) =   0.000000,  a(2)  =   0.000000
+ X(2)    =   0.000000,  Y(2)      =  -3.593023,  Z(2)  =   0.000000
+ Px(2)   =   0.127500,  Py(2)     =   0.005141,  Pz(2) =   0.000000
+ Jx(2)   =   0.000000,  Jy(2)     =   0.000000,  Jz(2) =   0.000000
+
+------------------------------------------------------------------------------------------
+
+ Generating the AMSS-NCKU input parfile for the ABE executable.
+
+
+ Setting Puncture's position and momentum 
+
+
+ Wirte Down The Grid Information 
+
+ Number of Total Grid Level =  9
+ Number of Static Grid Level =  5
+ Number of Moving Grid Level =  4
+
+
+ Setting the demanded numerical grid 
+
+ adjusting the static gird points, making the original point (0,0,0) to the static gird points 
+
+
+ adjusting the moving gird points, ensuring the alliance of moving grids points and static grids points 
+
+ adjust_puncture[5,0,0] = 0.0 
+ adjust_puncture[5,0,1] = 2.5 
+ adjust_puncture[5,0,2] = 0.0 
+ adjust_puncture[5,1,0] = 0.0 
+ adjust_puncture[5,1,1] = -3.5 
+ adjust_puncture[5,1,2] = 0.0 
+ adjust_puncture[6,0,0] = 0.0 
+ adjust_puncture[6,0,1] = 2.5 
+ adjust_puncture[6,0,2] = 0.0 
+ adjust_puncture[6,1,0] = 0.0 
+ adjust_puncture[6,1,1] = -3.5 
+ adjust_puncture[6,1,2] = 0.0 
+ adjust_puncture[7,0,0] = 0.0 
+ adjust_puncture[7,0,1] = 2.375 
+ adjust_puncture[7,0,2] = 0.0 
+ adjust_puncture[7,1,0] = 0.0 
+ adjust_puncture[7,1,1] = -3.625 
+ adjust_puncture[7,1,2] = 0.0 
+ adjust_puncture[8,0,0] = 0.0 
+ adjust_puncture[8,0,1] = 2.4375 
+ adjust_puncture[8,0,2] = 0.0 
+ adjust_puncture[8,1,0] = 0.0 
+ adjust_puncture[8,1,1] = -3.5625 
+ adjust_puncture[8,1,2] = 0.0 
+
+ The moving grid puncture position adjustment is done 
+
+
+ Initial data method: Ansorg-TwoPuncture
+
+
+ Running the AMSS-NCKU executable file TwoPunctureABE
+
+
+ The TwoPunctureABE simulation is finished
+
+
+ Running ./ABE with 60 MPI ranks and OMP_NUM_THREADS=1
+
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab4-cpu/AMSS_NCKU_Program.py", line 244, in <module>
+    makefile_and_run.run_ABE()
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab4-cpu/scripts/makefile_and_run.py", line 95, in run_ABE
+    _run_and_tee(cmd, log)
+    ~~~~~~~~~~~~^^^^^^^^^^
+  File "/home/h3240104505/HPC101_lab/lab4-cpu/scripts/makefile_and_run.py", line 29, in _run_and_tee
+    raise subprocess.CalledProcessError(rc, cmd)
+subprocess.CalledProcessError: Command 'mpiexec --allow-run-as-root -n 60 env OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 LD_LIBRARY_PATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64:/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib:/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib/clang/19/armpl_links/lib ./ABE < /dev/null' returned non-zero exit status 1.
+Total wall time: 66s (1m 6s)
+Time budget remaining: 1434s

@@ -1,0 +1,24 @@
+# started on Thu Aug 20 07:55:27 2026
+
+
+ Performance counter stats for 'perf record -F 5 -m 8 -o /home/h3240104505/HPC101_lab/lab4-cpu/results/perf_cpu-20260820-075501-110412528/perf.data -- ./run.sh --twop-cache':
+
+         452881.28 msec task-clock:u                     #   26.746 CPUs utilized             
+                 0      context-switches:u               #    0.000 /sec                      
+                 0      cpu-migrations:u                 #    0.000 /sec                      
+           2737603      page-faults:u                    #    6.045 K/sec                     
+     1261226441568      cycles:u                         #    2.785 GHz                       
+     2499503422180      instructions:u                   #    1.98  insn per cycle            
+      270190405108      branches:u                       #  596.603 M/sec                     
+        1962778552      branch-misses:u                  #    0.73% of all branches           
+      985784222393      L1-dcache-loads:u                #    2.177 G/sec                     
+        9255982619      L1-dcache-load-misses:u          #    0.94% of all L1-dcache accesses 
+       10280198806      LLC-loads:u                      #   22.700 M/sec                     
+        5848105050      LLC-load-misses:u                #   56.89% of all LL-cache accesses  
+
+      16.932758968 seconds time elapsed
+
+     436.981465000 seconds user
+      18.556727000 seconds sys
+
+

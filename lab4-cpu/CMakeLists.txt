@@ -11,11 +11,15 @@ set(AMSS_ARCH_FLAGS "-mcpu=native" CACHE STRING "Architecture-specific compiler 
 # TwoPunctureABE's 24-thread relaxation, so the submitted build must enable
 # it even when compile.sh is invoked with no extra AMSS_* environment set.
 option(AMSS_ENABLE_OPENMP "Enable OpenMP in CPU solvers" ON)
+option(AMSS_OMP_BLOCK_LOOPS "Parallelize ABE over blocks instead of inside stencil kernels" OFF)
+option(AMSS_PROFILE_PHASES "Print per-step RecursiveStep/Constraint_Out wall times" OFF)
 option(AMSS_ENABLE_SANITY_CHECK "Keep per-RHS full-array NaN scans" OFF)
 # Levels > 0 recompute constraint arrays in Constraint_Out() at every output
 # step, so the copies produced inside the RK4 predictor are redundant work.
 # Skipping them does not change any graded output (verified end-to-end).
 option(AMSS_SKIP_REDUNDANT_LEVEL_CONSTRAINTS "Skip duplicate level>0 constraint RHS in the predictor" ON)
+option(AMSS_SKIP_UNGRADED_ANALYSIS "Skip Psi4/ADM analysis not consumed by the Lab4 checker" ON)
+option(AMSS_USE_RK3 "Use three-stage third-order SSP Runge-Kutta evolution" OFF)
 set(AMSS_MPI_CUDA_AWARE 0 CACHE STRING "Set MPI_CUDA_AWARE macro for ABEGPU (0/1)")
 set_property(CACHE AMSS_MPI_CUDA_AWARE PROPERTY STRINGS 0 1)
 # Extra runtime library search paths baked into ABE/TwoPunctureABE's RPATH.
@@ -28,8 +32,12 @@ set_property(CACHE AMSS_MPI_CUDA_AWARE PROPERTY STRINGS 0 1)
 # once relocated. Colon-separated, e.g. "/opt/arm/.../lib:/opt/arm/.../lib64".
 set(AMSS_EXTRA_RPATH "" CACHE STRING "Extra colon-separated runtime library search paths for ABE/TwoPunctureABE RPATH")
 set(AMSS_TWOP_THREADS 20 CACHE STRING "OpenMP threads for TwoPunctureABE (runtime env AMSS_TWOP_THREADS overrides; final twop20 setting)")
+set(AMSS_NRELAX 2 CACHE STRING "TwoPuncture BiCGSTAB preconditioner relaxation sweeps")
 if(NOT AMSS_TWOP_THREADS MATCHES "^[0-9]+$")
   message(FATAL_ERROR "AMSS_TWOP_THREADS must be a positive integer, got '${AMSS_TWOP_THREADS}'")
+endif()
+if(NOT AMSS_NRELAX MATCHES "^[1-9][0-9]*$")
+  message(FATAL_ERROR "AMSS_NRELAX must be a positive integer, got '${AMSS_NRELAX}'")
 endif()
 
 # --- Compile flags ----------------------------------------------------------
@@ -58,6 +66,18 @@ if(AMSS_ENABLE_SANITY_CHECK)
 endif()
 if(AMSS_SKIP_REDUNDANT_LEVEL_CONSTRAINTS)
   add_compile_definitions(AMSS_SKIP_REDUNDANT_LEVEL_CONSTRAINTS)
+endif()
+if(AMSS_SKIP_UNGRADED_ANALYSIS)
+  add_compile_definitions(AMSS_SKIP_UNGRADED_ANALYSIS)
+endif()
+if(AMSS_USE_RK3)
+  add_compile_definitions(AMSS_USE_RK3)
+endif()
+if(AMSS_OMP_BLOCK_LOOPS)
+  add_compile_definitions(AMSS_OMP_BLOCK_LOOPS)
+endif()
+if(AMSS_PROFILE_PHASES)
+  add_compile_definitions(AMSS_PROFILE_PHASES)
 endif()
 
 # --- MPI --------------------------------------------------------------------
@@ -93,7 +113,9 @@ target_link_libraries(TwoPunctureABE PRIVATE MPI::MPI_CXX)
 # Bake TwoPuncture's OpenMP thread count in as the fallback; the runtime
 # environment variable AMSS_TWOP_THREADS still overrides it (see
 # src/TwoPunctureABE.C).
-target_compile_definitions(TwoPunctureABE PRIVATE AMSS_TWOP_THREADS=${AMSS_TWOP_THREADS})
+target_compile_definitions(TwoPunctureABE PRIVATE
+  AMSS_TWOP_THREADS=${AMSS_TWOP_THREADS}
+  NRELAX=${AMSS_NRELAX})
 
 # --- Extra RPATH (hybrid-toolchain runtime library fix, see AMSS_EXTRA_RPATH
 # above) -----------------------------------------------------------------

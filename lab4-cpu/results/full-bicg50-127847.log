@@ -1,0 +1,553 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Thu Aug 20 22:17:12 UTC 2026
+Mode=CPU (ABE), MPI ranks=12, OMP threads=5
+Evolution time=40.0, steps=10000000, grid levels=9, moving grid=48, TwoPuncture threads=20, admtol=1.e-6
+Build=/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+OutputRoot=/home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-221712-336688431
+==> Hybrid toolchain build: GNU -> TwoPunctureABE, Arm Compiler -> ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=2 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_USE_RK3=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran -DAMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==========================================================
+-- Configuring done (2.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang_gnu_twop" -j 60
+[  3%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctures.C.o
+[ 93%] Built target ABE
+[ 96%] Linking CXX executable TwoPunctureABE
+[100%] Built target TwoPunctureABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=2 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_USE_RK3=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ -DCMAKE_Fortran_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++
+-- Fortran  : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=
+-- ==========================================================
+-- Configuring done (2.2s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang" -j 60
+[  3%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctures.C.o
+[ 93%] Built target ABE
+[ 96%] Linking CXX executable TwoPunctureABE
+[100%] Built target TwoPunctureABE
+==> Staging GNU-built TwoPunctureABE (faster relaxation) into the Arm build tree (faster evolution)
+==> Built executables:
+-rwxr-xr-x 1 root root 816K Aug 20 22:10 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang/ABE
+-rwxr-xr-x 1 root root 210K Aug 20 22:17 /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang/TwoPunctureABE
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_cpu_armclang
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-221712-336688431
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/twopuncture_cache
+==> MPI exec : mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=5
+///////////////////////////////////////////////////////////////
+     mp     = -1
+     mm     = -1
+     b      = 3
+  P_plusx   = -0.00514081
+  P_plusy   = 0.1275
+  P_plusz   = 0
+  P_minusx  = 0.00514081
+  P_minusy  = -0.1275
+  P_minusz  = 0
+  S_plusx   = 0
+  S_plusy   = -0
+  S_plusz   = 0
+  S_minusx  = 0
+  S_minusy  = -0
+  S_minusz  = 0
+     Mp     = 0.598837
+     Mm     = 0.401163
+   admtol   = 1e-06
+ Newtontol  = 5e-12
+    nA      = 50
+    nB      = 50
+   nphi     = 26
+Newtonmaxit = 50
+///////////////////////////////////////////////////////////////
+TwoPuncture OpenMP: using 20 thread(s)
+Attempting to find bare masses.
+Target ADM masses: M_p=0.598837 and M_m=0.401163
+ADM mass tolerance: 1e-06
+Bare masses: mp=0.578818, mm=0.381144
+Newton: it=0 	 |F|=1.121432e-02
+bare mass: mp=0.578818 	 mm=0.381144
+bicgstab:  itmax 50, tol 1.121432e-05
+bicgstab:     0   2.313e-01
+bicgstab:     1   5.260e-01   1.088e+01   0.000e+00   4.191e-01
+bicgstab:     2   4.705e-01   1.730e-01  -8.676e-01   3.885e-01
+bicgstab:     3   6.056e-01   1.634e+01  -5.419e-01   9.610e-01
+bicgstab:     4   5.052e-01   3.154e-01  -4.243e+00   1.846e+00
+bicgstab:     5   5.946e-01   8.379e+00  -2.283e-01   5.781e-01
+bicgstab:     6   5.825e-01  -4.571e-01   7.883e-01   8.939e-01
+bicgstab:     7   6.979e-01  -4.640e+00  -2.267e+00   3.964e+00
+bicgstab:     8   7.674e-01   2.797e+00  -6.966e-01   4.450e-01
+bicgstab:     9   9.288e-01   3.224e+00   1.149e+00   4.708e-01
+bicgstab:    10   9.141e-01   2.473e-01  -4.698e-01   2.101e+00
+bicgstab:    11   9.290e-01   8.625e-01  -7.323e-01   4.516e-01
+bicgstab:    12   1.068e+00   2.382e+00   2.393e+00   2.628e+00
+bicgstab:    13   1.017e+00  -7.631e+00   2.136e-01   6.179e-01
+bicgstab:    14   2.417e+00  -2.678e+00  -2.041e+01   5.654e+00
+bicgstab:    15   2.237e+00   2.815e-01   4.844e-01   8.018e-01
+bicgstab:    16   1.211e+00  -1.337e+01  -3.796e-01   4.082e-01
+bicgstab:    17   2.977e+00  -3.439e-01  -6.409e+01   1.399e+01
+bicgstab:    18   3.060e+00   6.946e-01  -1.890e-02   1.927e+00
+bicgstab:    19   3.089e+00   2.204e+00   1.307e-01   3.198e-01
+bicgstab:    20   3.008e+00  -8.689e-01   6.196e+00   4.881e+00
+bicgstab:    21   3.005e+00  -7.564e-02  -2.185e-02   7.496e-01
+bicgstab:    22   3.390e+00   1.599e+02  -1.107e+00   4.216e-01
+bicgstab:    23   3.354e+00  -2.424e-01   5.320e+01   6.097e-01
+bicgstab:    24   1.717e+00  -3.511e+00  -1.950e+00   2.664e+02
+bicgstab:    25   1.533e+00   3.838e+00  -2.180e-01   6.365e-01
+bicgstab:    26   2.137e+00   1.136e+00   2.510e+00   1.107e+00
+bicgstab:    27   1.736e+00   5.629e-01  -6.899e-01   6.546e-01
+bicgstab:    28   1.589e+00   2.927e-01   1.065e-01   2.664e+00
+bicgstab:    29   5.610e+00   2.313e+02  -5.635e-01   4.059e-01
+bicgstab:    30   1.298e+00   8.938e-02  -2.079e+03   1.665e+01
+bicgstab:    31   1.074e+00  -3.399e+00  -1.834e-03   4.795e-01
+bicgstab:    32   1.751e+00  -3.175e+00  -1.078e+01   8.372e-01
+bicgstab:    33   1.285e+00   6.206e-01   1.828e+00   4.933e-01
+bicgstab:    34   9.684e-01   5.339e-01   6.882e-01   3.486e+00
+bicgstab:    35   9.292e-01   4.368e-01  -4.683e-01   3.851e+00
+bicgstab:    36   7.452e-01   5.358e+00  -9.843e-02   4.160e-01
+bicgstab:    37   6.765e-01   2.466e-01  -1.391e+00   1.481e+01
+bicgstab:    38   6.100e-01   1.333e+00  -1.653e-01   4.637e-01
+bicgstab:    39   5.519e-01   6.131e-01   4.131e-01   2.433e+01
+bicgstab:    40   1.328e+00   1.276e+01  -3.454e-01   5.059e-01
+bicgstab:    41   2.305e+00   7.325e+00   2.471e+01   1.160e+00
+bicgstab:    42   9.159e-01  -8.337e-02  -1.718e+00   4.073e-01
+bicgstab:    43   4.481e-01  -2.390e+00  -1.273e+00   1.466e+00
+bicgstab:    44   4.471e-01  -3.105e-01   2.712e-02   7.506e-01
+bicgstab:    45   4.048e-01  -1.213e+01  -1.659e+00   3.203e+00
+bicgstab:    46   4.121e-01  -2.272e+00  -1.038e+00   4.635e-01
+bicgstab:    47   3.737e-01  -5.769e-01  -1.204e+01   3.825e+00
+bicgstab:    48   3.502e-01   1.909e+00  -1.597e-01   6.010e-01
+bicgstab:    49   2.633e-01   5.576e+00   1.275e+00   3.170e-01
+bicgstab:    50   2.658e-01   2.001e-01  -8.737e-01   5.452e-01
+Newton: it=1 	 |F|=6.762315e-02 
+ADM mass error: M_p_err=0.00192102, M_m_err=0.00290473
+Bare masses: mp=0.577092, mm=0.378455
+Newton: it=0 	 |F|=6.762315e-02
+bare mass: mp=0.577092 	 mm=0.378455
+bicgstab:  itmax 50, tol 6.762315e-05
+bicgstab:     0   2.658e-01
+bicgstab:     1   1.991e-01   1.680e+02   0.000e+00   4.042e-01
+bicgstab:     2   1.707e-01   5.433e-01   1.045e+02   1.746e+00
+bicgstab:     3   1.654e-01  -1.352e+00  -1.041e-03   6.213e-01
+bicgstab:     4   1.702e-01   1.941e+00  -2.801e+00   2.256e+00
+bicgstab:     5   1.087e-01  -2.733e+00   2.568e+00   5.032e-01
+bicgstab:     6   1.681e-01   1.806e+00  -3.885e+00   3.150e+00
+bicgstab:     7   1.533e-01  -3.627e-01   9.409e-02   7.151e-01
+bicgstab:     8   1.770e-01   3.274e+01  -1.154e+00   4.312e-01
+bicgstab:     9   3.188e-01   3.005e-01   7.801e+01   7.795e-01
+bicgstab:    10   8.756e-02   3.990e-01  -1.133e+00   6.943e+00
+bicgstab:    11   9.354e-02   6.037e+00  -1.348e-02   5.301e-01
+bicgstab:    12   9.413e-02  -1.256e+00   3.169e-01   6.407e-01
+bicgstab:    13   8.907e-02   7.096e-02   1.112e+01   1.501e+00
+bicgstab:    14   8.553e-02   4.703e+01  -9.666e-02   5.211e-01
+bicgstab:    15   8.398e-02   1.042e-02  -2.726e-01   1.120e+00
+bicgstab:    16   7.468e-02   2.846e+02  -9.780e-01   4.281e-01
+bicgstab:    17   7.970e-02   1.989e+00   4.670e+02   5.172e+00
+bicgstab:    18   1.370e+00  -1.728e+01   2.582e+00   9.954e-01
+bicgstab:    19   1.036e+00   1.854e-01   1.569e+01   1.799e+00
+bicgstab:    20   1.720e-01  -2.053e+00  -3.800e-01   4.789e-01
+bicgstab:    21   6.005e-01  -6.330e+00  -1.581e-01   5.954e-01
+bicgstab:    22   3.274e-02  -1.267e-01  -6.778e+01   5.134e-01
+bicgstab:    23   3.279e-02   1.979e-01   5.437e-04   4.748e+00
+bicgstab:    24   3.066e-02   4.377e+00  -5.630e-01   4.255e-01
+bicgstab:    25   3.064e-02  -4.408e-01  -1.358e-02   2.994e+00
+bicgstab:    26   3.062e-02  -1.519e-01  -5.796e+00   1.333e+00
+bicgstab:    27   2.803e-02   3.833e+02   1.871e-01   4.424e-01
+bicgstab:    28   2.820e-02   1.226e-01  -2.121e+02   3.170e+00
+bicgstab:    29   5.167e-03   3.036e+01  -5.488e-01   4.108e-01
+bicgstab:    30   3.669e-03   4.676e-01   5.898e+00   5.365e+00
+bicgstab:    31   3.968e-03   5.482e-01  -1.841e-01   4.405e-01
+bicgstab:    32   3.969e-03   1.176e-01   7.209e-02  -3.171e+00
+bicgstab:    33   2.585e-03   8.132e+01  -7.875e-01   1.063e+00
+bicgstab:    34   1.583e-03   3.953e-01  -6.329e+00   3.486e+01
+bicgstab:    35   1.570e-03  -4.701e-01  -1.046e-02   4.513e-01
+bicgstab:    36   1.563e-03  -7.518e-01  -8.024e-01   1.038e+00
+bicgstab:    37   1.429e-03   1.623e+01  -2.970e+00   3.967e-01
+bicgstab:    38   1.353e-03   2.296e+00   3.864e+00   9.599e-01
+bicgstab:    39   1.379e-03   1.945e-01  -6.683e+00   5.070e+00
+bicgstab:    40   1.407e-03   4.770e+00   5.015e-02   4.329e-01
+bicgstab:    41   1.473e-03   1.928e+00   4.917e+00   7.539e-01
+bicgstab:    42   1.472e-03   1.361e-01  -9.505e-02  -2.380e-02
+bicgstab:    43   1.457e-03  -6.214e+00  -7.283e-01   1.015e+00
+bicgstab:    44   1.356e-03   9.780e+00  -8.230e+00   1.714e+00
+bicgstab:    45   1.347e-03   7.177e-02   1.720e+01   4.691e-01
+bicgstab:    46   2.837e-03   6.946e-01  -4.110e+00   3.122e+00
+bicgstab:    47   4.209e-03   1.385e+00   3.214e-01   5.085e-01
+bicgstab:    48   1.946e-03   8.086e-01   1.043e+00   8.711e+01
+bicgstab:    49   1.674e-03   7.534e+00  -5.963e-02   4.063e-01
+bicgstab:    50   1.796e-03  -5.375e-01   3.000e+01   1.602e+01
+Newton: it=1 	 |F|=2.355264e-04 
+ADM mass error: M_p_err=0.000107014, M_m_err=0.0001265
+Bare masses: mp=0.576983, mm=0.378578
+Newton: it=0 	 |F|=2.355264e-04
+bare mass: mp=0.576983 	 mm=0.378578
+bicgstab:  itmax 50, tol 2.355264e-07
+bicgstab:     0   1.802e-03
+bicgstab:     1   2.055e-03   1.613e+01   0.000e+00   4.065e-01
+bicgstab:     2   5.061e-03   2.153e+00   3.020e+01   1.012e+00
+bicgstab:     3   4.982e-03   1.344e+00   3.891e-01   1.006e+00
+bicgstab:     4   5.596e-03   5.492e+00   8.977e-01   7.072e-01
+bicgstab:     5   1.621e-02   5.852e+00   4.986e+00   7.655e-01
+bicgstab:     6   1.371e-02  -2.217e+00   6.565e+00   4.739e-01
+bicgstab:     7   1.717e-02   5.651e-01  -2.239e+00   4.311e+00
+bicgstab:     8   1.593e-02  -1.651e+00   1.475e-01   7.003e-01
+bicgstab:     9   1.950e-02  -2.470e+00  -4.820e+00   4.629e+00
+bicgstab:    10   1.449e-02   8.264e-01   5.883e-01   6.893e-01
+bicgstab:    11   2.990e-02  -6.095e+00   5.325e-01   6.927e-01
+bicgstab:    12   8.399e-03  -1.387e+00  -1.071e+01   4.507e-01
+bicgstab:    13   3.767e-03   4.641e-01   7.499e-01   2.939e+00
+bicgstab:    14   3.236e-03   4.172e-01  -1.861e-02   5.097e+00
+bicgstab:    15   4.934e-03   2.057e+01  -2.890e-01   4.153e-01
+bicgstab:    16   3.750e-03  -2.750e-01   1.557e+02   4.451e-01
+bicgstab:    17   5.027e+00  -4.215e+03  -2.045e-01   3.333e+00
+bicgstab:    18   4.117e-03  -1.220e-03  -3.457e+06   1.489e+00
+bicgstab:    19   4.736e-03   7.517e-01  -4.444e-07   4.037e+00
+bicgstab:    20   5.960e-03   5.808e+00   2.937e-01   4.640e-01
+bicgstab:    21   7.195e-03   1.200e+00   5.953e+00   5.313e+00
+bicgstab:    22   6.664e-03   5.319e-02   1.634e-02   4.815e-01
+bicgstab:    23   5.256e-03   3.524e+01  -8.995e-01   6.208e-01
+bicgstab:    24   4.436e-03   3.053e-01  -5.867e+00   1.078e+01
+bicgstab:    25   6.126e-03  -1.988e+01  -3.235e-01   4.070e-01
+bicgstab:    26   1.648e-03  -3.612e-01  -9.742e+01   1.204e+01
+bicgstab:    27   1.427e-03   6.163e-01   1.384e-02   6.391e-01
+bicgstab:    28   1.370e-03   1.062e+00   1.279e-01   9.090e-01
+bicgstab:    29   1.237e-03   2.364e+00   6.474e-01   4.687e-01
+bicgstab:    30   9.957e-04   4.026e+00   6.071e-01   4.404e-01
+bicgstab:    31   7.239e-04   1.626e-01  -3.478e+00   2.168e+01
+bicgstab:    32   4.555e-04   2.344e+00  -2.608e-01   1.720e+00
+bicgstab:    33   5.790e-04  -1.276e+01  -1.375e-01   4.087e-01
+bicgstab:    34   4.095e-04  -1.471e-01  -1.228e+02   3.611e+00
+bicgstab:    35   4.555e-04  -3.327e+00  -2.098e-02   6.479e-01
+bicgstab:    36   4.327e-04   8.802e-01  -1.970e+00   9.530e+00
+bicgstab:    37   4.045e-04  -1.683e+00   2.674e-01   4.806e-01
+bicgstab:    38   4.066e-04  -1.362e+00  -1.625e+00   5.110e-01
+bicgstab:    39   2.558e-03  -1.206e+02  -4.747e+00   1.352e+00
+bicgstab:    40   3.428e-03   2.489e-01  -1.624e+02   7.083e-01
+bicgstab:    41   6.262e-04   7.559e-01  -9.976e-01   6.555e-01
+bicgstab:    42   6.235e-04  -4.442e-03  -3.899e-05   1.438e+00
+bicgstab:    43   6.329e-04  -1.330e+02  -1.013e+00   2.398e+00
+bicgstab:    44   6.051e-04   3.269e+00   4.956e+01   4.054e-01
+bicgstab:    45   5.513e-04   1.918e+00   3.130e+00   6.056e+00
+bicgstab:    46   4.827e-04   1.391e+00   1.854e+00   1.581e+00
+bicgstab:    47   4.819e-04  -1.016e-01   3.405e-02   4.948e-01
+bicgstab:    48   4.263e-04  -2.951e+01  -1.154e+00   5.316e-01
+bicgstab:    49   3.314e-04   1.180e+00  -4.458e+01   2.343e+00
+bicgstab:    50   3.294e-04  -4.287e-01  -5.756e-02   3.946e-01
+Newton: it=1 	 |F|=7.489063e-05 
+ADM mass error: M_p_err=7.08598e-06, M_m_err=3.01268e-07
+Bare masses: mp=0.576976, mm=0.378578
+Newton: it=0 	 |F|=7.489063e-05
+bare mass: mp=0.576976 	 mm=0.378578
+bicgstab:  itmax 50, tol 7.489063e-08
+bicgstab:     0   3.295e-04
+bicgstab:     1   3.878e-03   3.361e+03   0.000e+00   4.102e-01
+bicgstab:     2   3.021e-03   4.853e-01  -6.740e+02   1.897e+00
+bicgstab:     3   6.413e-03  -1.120e+01   1.668e-01   5.258e-01
+bicgstab:     4   6.017e-02  -9.230e+00  -2.945e+01   2.251e+00
+bicgstab:     5   2.811e-03   3.390e-01   2.342e+01   5.162e-01
+bicgstab:     6   3.931e-03   7.125e-01  -1.940e-02   1.098e+00
+bicgstab:     7   3.157e-03   3.905e-01  -4.353e-01   1.327e+00
+bicgstab:     8   2.306e-02  -3.869e+01   2.507e-01   6.085e-01
+bicgstab:     9   1.178e-02  -1.198e+00  -5.989e+01   4.614e-01
+bicgstab:    10   4.770e-03   1.796e-01   3.380e+00   2.761e+00
+bicgstab:    11   6.471e-04   7.819e-01  -8.290e-02   4.462e+00
+bicgstab:    12   5.994e-04   5.567e+00  -2.979e-02   4.242e-01
+bicgstab:    13   2.108e-04   2.327e-01  -1.293e+01   3.358e+00
+bicgstab:    14   1.945e-04   7.265e-01   1.136e-02   5.622e-01
+bicgstab:    15   1.891e-04   1.153e+00  -4.869e-01   4.740e-01
+bicgstab:    16   1.804e-04  -2.154e+00   2.672e+00   7.668e+00
+bicgstab:    17   1.713e-04  -1.624e+00  -1.527e+00   4.410e-01
+bicgstab:    18   1.966e-04   1.342e+00  -2.678e+00   8.612e+00
+bicgstab:    19   1.957e-04  -1.420e+00  -3.610e-02   6.656e-01
+bicgstab:    20   1.804e-04  -7.605e-01  -2.121e+00   4.424e-01
+bicgstab:    21   1.202e-04   1.530e+00  -2.636e+00   1.979e+01
+bicgstab:    22   9.673e-05   1.500e+00  -1.050e-01   4.115e-01
+bicgstab:    23   8.862e-05   7.804e-01   8.175e-01   3.063e+00
+bicgstab:    24   8.033e-05   1.496e+00   2.794e-01   1.065e+00
+bicgstab:    25   5.642e-05   3.831e+00   1.302e+00   1.515e+00
+bicgstab:    26   6.358e-05   1.386e+00  -1.373e+00   4.613e-01
+bicgstab:    27   6.252e-05   5.644e-01   1.275e+00   4.245e+00
+bicgstab:    28   5.664e-05   5.162e-01  -4.077e-01   8.713e-01
+bicgstab:    29   5.864e-05  -5.562e+00  -2.541e-01   4.065e-01
+bicgstab:    30   5.329e-06  -9.119e+00  -1.484e+01   7.049e-01
+bicgstab:    31   7.910e-06   3.945e-01   3.708e+00   2.421e+01
+bicgstab:    32   6.205e-06   1.169e+00  -7.236e-02   4.329e-01
+bicgstab:    33   6.241e-06   9.290e-01  -2.463e-01   8.007e-01
+bicgstab:    34   6.779e-06   1.130e+01   1.183e+00   5.747e-01
+bicgstab:    35   6.991e-06   7.450e-01   7.726e+00   1.041e+01
+bicgstab:    36   6.922e-06  -9.752e-01   1.630e-01   4.246e-01
+bicgstab:    37   5.932e-06   8.897e+00  -2.118e+00   6.303e-01
+bicgstab:    38   2.329e-05  -6.657e+00   1.696e+01   1.097e+00
+bicgstab:    39   1.168e-05   2.956e-01   1.407e+01   1.245e+00
+bicgstab:    40   1.135e-05   5.122e-01   1.052e-02   9.935e+00
+bicgstab:    41   1.147e-05  -2.098e+00   2.255e-01   4.172e-01
+bicgstab:    42   1.436e-05   9.790e+00  -2.825e+00   1.293e+00
+bicgstab:    43   8.468e-06  -1.157e+00   1.760e+01   5.004e-01
+bicgstab:    44   7.955e-06   3.965e-01   3.395e-01   1.772e+02
+bicgstab:    45   7.183e-06  -1.509e-02  -3.480e-04   4.619e-01
+bicgstab:    46   7.164e-06  -3.390e+01  -1.024e+00   5.036e-01
+bicgstab:    47   7.170e-06   4.835e-01  -3.734e+01  -8.688e-01
+bicgstab:    48   7.161e-06   9.573e+00  -2.267e-01   3.865e-01
+bicgstab:    49   7.164e-06   2.057e+00   1.030e+00   5.131e-01
+bicgstab:    50   7.161e-06   6.177e-02  -2.711e+01   1.124e+00
+Newton: it=1 	 |F|=1.586044e-06 
+ADM mass error: M_p_err=6.09405e-08, M_m_err=5.47245e-07
+Found bare masses resulted Mp = 0.598837 and Mm = 0.401163
+The two puncture masses are mp = 0.576976 and mm = 0.378578
+                   resulted Mp = 0.598837 and Mm = 0.401163
+The total ADM mass is 0.983554
+===============================================================
+Initial data is successfully producede!!
+ OpenMP enabled: max threads per MPI rank = 5, MPI thread support = 1
+
+ /////////////////////////////////////////////////////////////// 
+ AMSS-NCKU Begin !!! 
+ /////////////////////////////////////////////////////////////// 
+
+                                 new run
+   simulation with cpu numbers = 12
+               simulation time = (0, 40)
+ simulation steps for this run = 10000000
+                Courant number = 0.5
+            Initial Data Type: Numerical Ansorg TwoPuncture
+             Symmetry setting: Equatorial
+ Courant = 0.5
+ artificial dissipation for shell patches = 0.15
+ artificial dissipation for fixed levels = 0.15
+ artificial dissipation for moving levels = 0.15
+ Dumpt Time = 1000
+ Check Time = 1000
+ Analysis Time = 0.1
+ Analysis level = 0
+ checkfile = bssn.chk
+ fourth order finite difference is used
+///////////////////////////////////////////////////////////////
+-----------------------------------------------------------------------
+ spherical integration for wave form extraction with Gauss method      
+ N_phi   = 384
+ N_theta = 192
+-----------------------------------------------------------------------
+ chitiny = 1e-05
+ time refinement start from level #3
+ checkpoint class created 
+ BSSN class successfully created 
+ you have setted 167 grid functions.
+
+ cgh has levels: 9
+
+ level #0 has boxes: 1
+ #0 box is  (-320:320,-320:320,0:320).
+ level #1 has boxes: 1
+ #0 box is  (-160:160,-160:160,0:160).
+ level #2 has boxes: 1
+ #0 box is  (-80:80,-80:80,0:80).
+ level #3 has boxes: 1
+ #0 box is  (-40:40,-40:40,0:40).
+ level #4 has boxes: 1
+ #0 box is  (-20:20,-20:20,0:20).
+ level #5 has boxes: 2
+ #0 box is  (-12:12,-9.5:14.5,0:12).
+ #1 box is  (-12:12,-15.5:8.5,0:12).
+ level #6 has boxes: 2
+ #0 box is  (-6:6,-3.5:8.5,0:6).
+ #1 box is  (-6:6,-9.5:2.5,0:6).
+ level #7 has boxes: 2
+ #0 box is  (-3:3,-0.625:5.375,0:3).
+ #1 box is  (-3:3,-6.625:-0.625,0:3).
+ level #8 has boxes: 2
+ #0 box is  (-1.5:1.5,0.9375:3.9375,0:1.5).
+ #1 box is  (-1.5:1.5,-5.0625:-2.0625,0:1.5).
+
+ moving levels are lev #5--8
+
+ belong to level 0
+ shape: [40,40,20] resolution: [16,16,16]
+ range:(-320:320,-320:320,0:320)
+ belong to level 1
+ shape: [40,40,20] resolution: [8,8,8]
+ range:(-160:160,-160:160,0:160)
+ belong to level 2
+ shape: [40,40,20] resolution: [4,4,4]
+ range:(-80:80,-80:80,0:80)
+ belong to level 3
+ shape: [40,40,20] resolution: [2,2,2]
+ range:(-40:40,-40:40,0:40)
+ belong to level 4
+ shape: [40,40,20] resolution: [1,1,1]
+ range:(-20:20,-20:20,0:20)
+ belong to level 5
+ shape: [48,60,24] resolution: [0.5,0.5,0.5]
+ range:(-12:12,-15.5:14.5,0:12)
+ belong to level 6
+ shape: [48,72,24] resolution: [0.25,0.25,0.25]
+ range:(-6:6,-9.5:8.5,0:6)
+ belong to level 7
+ shape: [48,96,24] resolution: [0.125,0.125,0.125]
+ range:(-3:3,-6.625:5.375,0:3)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,0.9375:3.9375,0:1.5)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,-5.0625:-2.0625,0:1.5)
+
+ initial information of 2 Black Hole(s) 
+        Mass           x           y           z              Px              Py          Pz          Sx          Sy          Sz
+    0.576976           0     2.40698           0         -0.1275     -0.00514081           0           0           0           0
+    0.378578           0    -3.59302           0          0.1275      0.00514081           0           0           0           0
+
+ Read initial data from Ansorg's solver, please be sure the input parameters for black holes are puncture parameters!! 
+
+  reading data from Ansorg.psid
+  found data with dimensions 50 x 50 x 26 = 65000
+  bhx1 = 0
+  bhy1 = 2.40698
+  bhz1 = 0
+  bhx2 = 0
+  bhy2 = -3.59302
+  bhz2 = 0
+  read 65000 data lines
+
+
+ Before Evolve, it takes 0.583018 seconds
+
+
+ Timestep # 1: integrating to time: 1    Computer used 6.73006 wall-clock seconds! 
+ Memory usage: current 2351/195.9/2351MB, peak 2355/196.3/2355MB
+
+ puncture position: no. 0 = (-0.00774792 2.40644 7.7164e-05)
+ puncture position: no. 1 = (0.0218533 -3.58903 0.00147448)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 2: integrating to time: 2    Computer used 7.34962 wall-clock seconds! 
+ Memory usage: current 2592/216/2592MB, peak 2599/216.6/2599MB
+
+ puncture position: no. 0 = (-0.0493099 2.40188 7.87117e-06)
+ puncture position: no. 1 = (0.152579 -3.57952 1.70246e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 3: integrating to time: 3    Computer used 6.87605 wall-clock seconds! 
+ Memory usage: current 2689/224/2689MB, peak 2828/235.6/2828MB
+
+ puncture position: no. 0 = (-0.140558 2.39083 5.29884e-05)
+ puncture position: no. 1 = (0.304955 -3.56316 2.44639e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 4: integrating to time: 4    Computer used 7.38419 wall-clock seconds! 
+ Memory usage: current 2869/239.1/2869MB, peak 2870/239.2/2870MB
+
+ puncture position: no. 0 = (-0.242623 2.37633 2.09429e-05)
+ puncture position: no. 1 = (0.454413 -3.53965 7.19766e-06)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 5: integrating to time: 5    Computer used 7.06484 wall-clock seconds! 
+ Memory usage: current 2852/237.7/2852MB, peak 2879/239.9/2879MB
+
+ puncture position: no. 0 = (-0.339286 2.35817 9.99563e-06)
+ puncture position: no. 1 = (0.600483 -3.50823 6.35347e-07)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 6: integrating to time: 6    Computer used 7.58892 wall-clock seconds! 
+ Memory usage: current 2899/241.6/2899MB, peak 2902/241.9/2902MB
+
+ puncture position: no. 0 = (-0.436582 2.33452 1.9135e-06)
+ puncture position: no. 1 = (0.744154 -3.47083 6.88073e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 7: integrating to time: 7    Computer used 7.35969 wall-clock seconds! 
+ Memory usage: current 2917/243.1/2917MB, peak 2920/243.3/2920MB
+
+ puncture position: no. 0 = (-0.53371 2.30749 1.16281e-05)
+ puncture position: no. 1 = (0.88811 -3.42882 0.000112846)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 8: integrating to time: 8    Computer used 7.65454 wall-clock seconds! 
+ Memory usage: current 2937/244.7/2937MB, peak 2974/247.8/2974MB
+
+ puncture position: no. 0 = (-0.630304 2.27873 6.93586e-05)
+ puncture position: no. 1 = (1.03541 -3.38254 0.000142646)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 9: integrating to time: 9    Computer used 7.34556 wall-clock seconds! 
+ Memory usage: current 2993/249.4/2993MB, peak 3003/250.2/3003MB
+
+ puncture position: no. 0 = (-0.726504 2.24711 0.00011299)
+ puncture position: no. 1 = (1.18793 -3.33062 0.000124241)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 10: integrating to time: 10    Computer used 7.34253 wall-clock seconds! 
+ Memory usage: current 2988/249/2988MB, peak 3020/251.7/3020MB
+
+ puncture position: no. 0 = (-0.821924 2.20846 0.000143635)
+ puncture position: no. 1 = (1.34483 -3.26942 7.71814e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 11: integrating to time: 11    Computer used 7.17733 wall-clock seconds! 
+ Memory usage: current 2936/244.6/2936MB, peak 3026/252.2/3026MB
+
+ puncture position: no. 0 = (-0.915659 2.1604 0.000155106)
+ puncture position: no. 1 = (1.50334 -3.1959 6.07273e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 12: integrating to time: 12    Computer used 6.80007 wall-clock seconds! 
+ Memory usage: current 2959/246.5/2959MB, peak 3026/252.2/3026MB
+
+ puncture position: no. 0 = (-1.00719 2.10385 0.000150405)
+ puncture position: no. 1 = (1.66001 -3.10995 5.98401e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+Total wall time: 194s (3m 14s)
+Time budget remaining: 1306s
+
+ Timestep # 13: integrating to time: 13    Computer used 6.80125 wall-clock seconds! 
+ Memory usage: current 2916/243/2916MB, peak 3026/252.2/3026MB
+
+ puncture position: no. 0 = (-1.09672 2.04177 0.000147313)
+ puncture position: no. 1 = (1.81251 -3.01308 9.66804e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 14: integrating to time: 14    Computer used 6.79809 wall-clock seconds! 
+ Memory usage: current 2903/242/2903MB, peak 3027/252.3/3027MB
+
+ puncture position: no. 0 = (-1.18475 1.976 0.000138839)
+ puncture position: no. 1 = (1.95953 -2.90683 0.00010838)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 15: integrating to time: 15    Computer used 6.84564 wall-clock seconds! 
+ Memory usage: current 2864/238.7/2864MB, peak 3027/252.3/3027MB
+
+ puncture position: no. 0 = (-1.2712 1.906 0.000129814)
+ puncture position: no. 1 = (2.1009 -2.79228 0.000133185)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 16: integrating to time: 16    Computer used 6.77049 wall-clock seconds! 
+ Memory usage: current 2910/242.5/2910MB, peak 3027/252.3/3027MB
+
+ puncture position: no. 0 = (-1.35544 1.83013 0.000140506)
+ puncture position: no. 1 = (2.23689 -2.67019 0.000133983)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 

@@ -1,0 +1,285 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-cpu
+Start: Thu Aug 20 21:26:26 UTC 2026
+Mode=CPU (ABE), MPI ranks=10, OMP threads=6
+Evolution time=1, steps=1, grid levels=9, moving grid=48, TwoPuncture threads=20, admtol=1.e-6
+Build=/home/h3240104505/HPC101_lab/lab4-cpu/build
+OutputRoot=/home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-212626-873580610
+==> Hybrid toolchain build: GNU -> TwoPunctureABE, Arm Compiler -> ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_gnu_twop" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=2 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/usr/bin/c++ -DCMAKE_Fortran_COMPILER=/usr/bin/gfortran -DAMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64
+-- ==========================================================
+-- Configuring done (10.5s)
+-- Generating done (0.4s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_gnu_twop
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_gnu_twop" -j 60
+gmake[2]: Warning: File 'CMakeFiles/TwoPunctureABE.dir/compiler_depend.make' has modification time 0.008 s in the future
+gmake[2]: warning:  Clock skew detected.  Your build may be incomplete.
+[ 10%] Built target TwoPunctureABE
+[100%] Built target ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=2 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ -DCMAKE_Fortran_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++
+-- Fortran  : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=
+-- ==========================================================
+-- Configuring done (12.5s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build" -j 60
+gmake[2]: Warning: File 'CMakeFiles/TwoPunctureABE.dir/compiler_depend.make' has modification time 0.0013 s in the future
+gmake[2]: warning:  Clock skew detected.  Your build may be incomplete.
+[ 10%] Built target TwoPunctureABE
+[100%] Built target ABE
+==> Staging GNU-built TwoPunctureABE (faster relaxation) into the Arm build tree (faster evolution)
+==> Built executables:
+-rwxr-xr-x 1 root root 815K Aug 20 21:24 /home/h3240104505/HPC101_lab/lab4-cpu/build/ABE
+-rwxr-xr-x 1 root root 210K Aug 20  2026 /home/h3240104505/HPC101_lab/lab4-cpu/build/TwoPunctureABE
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/20260820-212626-873580610
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/twopuncture_cache
+==> MPI exec : mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=6
+///////////////////////////////////////////////////////////////
+     mp     = -1
+     mm     = -1
+     b      = 3
+  P_plusx   = -0.00514081
+  P_plusy   = 0.1275
+  P_plusz   = 0
+  P_minusx  = 0.00514081
+  P_minusy  = -0.1275
+  P_minusz  = 0
+  S_plusx   = 0
+  S_plusy   = -0
+  S_plusz   = 0
+  S_minusx  = 0
+  S_minusy  = -0
+  S_minusz  = 0
+     Mp     = 0.598837
+     Mm     = 0.401163
+   admtol   = 1e-06
+ Newtontol  = 5e-12
+    nA      = 50
+    nB      = 50
+   nphi     = 26
+Newtonmaxit = 50
+///////////////////////////////////////////////////////////////
+TwoPuncture OpenMP: using 20 thread(s)
+Attempting to find bare masses.
+Target ADM masses: M_p=0.598837 and M_m=0.401163
+ADM mass tolerance: 1e-06
+Bare masses: mp=-1, mm=-1
+Newton: it=0 	 |F|=1.121432e-02
+bare mass: mp=0.578818 	 mm=0.381144
+bicgstab:  itmax 100, tol 1.121432e-05
+bicgstab:     0   2.313e-01
+bicgstab:     1   5.260e-01   1.088e+01   0.000e+00   4.191e-01
+bicgstab:     2   4.705e-01   1.730e-01  -8.676e-01   3.885e-01
+bicgstab:     3   6.056e-01   1.634e+01  -5.419e-01   9.610e-01
+bicgstab:     4   5.052e-01   3.154e-01  -4.243e+00   1.846e+00
+bicgstab:     5   5.946e-01   8.379e+00  -2.283e-01   5.781e-01
+bicgstab:     6   5.825e-01  -4.571e-01   7.883e-01   8.939e-01
+bicgstab:     7   6.979e-01  -4.640e+00  -2.267e+00   3.964e+00
+bicgstab:     8   7.674e-01   2.797e+00  -6.966e-01   4.450e-01
+bicgstab:     9   9.288e-01   3.224e+00   1.149e+00   4.708e-01
+bicgstab:    10   9.141e-01   2.473e-01  -4.698e-01   2.101e+00
+bicgstab:    11   9.290e-01   8.625e-01  -7.323e-01   4.516e-01
+bicgstab:    12   1.068e+00   2.382e+00   2.393e+00   2.628e+00
+bicgstab:    13   1.017e+00  -7.631e+00   2.136e-01   6.179e-01
+bicgstab:    14   2.417e+00  -2.678e+00  -2.041e+01   5.654e+00
+bicgstab:    15   2.237e+00   2.815e-01   4.844e-01   8.018e-01
+bicgstab:    16   1.211e+00  -1.337e+01  -3.796e-01   4.082e-01
+bicgstab:    17   2.977e+00  -3.439e-01  -6.409e+01   1.399e+01
+bicgstab:    18   3.060e+00   6.946e-01  -1.890e-02   1.927e+00
+bicgstab:    19   3.089e+00   2.204e+00   1.307e-01   3.198e-01
+bicgstab:    20   3.008e+00  -8.689e-01   6.196e+00   4.881e+00
+bicgstab:    21   3.005e+00  -7.564e-02  -2.185e-02   7.496e-01
+bicgstab:    22   3.390e+00   1.599e+02  -1.107e+00   4.216e-01
+bicgstab:    23   3.354e+00  -2.424e-01   5.320e+01   6.097e-01
+bicgstab:    24   1.717e+00  -3.511e+00  -1.950e+00   2.664e+02
+bicgstab:    25   1.533e+00   3.838e+00  -2.180e-01   6.365e-01
+bicgstab:    26   2.137e+00   1.136e+00   2.510e+00   1.107e+00
+bicgstab:    27   1.736e+00   5.629e-01  -6.899e-01   6.546e-01
+bicgstab:    28   1.589e+00   2.927e-01   1.065e-01   2.664e+00
+bicgstab:    29   5.610e+00   2.313e+02  -5.635e-01   4.059e-01
+bicgstab:    30   1.298e+00   8.938e-02  -2.079e+03   1.665e+01
+bicgstab:    31   1.074e+00  -3.399e+00  -1.834e-03   4.795e-01
+bicgstab:    32   1.751e+00  -3.175e+00  -1.078e+01   8.372e-01
+bicgstab:    33   1.285e+00   6.206e-01   1.828e+00   4.933e-01
+bicgstab:    34   9.684e-01   5.339e-01   6.882e-01   3.486e+00
+bicgstab:    35   9.292e-01   4.368e-01  -4.683e-01   3.851e+00
+bicgstab:    36   7.452e-01   5.358e+00  -9.843e-02   4.160e-01
+bicgstab:    37   6.765e-01   2.466e-01  -1.391e+00   1.481e+01
+bicgstab:    38   6.100e-01   1.333e+00  -1.653e-01   4.637e-01
+bicgstab:    39   5.519e-01   6.131e-01   4.131e-01   2.433e+01
+bicgstab:    40   1.328e+00   1.276e+01  -3.454e-01   5.059e-01
+bicgstab:    41   2.305e+00   7.325e+00   2.471e+01   1.160e+00
+bicgstab:    42   9.159e-01  -8.337e-02  -1.718e+00   4.073e-01
+bicgstab:    43   4.481e-01  -2.390e+00  -1.273e+00   1.466e+00
+bicgstab:    44   4.471e-01  -3.105e-01   2.712e-02   7.506e-01
+bicgstab:    45   4.048e-01  -1.213e+01  -1.659e+00   3.203e+00
+bicgstab:    46   4.121e-01  -2.272e+00  -1.038e+00   4.635e-01
+bicgstab:    47   3.737e-01  -5.769e-01  -1.204e+01   3.825e+00
+bicgstab:    48   3.502e-01   1.909e+00  -1.597e-01   6.010e-01
+bicgstab:    49   2.633e-01   5.576e+00   1.275e+00   3.170e-01
+bicgstab:    50   2.658e-01   2.001e-01  -8.737e-01   5.452e-01
+bicgstab:    51   2.395e-01   3.109e+00  -3.544e-01   1.910e+01
+bicgstab:    52   3.403e-01  -6.329e+00   3.306e+00   3.542e-01
+bicgstab:    53   1.394e-01  -8.022e-01  -1.415e+01   3.483e-01
+bicgstab:    54   1.702e-01  -3.437e+00  -3.405e-02   3.520e-01
+bicgstab:    55   8.093e-02  -5.926e-01  -1.510e+01   5.015e+01
+bicgstab:    56   6.344e-02   1.991e+00  -8.083e-02   4.124e-01
+bicgstab:    57   2.411e-02   2.237e+00   2.882e+00   1.268e+00
+bicgstab:    58   8.602e-02   1.718e+00   1.717e+00   1.563e+00
+bicgstab:    59   7.651e-02   4.836e-01  -2.200e-01   1.946e+01
+bicgstab:    60   8.179e-02  -1.816e+00   1.152e-01   4.559e-01
+bicgstab:    61   6.970e-02  -8.207e-01  -5.563e+00   1.011e+00
+bicgstab:    62   6.995e-02   5.197e-01   2.417e-01   1.893e+00
+bicgstab:    63   9.204e-02   2.921e+01   6.560e-01   4.035e-01
+bicgstab:    64   8.352e-02   8.989e-01  -7.108e+00   4.950e-01
+bicgstab:    65   8.441e-02   1.015e-01  -5.014e+00   6.413e+00
+bicgstab:    66   8.358e-02   9.089e-01   2.645e-02   1.412e+00
+bicgstab:    67   8.085e-02   1.635e+00  -2.448e-01   6.514e+00
+bicgstab:    68   8.015e-02  -2.338e-01  -1.819e-01   3.336e-01
+bicgstab:    69   8.121e-02   1.354e+01  -1.579e+00   5.896e-01
+bicgstab:    70   7.568e-02  -5.078e+00   1.575e+01   7.412e-01
+bicgstab:    71   7.276e-02   5.677e-01  -1.968e+00   6.554e+00
+bicgstab:    72   1.059e-01   1.410e+01   5.527e-01   4.307e-01
+bicgstab:    73   6.597e-02   1.181e-01  -8.560e+01   8.759e-01
+bicgstab:    74   6.370e-02   1.491e+00  -7.071e-03  -2.719e-01
+bicgstab:    75   6.445e-02  -8.686e-01   5.745e-01   2.209e-01
+bicgstab:    76   7.446e-02   4.679e+00  -2.535e+00   7.008e-01
+bicgstab:    77   4.668e-02  -1.187e+00   1.081e+01   1.097e+00
+bicgstab:    78   5.051e-02   3.263e-01   5.703e-01   1.830e+00
+bicgstab:    79   4.939e-02   9.661e-01  -5.938e-02   5.628e-01
+bicgstab:    80   4.597e-02   2.771e+00   9.815e-01   6.377e-01
+bicgstab:    81   5.191e-02  -1.677e+00   2.842e+00   2.320e-01
+bicgstab:    82   4.289e-02   1.396e-01   1.540e+01   8.692e+00
+bicgstab:    83   3.744e-02   3.505e+00   2.444e-02   1.009e+00
+bicgstab:    84   3.766e-02   1.245e-01  -3.284e+00   1.151e+00
+bicgstab:    85   3.074e-02   5.144e+00  -2.431e-01   4.252e-01
+bicgstab:    86   3.300e-02  -1.213e+00   1.354e+00   2.897e-01
+bicgstab:    87   1.450e-02  -7.825e-01  -6.271e+00   1.261e+02
+bicgstab:    88   7.988e-03   2.595e+00  -1.634e-01   4.049e-01
+bicgstab:    89   2.533e-02   5.037e+00   7.233e+00   5.921e-01
+bicgstab:    90   8.156e-02  -2.024e+00  -4.211e+00   2.738e-01
+bicgstab:    91   7.254e-03  -4.641e-02  -5.726e+01   2.380e+01
+bicgstab:    92   6.925e-03   5.084e-02  -2.161e-05   3.615e-01
+bicgstab:    93   7.220e-03   1.594e+01  -8.741e-01   4.919e+00
+bicgstab:    94   8.396e-03  -1.141e+01  -2.826e+00   4.972e-01
+bicgstab:    95   7.623e-03   1.194e-01   5.003e+01   4.546e-01
+bicgstab:    96   1.987e-02   4.212e+01  -7.921e-02   4.571e+01
+bicgstab:    97   5.337e-02  -3.243e+00   7.982e+01   4.335e-01
+bicgstab:    98   7.071e-04   8.387e-02   2.887e+01   5.254e-01
+bicgstab:    99   1.071e-03   2.797e-01  -3.483e-03   1.925e+00
+bicgstab:   100   7.867e-03   1.508e+01  -2.642e-01   4.187e-01
+Newton: it=1 	 |F|=1.856211e-03 
+ADM mass error: M_p_err=1.5218, M_m_err=1.32926
+Bare masses: mp=0.576996, mm=0.378629
+Newton: it=0 	 |F|=1.856211e-03
+bare mass: mp=0.576996 	 mm=0.378629
+bicgstab:  itmax 100, tol 1.856211e-06
+bicgstab:     0   8.925e-03
+bicgstab:     1   3.476e-02   3.573e+01   0.000e+00   4.059e-01
+bicgstab:     2   3.140e-02  -4.224e-02   5.556e-01   4.718e-01
+bicgstab:     3   4.090e-02  -8.512e+01  -1.113e+00   1.473e+00
+bicgstab:     4   3.282e-02   2.699e-01   1.305e+01   1.275e+00
+bicgstab:     5   3.457e-02   7.332e+00  -3.851e-01   6.275e-01
+bicgstab:     6   3.180e-02   6.689e-01   4.613e+00   4.425e+00
+bicgstab:     7   3.015e-02   1.482e+00   1.771e-01   7.983e-01
+bicgstab:     8   2.989e-02  -5.976e-01  -1.918e-01   6.756e-01
+bicgstab:     9   3.150e-02   4.383e+00  -2.149e+00   3.534e+00
+bicgstab:    10   2.784e-02  -3.333e+00   2.459e+00   4.613e-01
+bicgstab:    11   8.288e-02  -6.279e+00  -7.487e+00   7.289e-01
+bicgstab:    12   7.972e-02   7.034e-02   3.814e-01   1.041e+00
+bicgstab:    13   5.684e-02  -4.858e+01  -8.649e-01   4.254e-01
+bicgstab:    14   1.599e-02   2.674e-01   7.463e+01   7.004e+00
+bicgstab:    15   1.540e-02   6.908e-01   1.763e-02   9.998e-01
+bicgstab:    16   1.559e-02  -7.689e-01  -2.029e-01   4.500e-01
+bicgstab:    17   1.017e-02  -5.549e+00  -2.464e+00   1.029e+00
+bicgstab:    18   6.871e-03   1.338e+00  -4.488e+00   4.578e-01
+bicgstab:    19   6.444e-03   3.950e-01   2.132e-01   6.034e+00
+Total wall time: 78s (1m 18s)
+Time budget remaining: 1422s
+bicgstab:    20   6.400e-03   8.648e-02  -2.074e-02   7.365e-01
+bicgstab:    21   7.214e-03  -1.641e+02  -9.560e-01   4.757e-01
+bicgstab:    22   6.544e-03  -3.610e+00  -2.800e+02   8.851e-01
+bicgstab:    23   5.552e-03   2.620e-01   5.512e+00   1.161e+00
+bicgstab:    24   5.521e-03   1.554e+00  -2.625e-02   8.861e-01
+bicgstab:    25   5.794e-03  -7.851e+00   2.104e+00   3.474e-01
+bicgstab:    26   8.694e-03   6.938e+00  -1.023e+01   5.265e-01
+bicgstab:    27   5.295e-03  -1.070e+00   2.100e+01   4.927e+00
+bicgstab:    28   6.960e-03   2.194e+00  -1.225e-01   2.512e+00
+bicgstab:    29   8.039e-03   1.765e+00   8.163e-01   4.178e-01
+bicgstab:    30   2.530e-03   3.467e-01  -7.905e-01   6.972e+01
+bicgstab:    31   2.772e-03  -1.615e+00   1.455e-01   4.084e-01
+bicgstab:    32   2.129e-03  -7.358e-01  -5.553e+00   6.806e+00
+bicgstab:    33   2.078e-03   1.543e+00   4.921e-02   1.805e+00
+bicgstab:    34   2.187e-03  -2.851e+00   2.170e+00   4.734e-01
+bicgstab:    35   2.168e-03  -1.206e-01  -3.432e-01   8.292e-01
+bicgstab:    36   2.040e-03   3.889e+01  -1.365e+00   4.415e-01
+bicgstab:    37   2.068e-03   6.232e-01   8.847e+00   9.032e+00
+bicgstab:    38   2.046e-03   1.433e-01  -3.518e-02   4.950e-01
+bicgstab:    39   2.041e-03  -2.351e+01  -6.937e-01   4.497e-01
+bicgstab:    40   2.047e-03  -8.694e-01  -6.540e+01   4.882e+00
+bicgstab:    41   2.034e-03   5.341e-01  -2.169e-01   5.851e-01
+bicgstab:    42   2.000e-03   6.841e+00   3.975e-01   3.254e+00
+bicgstab:    43   1.866e-03   4.313e-01  -1.820e+00   5.028e+01
+bicgstab:    44   1.797e-03  -3.517e+00  -1.474e-01   4.079e-01
+bicgstab:    45   1.738e-03  -1.956e+00  -8.245e+00   4.614e-01
+bicgstab:    46   1.731e-03   3.741e-01   1.807e+00   1.209e+01
+bicgstab:    47   1.714e-03   7.088e-01  -5.274e-02   1.360e+00
+bicgstab:    48   1.707e-03   1.617e+00  -2.352e-01   4.235e-01
+bicgstab:    49   1.678e-03   2.348e+00   2.420e+00   3.892e+00
+bicgstab:    50   1.667e-03   2.768e+00  -2.619e-01   5.461e-01
+bicgstab:    51   1.630e-03   5.134e-01   1.651e+00   1.688e+01
+bicgstab:    52   1.603e-03   2.953e-01  -2.849e-01   4.717e-01
+bicgstab:    53   1.605e-03  -1.671e+00  -4.616e-01   4.946e-01
+bicgstab:    54   1.141e-03  -4.559e+01  -4.877e+00   1.908e+00
+bicgstab:    55   1.168e-03  -7.147e-01  -4.425e+00   4.150e-01
+bicgstab:    56   8.386e-04  -1.725e+00  -3.396e+00   4.509e+01
+bicgstab:    57   7.715e-04   9.560e-01  -1.773e-01   4.238e-01
+bicgstab:    58   7.775e-04   1.548e+00  -2.362e-01   1.057e+00
+bicgstab:    59   1.058e-03   1.776e+01   2.544e+00   1.180e+00
+bicgstab:    60   1.611e-03   1.535e+00   3.090e+01   1.599e+00
+bicgstab:    61   7.659e-04   7.101e-01  -2.987e+00   4.694e-01
+bicgstab:    62   8.473e-04   4.655e-01  -1.949e-01   1.006e+01
+bicgstab:    63   8.434e-04  -7.928e-01  -2.155e-02   5.466e-01
+bicgstab:    64   6.909e-04  -1.360e+01  -2.258e+00   4.023e-01
+bicgstab:    65   6.250e-04  -6.905e-01   8.660e+00   1.373e+00
+bicgstab:    66   7.620e-04  -2.255e-01  -7.101e+00   1.431e+01
+bicgstab:    67   7.549e-04   1.377e+00  -7.720e-03   6.624e-01
+bicgstab:    68   7.503e-04   1.247e+00  -3.536e-01   8.303e-01
+bicgstab:    69   7.580e-04  -1.860e+00   1.088e+00   4.044e-01
+bicgstab:    70   8.465e-04   4.142e+00  -5.449e+00   6.444e+00
+bicgstab:    71   8.962e-05  -7.364e+00   5.001e+00   2.286e+00
+bicgstab:    72   3.611e-05  -6.020e-03   1.908e-02   5.828e-01
+bicgstab:    73   2.231e-04  -9.945e+01  -1.016e+00   1.325e+01
+bicgstab:    74   9.704e-05   2.137e+01   6.512e+00   4.133e-01
+bicgstab:    75   1.402e-04   1.035e-01  -1.517e+02   2.239e+00
+bicgstab:    76   8.175e-05   2.807e+00  -9.617e-03   4.727e-01
+bicgstab:    77   7.810e-05   3.841e-01   4.272e-01   5.652e+00
+bicgstab:    78   7.828e-05   7.442e-01  -7.967e-02   2.974e+00
+bicgstab:    79   7.898e-05  -2.527e+00  -3.013e-01   4.790e-01
+bicgstab:    80   6.907e-05  -1.516e+01  -2.945e+00   4.274e-01
+bicgstab:    81   1.092e-04  -1.061e+00  -5.577e+01   7.344e-01
+bicgstab:    82   2.677e-04   7.540e+00  -5.492e-01   1.033e+00
+bicgstab:    83   2.584e-04  -1.783e+00   1.405e+01   4.791e-01
+bicgstab:    84   1.710e-05   3.176e-01   2.936e+00  -5.235e-01
+bicgstab:    85   1.868e-05   3.167e-01   5.918e-03  -1.110e+00
+bicgstab:    86   1.682e-05   1.601e+00  -2.316e-01  -4.821e-01
+bicgstab:    87   1.504e-05   2.929e+00   5.519e-01   3.547e-01
+bicgstab:    88   2.199e-05  -2.315e+00   4.968e+00   2.453e-01
+bicgstab:    89   2.199e-05   1.337e-02   3.184e-02  -5.464e-01
+bicgstab:    90   2.743e-06  -2.233e+02  -9.685e-01   6.112e-01
+bicgstab:    91   1.028e-05  -1.666e+00   6.851e+01   2.209e+00
+bicgstab:    92   2.148e-05   1.281e+00   3.753e+00   4.151e-01
+bicgstab:    93   2.711e-06   8.193e-02  -1.025e+01   2.570e+00
+bicgstab:    94   2.463e-06   3.158e+00   1.939e-03   4.007e+00
+bicgstab:    95   2.760e-06  -4.106e-02   8.236e+01  -1.725e+00
