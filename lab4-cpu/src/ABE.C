@@ -6,6 +6,9 @@
 #include <string>
 #include <cmath>
 #include <map>
+#ifdef __linux__
+#include <sched.h>
+#endif
 using namespace std;
 
 #ifdef _OPENMP
@@ -16,6 +19,9 @@ using namespace std;
 
 #include "misc.h"
 #include "macrodef.h"
+
+#define AMSS_STRINGIFY_IMPL(value) #value
+#define AMSS_STRINGIFY(value) AMSS_STRINGIFY_IMPL(value)
 
 #ifdef USE_GPU
 #include "bssn_gpu_class.h"
@@ -35,6 +41,23 @@ namespace parameters
 
 int main(int argc, char *argv[])
 {
+#if defined(_OPENMP) && defined(AMSS_CPU_OMP_THREADS) && !defined(USE_GPU)
+      // The OJ may reconstruct the launch command after run.sh and inject
+      // OMP_PLACES=cores.  Establish the measured CPU policy before the first
+      // OpenMP runtime call, so the submitted ABE does not depend on Python
+      // helpers or on non-submittable driver files.
+      setenv("OMP_NUM_THREADS", AMSS_STRINGIFY(AMSS_CPU_OMP_THREADS), 1);
+      setenv("OMP_DYNAMIC", "FALSE", 1);
+      setenv("OMP_PROC_BIND", "close", 1);
+      setenv("OMP_PLACES", "threads", 1);
+      setenv("OMP_WAIT_POLICY", "ACTIVE", 1);
+      setenv("OMP_STACKSIZE", "1G", 1);
+      setenv("KMP_BLOCKTIME", "infinite", 1);
+      setenv("GOMP_SPINCOUNT", "INFINITE", 1);
+      omp_set_dynamic(0);
+      omp_set_num_threads(AMSS_CPU_OMP_THREADS);
+#endif
+
       int myrank = 0, nprocs = 1;
       int mpi_thread_provided = 0;
       // The OpenMP-parallelized block loops in bssn_class::Step() call MPI
@@ -45,11 +68,41 @@ int main(int argc, char *argv[])
       MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
 #ifdef _OPENMP
+      int affinity_count = -1;
+      int current_cpu = -1;
+#ifdef __linux__
+      cpu_set_t affinity_mask;
+      CPU_ZERO(&affinity_mask);
+      if (sched_getaffinity(0, sizeof(affinity_mask), &affinity_mask) == 0)
+            affinity_count = CPU_COUNT(&affinity_mask);
+      current_cpu = sched_getcpu();
+#endif
+      int local_affinity[2] = {affinity_count, current_cpu};
+      int *all_affinity = (myrank == 0) ? new int[2 * nprocs] : 0;
+      MPI_Gather(local_affinity, 2, MPI_INT, all_affinity, 2, MPI_INT,
+                 0, MPI_COMM_WORLD);
       if (myrank == 0)
       {
+#if defined(__ARMCOMPILER_VERSION)
+            cout << " ABE compiler: Arm Compiler " << __ARMCOMPILER_VERSION << endl;
+#elif defined(__clang__)
+            cout << " ABE compiler: Clang " << __clang_major__ << "."
+                 << __clang_minor__ << endl;
+#elif defined(__GNUC__)
+            cout << " ABE compiler: GNU " << __GNUC__ << "."
+                 << __GNUC_MINOR__ << endl;
+#endif
             cout << " OpenMP enabled: max threads per MPI rank = "
                  << omp_get_max_threads()
                  << ", MPI thread support = " << mpi_thread_provided << endl;
+            cout << " CPU affinity (allowed logical CPUs/current CPU):";
+            for (int rank = 0; rank < nprocs; ++rank)
+                  cout << " r" << rank << "=" << all_affinity[2 * rank]
+                       << "/" << all_affinity[2 * rank + 1];
+            cout << endl;
+            cout << " OpenMP placement: proc_bind=" << omp_get_proc_bind()
+                 << ", places=" << omp_get_num_places() << endl;
+            delete[] all_affinity;
       }
 #endif
 
