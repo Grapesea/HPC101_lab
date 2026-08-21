@@ -7,9 +7,6 @@
 ##
 #################################################
 
-import os
-import resource
-
 import numpy
 
 #################################################
@@ -25,37 +22,6 @@ MPI_processes    = 12
 OMP_threads      = 5
 GPU_Calculation  = "no"
                                                  ## (prefer "no" in the current version, because the GPU part may have bugs when integrated in this Python interface)
-
-# The OJ imports this file and then launches AMSS_NCKU_Program.py directly;
-# it does not execute 4.sh/run.sh.  Pin the complete 12-rank x 5-thread
-# topology here so an OJ-provided CORE binding cannot request 60 physical
-# cores on a 30-core/60-hardware-thread node and fail before ABE starts.
-# `threads` is also the matching OpenMP place type for hwthread binding.
-os.environ["AMSS_MPIEXEC"] = (
-    "mpiexec --allow-run-as-root --use-hwthread-cpus "
-    "--bind-to hwthread --map-by slot:PE=5"
-)
-os.environ["OMP_DYNAMIC"] = "FALSE"
-os.environ["OMP_PROC_BIND"] = "close"
-os.environ["OMP_PLACES"] = "threads"
-os.environ.setdefault("OMP_STACKSIZE", "1G")
-os.environ.setdefault("OMP_WAIT_POLICY", "ACTIVE")
-os.environ.setdefault("GOMP_SPINCOUNT", "INFINITE")
-os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
-
-# These defaults were formerly supplied only by 4.sh.  They are numerical
-# settings, not scheduler settings, so direct OJ runs must receive them too.
-os.environ.setdefault("AMSS_DISTRIBUTION_NODES", "30")
-os.environ.setdefault("AMSS_TWOP_THREADS", "20")
-os.environ.setdefault("AMSS_PRECOMPUTED_BARE_MASSES", "1")
-os.environ.setdefault("AMSS_SKIP_PLOTS", "1")
-
-# run.sh normally performs `ulimit -s unlimited`, but the OJ invokes the
-# Python driver directly.  Raise the inherited main-thread stack limit here;
-# OMP_STACKSIZE above separately covers libomp worker threads.
-_stack_soft, _stack_hard = resource.getrlimit(resource.RLIMIT_STACK)
-if _stack_soft != _stack_hard:
-    resource.setrlimit(resource.RLIMIT_STACK, (_stack_hard, _stack_hard))
 
 #################################################
 

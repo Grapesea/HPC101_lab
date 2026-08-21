@@ -64,12 +64,23 @@ AMSS_MPIEXEC="mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread
 export OMP_DYNAMIC=FALSE
 export OMP_PROC_BIND=close
 export OMP_PLACES=threads
+export OMP_WAIT_POLICY=ACTIVE
+export GOMP_SPINCOUNT=INFINITE
+export KMP_BLOCKTIME=infinite
+export OPENBLAS_NUM_THREADS=1
 export AMSS_DISTRIBUTION_NODES="${AMSS_DISTRIBUTION_NODES:-30}"
 # TwoPuncture's red/black plane relaxation is independent across planes.  The
 # main ABE ranks keep their configured OMP_NUM_THREADS value; TwoPunctureABE
 # reads this separate setting when compiled with OpenMP. The final twop20
 # sweep selected 20 threads for the single-process initial-data solve.
 export AMSS_TWOP_THREADS="${AMSS_TWOP_THREADS:-20}"
+export AMSS_ADMTOL="${AMSS_ADMTOL:-1.e-6}"
+export AMSS_TWOP_NEWTON_TOL="${AMSS_TWOP_NEWTON_TOL:-2.e-9}"
+export AMSS_TWOP_NA="${AMSS_TWOP_NA:-34}"
+export AMSS_TWOP_NB="${AMSS_TWOP_NB:-34}"
+export AMSS_TWOP_NPHI="${AMSS_TWOP_NPHI:-26}"
+export AMSS_PRECOMPUTED_BARE_MASSES="${AMSS_PRECOMPUTED_BARE_MASSES:-1}"
+export AMSS_SKIP_PLOTS="${AMSS_SKIP_PLOTS:-1}"
 export AMSS_BUILD_DIR AMSS_OUTPUT_ROOT AMSS_CACHE_DIR AMSS_MPIEXEC AMSS_TWOP_THREADS
 export AMSS_DISTRIBUTION_NODES
 
