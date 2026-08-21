@@ -12,6 +12,7 @@
 #include <string>
 #include <cmath>
 #include <strstream>
+#include <unistd.h>
 using namespace std;
 #else
 #include <iostream.h>
@@ -24,6 +25,9 @@ using namespace std;
 #endif
 
 #include "TwoPunctures.h"
+
+#define AMSS_STRINGIFY_IMPL(x) #x
+#define AMSS_STRINGIFY(x) AMSS_STRINGIFY_IMPL(x)
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -93,6 +97,32 @@ int parse_parts(string str, string &sgrp, string &skey, string &sval, int &ind)
 //=======================================
 int main(int argc, char *argv[])
 {
+#ifdef _OPENMP
+  /* libomp may parse OMP_PLACES while the executable is being loaded, before
+     main() can call setenv.  ABE needs OMP_PLACES=threads for 12x5, whereas
+     this separate single-process solver needs physical cores.  Re-exec once
+     when necessary so the runtime sees the solver-specific placement from
+     process start; stdin and the working directory are preserved. */
+  const char *inherited_places = getenv("OMP_PLACES");
+  if ((!inherited_places || strcmp(inherited_places, "cores") != 0) &&
+      !getenv("AMSS_TWOP_PLACEMENT_READY"))
+  {
+    const char *twop_threads = getenv("AMSS_TWOP_THREADS");
+    if (twop_threads && atoi(twop_threads) > 0)
+      setenv("OMP_NUM_THREADS", twop_threads, 1);
+#ifdef AMSS_TWOP_THREADS
+    else
+      setenv("OMP_NUM_THREADS", AMSS_STRINGIFY(AMSS_TWOP_THREADS), 1);
+#endif
+    setenv("OMP_PLACES", "cores", 1);
+    setenv("OMP_PROC_BIND", "close", 1);
+    setenv("AMSS_TWOP_PLACEMENT_READY", "1", 1);
+    execvp(argv[0], argv);
+    perror("TwoPuncture execvp");
+    return 127;
+  }
+#endif
+
   double mp, mm, b, Mp, Mm, admtol, Newtontol;
   int nA, nB, nphi, Newtonmaxit;
   double P_plusx, P_plusy, P_plusz;

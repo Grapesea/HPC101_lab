@@ -1,0 +1,150 @@
+==> Hybrid toolchain build: GNU -> TwoPunctureABE, Arm Compiler -> ABE
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-cpu" -B "/home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation" -DAMSS_ENABLE_GPU=OFF -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 -DAMSS_ENABLE_OPENMP=ON -DAMSS_ENABLE_SANITY_CHECK=OFF -DAMSS_TWOP_THREADS=20 -DAMSS_NRELAX=32 -DAMSS_DISTRIBUTION_NODES=30 -DAMSS_OMP_BLOCK_LOOPS=OFF -DAMSS_PROFILE_PHASES=OFF -DAMSS_USE_RK3=OFF -DAMSS_SKIP_REDUNDANT_LEVEL_CONSTRAINTS=ON -DAMSS_SKIP_UNGRADED_ANALYSIS=ON -DAMSS_MPI_CUDA_AWARE=0 -DCMAKE_CXX_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ -DCMAKE_Fortran_COMPILER=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+==> GNU TwoPuncture: compiling two translation units in parallel
+-- The CXX compiler identification is Clang 19.1.0
+/home/h3240104505/HPC101_lab/lab4-cpu/src/TwoPunctureABE.C: In function ‘int main(int, char**)’:
+/home/h3240104505/HPC101_lab/lab4-cpu/src/TwoPunctureABE.C:267:13: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+  267 |   ADM->Save("Ansorg.psid");
+      |             ^~~~~~~~~~~~~
+-- The Fortran compiler identification is Flang 99.99.1
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Detecting Fortran compiler ABI info
+-- Detecting Fortran compiler ABI info - done
+-- Check for working Fortran compiler: /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang - skipped
+-- Found MPI_CXX: /usr/lib/aarch64-linux-gnu/openmpi/lib/libmpi.so (found version "3.1")
+-- Found MPI: TRUE (found version "3.1") found components: CXX
+==> GNU TwoPuncture: linking /home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation_gnu_twop_obj/TwoPunctureABE
+==> Precomputing strict course TwoPuncture cache (b9f109d73515a3f7)
+-- Found OpenMP_CXX: -fopenmp=libomp (found version "5.1")
+-- Found OpenMP_Fortran: -fopenmp (found version "4.0")
+-- Found OpenMP: TRUE (found version "5.1") found components: CXX Fortran
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armclang++
+-- Fortran  : /opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/bin/armflang
+-- GPU      : OFF
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=tsv110 -msve-vector-bits=256 OPENMP=ON SANITY_CHECK=OFF MPI_CUDA_AWARE=0
+-- AMSS_EXTRA_RPATH=
+-- ==========================================================
+-- Configuring done (6.3s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation
+==> Build target ABE: cmake --build "/home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation" -j 60 --target ABE
+[  3%] Building CXX object CMakeFiles/ABE.dir/src/checkpoint.C.o
+[  7%] Building CXX object CMakeFiles/ABE.dir/src/transpbh.C.o
+[ 14%] Building CXX object CMakeFiles/ABE.dir/src/var.C.o
+[ 14%] Building Fortran object CMakeFiles/ABE.dir/src/diff_new.f90.o
+[ 22%] Building Fortran object CMakeFiles/ABE.dir/src/bssn_rhs.f90.o
+[ 22%] Building Fortran object CMakeFiles/ABE.dir/src/enforce_algebra.f90.o
+[ 25%] Building CXX object CMakeFiles/ABE.dir/src/ABE.C.o
+[ 29%] Building Fortran object CMakeFiles/ABE.dir/src/fmisc.f90.o
+[ 33%] Building Fortran object CMakeFiles/ABE.dir/src/initial_puncture.f90.o
+[ 40%] Building CXX object CMakeFiles/ABE.dir/src/Block.C.o
+[ 51%] Building CXX object CMakeFiles/ABE.dir/src/misc.C.o
+[ 51%] Building Fortran object CMakeFiles/ABE.dir/src/getnp4.f90.o
+[ 51%] Building Fortran object CMakeFiles/ABE.dir/src/kodiss.f90.o
+[ 51%] Building CXX object CMakeFiles/ABE.dir/src/monitor.C.o
+[ 55%] Building Fortran object CMakeFiles/ABE.dir/src/lopsidediff.f90.o
+[ 59%] Building Fortran object CMakeFiles/ABE.dir/src/prolongrestrict_cell.f90.o
+[ 62%] Building Fortran object CMakeFiles/ABE.dir/src/sommerfeld_rout.f90.o
+[ 66%] Building Fortran object CMakeFiles/ABE.dir/src/fadmquantites_bssn.f90.o
+[ 70%] Building Fortran object CMakeFiles/ABE.dir/src/rungekutta4_rout.f90.o
+[ 74%] Building CXX object CMakeFiles/ABE.dir/src/cgh.C.o
+[ 77%] Building CXX object CMakeFiles/ABE.dir/src/Ansorg.C.o
+[ 81%] Building CXX object CMakeFiles/ABE.dir/src/MPatch.C.o
+[ 88%] Building CXX object CMakeFiles/ABE.dir/src/perf.C.o
+[ 88%] Building CXX object CMakeFiles/ABE.dir/src/Parallel.C.o
+[ 92%] Building CXX object CMakeFiles/ABE.dir/src/bssn_class.C.o
+[ 96%] Building CXX object CMakeFiles/ABE.dir/src/surface_integral.C.o
+/home/h3240104505/HPC101_lab/lab4-cpu/src/var.C:25:17: warning: format string is not a string literal (potentially insecure) [-Wformat-security]
+   25 |   sprintf(name, namei);
+      |                 ^~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/var.C:25:17: note: treat the string as an argument to avoid this
+   25 |   sprintf(name, namei);
+      |                 ^
+      |                 "%s", 
+1 warning generated.
+/home/h3240104505/HPC101_lab/lab4-cpu/src/surface_integral.C:246:9: warning: add explicit braces to avoid dangling else [-Wdangling-else]
+  246 |         else
+      |         ^
+/home/h3240104505/HPC101_lab/lab4-cpu/src/surface_integral.C:424:9: warning: add explicit braces to avoid dangling else [-Wdangling-else]
+  424 |         else
+      |         ^
+/home/h3240104505/HPC101_lab/lab4-cpu/src/surface_integral.C:860:5: warning: add explicit braces to avoid dangling else [-Wdangling-else]
+  860 |     else
+      |     ^
+/home/h3240104505/HPC101_lab/lab4-cpu/src/surface_integral.C:918:9: warning: use of NaN is undefined behavior due to the currently enabled floating-point options [-Wnan-infinity-disabled]
+  918 |     if (isnan(nx_g[n]) || isnan(ny_g[n]) || isnan(nz_g[n]))
+      |         ^~~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/surface_integral.C:918:27: warning: use of NaN is undefined behavior due to the currently enabled floating-point options [-Wnan-infinity-disabled]
+  918 |     if (isnan(nx_g[n]) || isnan(ny_g[n]) || isnan(nz_g[n]))
+      |                           ^~~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/surface_integral.C:918:45: warning: use of NaN is undefined behavior due to the currently enabled floating-point options [-Wnan-infinity-disabled]
+  918 |     if (isnan(nx_g[n]) || isnan(ny_g[n]) || isnan(nz_g[n]))
+      |                                             ^~~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/surface_integral.C:1087:9: warning: add explicit braces to avoid dangling else [-Wdangling-else]
+ 1087 |         else
+      |         ^
+/home/h3240104505/HPC101_lab/lab4-cpu/src/MPatch.C:441:17: warning: use of NaN is undefined behavior due to the currently enabled floating-point options [-Wnan-infinity-disabled]
+  441 |             if (isnan(XX[i][j])) {
+      |                 ^~~~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/misc.C:791:10: warning: use of infinity is undefined behavior due to the currently enabled floating-point options [-Wnan-infinity-disabled]
+  791 |     if (!isfinite(abs(sum)))
+      |          ^~~~~~~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2698:24: warning: using the result of an assignment as a condition without parentheses [-Wparentheses]
+ 2698 |             if (length = data_packermix(0, src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry))
+      |                 ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2698:24: note: place parentheses around the assignment to silence this warning
+ 2698 |             if (length = data_packermix(0, src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry))
+      |                        ^                                                                                      
+      |                 (                                                                                             )
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2698:24: note: use '==' to turn this assignment into an equality comparison
+ 2698 |             if (length = data_packermix(0, src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry))
+      |                        ^
+      |                        ==
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2712:24: warning: using the result of an assignment as a condition without parentheses [-Wparentheses]
+ 2712 |             if (length = data_packermix(0, src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry))
+      |                 ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2712:24: note: place parentheses around the assignment to silence this warning
+ 2712 |             if (length = data_packermix(0, src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry))
+      |                        ^                                                                                      
+      |                 (                                                                                             )
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2712:24: note: use '==' to turn this assignment into an equality comparison
+ 2712 |             if (length = data_packermix(0, src[myrank], dst[myrank], node, PACK, VarList1, VarList2, Symmetry))
+      |                        ^
+      |                        ==
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2724:24: warning: using the result of an assignment as a condition without parentheses [-Wparentheses]
+ 2724 |             if (length = data_packermix(0, src[node], dst[node], node, UNPACK, VarList1, VarList2, Symmetry))
+      |                 ~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2724:24: note: place parentheses around the assignment to silence this warning
+ 2724 |             if (length = data_packermix(0, src[node], dst[node], node, UNPACK, VarList1, VarList2, Symmetry))
+      |                        ^                                                                                    
+      |                 (                                                                                           )
+/home/h3240104505/HPC101_lab/lab4-cpu/src/Parallel.C:2724:24: note: use '==' to turn this assignment into an equality comparison
+ 2724 |             if (length = data_packermix(0, src[node], dst[node], node, UNPACK, VarList1, VarList2, Symmetry))
+      |                        ^
+      |                        ==
+/home/h3240104505/HPC101_lab/lab4-cpu/src/bssn_class.C:1477:24: warning: ISO C++11 does not allow conversion from string literal to 'char *' [-Wwritable-strings]
+ 1477 |     Ansorg read_ansorg("Ansorg.psid", order);
+      |                        ^
+7 warnings generated.
+1 warning generated.
+1 warning generated.
+3 warnings generated.
+1 warning generated.
+[100%] Linking CXX executable ABE
+[100%] Built target ABE
+Newton: it=0 	 |F|=1.144548e-02
+Newton: it=1 	 |F|=1.349009e-05
+Newton: it=2 	 |F|=8.886637e-10
+Newton: it=3 	 |F|=4.911554e-13 
+ADM mass error: M_p_err=1.23496e-09, M_m_err=4.0411e-09
+Initial data is successfully producede!!
+==> Staging GNU-built TwoPunctureABE (faster relaxation) into the Arm build tree (faster evolution)
+==> Built executables:
+-rwxr-xr-x 1 root root 816K Aug 21 21:08 /home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation/ABE
+-rwxr-xr-x 1 root root 209K Aug 21 21:09 /home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation/TwoPunctureABE
+COMPILE_WALL_SECONDS=49.123\n

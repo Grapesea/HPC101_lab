@@ -1,0 +1,12 @@
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/final-precache-validation
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation/twopuncture_cache
+==> MPI exec : mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=5
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/final-precache-validation/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/build_precache_validation/twopuncture_cache
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab4-cpu/AMSS_NCKU_Program.py", line 145, in <module>
+    os.mkdir(File_directory)
+    ~~~~~~~~^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/h3240104505/HPC101_lab/lab4-cpu/runs/final-precache-validation/GW250118'
