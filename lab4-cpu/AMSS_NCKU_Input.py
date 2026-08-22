@@ -18,8 +18,8 @@ Output_directory = "binary_output"               ## binary data file directory
                                                  ## The file directory name should not be too long
 # Keep direct driver runs consistent with the scored hybrid submission.
 # AMSS_DISTRIBUTION_NODES preserves the 30-way numerical block layout.
-MPI_processes    = 12
-OMP_threads      = 5
+MPI_processes    = 15
+OMP_threads      = 4
 GPU_Calculation  = "no"
                                                  ## (prefer "no" in the current version, because the GPU part may have bugs when integrated in this Python interface)
 

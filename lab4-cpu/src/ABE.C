@@ -20,9 +20,6 @@ using namespace std;
 #include "misc.h"
 #include "macrodef.h"
 
-#define AMSS_STRINGIFY_IMPL(value) #value
-#define AMSS_STRINGIFY(value) AMSS_STRINGIFY_IMPL(value)
-
 #ifdef USE_GPU
 #include "bssn_gpu_class.h"
 #else
@@ -41,23 +38,6 @@ namespace parameters
 
 int main(int argc, char *argv[])
 {
-#if defined(_OPENMP) && defined(AMSS_CPU_OMP_THREADS) && !defined(USE_GPU)
-      // The OJ may reconstruct the launch command after run.sh and inject
-      // OMP_PLACES=cores.  Establish the measured CPU policy before the first
-      // OpenMP runtime call, so the submitted ABE does not depend on Python
-      // helpers or on non-submittable driver files.
-      setenv("OMP_NUM_THREADS", AMSS_STRINGIFY(AMSS_CPU_OMP_THREADS), 1);
-      setenv("OMP_DYNAMIC", "FALSE", 1);
-      setenv("OMP_PROC_BIND", "close", 1);
-      setenv("OMP_PLACES", "threads", 1);
-      setenv("OMP_WAIT_POLICY", "ACTIVE", 1);
-      setenv("OMP_STACKSIZE", "1G", 1);
-      setenv("KMP_BLOCKTIME", "infinite", 1);
-      setenv("GOMP_SPINCOUNT", "INFINITE", 1);
-      omp_set_dynamic(0);
-      omp_set_num_threads(AMSS_CPU_OMP_THREADS);
-#endif
-
       int myrank = 0, nprocs = 1;
       int mpi_thread_provided = 0;
       // The OpenMP-parallelized block loops in bssn_class::Step() call MPI

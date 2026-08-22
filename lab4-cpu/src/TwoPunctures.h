@@ -63,6 +63,7 @@ public:
        ~TwoPunctures();
 
        void Solve();
+       void ProlongateFrom(const TwoPunctures &coarse);
        void set_initial_guess(derivs v);
        int index(int i, int j, int k, int l, int a, int b, int c, int d);
        int *ivector(long nl, long nh);

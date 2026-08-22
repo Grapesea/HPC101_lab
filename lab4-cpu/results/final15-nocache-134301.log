@@ -1,0 +1,747 @@
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_final15
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/final15-nocache
+==> Cache    : /workspace/lab4/twopuncture_cache
+==> MPI exec : mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=4
+///////////////////////////////////////////////////////////////
+     mp     = -1
+     mm     = -1
+     b      = 3
+  P_plusx   = -0.00514081
+  P_plusy   = 0.1275
+  P_plusz   = 0
+  P_minusx  = 0.00514081
+  P_minusy  = -0.1275
+  P_minusz  = 0
+  S_plusx   = 0
+  S_plusy   = -0
+  S_plusz   = 0
+  S_minusx  = 0
+  S_minusy  = -0
+  S_minusz  = 0
+     Mp     = 0.598837
+     Mm     = 0.401163
+   admtol   = 1e-08
+ Newtontol  = 5e-12
+    nA      = 50
+    nB      = 50
+   nphi     = 26
+Newtonmaxit = 50
+///////////////////////////////////////////////////////////////
+TwoPuncture OpenMP: using 20 thread(s)
+Using verified fixed-case bare-mass predictor; ADM tolerance will still be checked.
+Newton: it=0 	 |F|=1.098447e-02
+bare mass: mp=0.576976 	 mm=0.378578
+bicgstab:  itmax 100, tol 1.098447e-05
+bicgstab:     0   8.290e-02
+bicgstab:     1   2.612e-01   1.151e+00   0.000e+00   4.780e-01
+bicgstab:     2   6.928e-01   3.659e+00   7.653e-02   6.514e-01
+bicgstab:     3   6.676e-01  -4.516e-01   3.319e-01   5.194e-01
+bicgstab:     4   4.318e-02  -1.842e+00  -2.615e+00   3.206e+00
+bicgstab:     5   3.449e-02   9.482e-02   6.923e-03   4.726e-01
+bicgstab:     6   1.219e-02   1.877e+01  -8.085e-01   8.653e-01
+bicgstab:     7   2.074e-02  -2.968e+00   2.004e+00   3.785e-01
+bicgstab:     8   1.268e-03  -4.276e-01  -1.578e+01   3.441e+00
+bicgstab:     9   3.799e-04   4.541e-01   1.653e-02   7.708e-01
+bicgstab:    10   2.281e-04   1.680e+00  -2.689e-01   4.226e-01
+bicgstab:    11   1.411e-04   1.381e+00   1.875e+00   1.873e+00
+bicgstab:    12   1.267e-04  -1.038e+00   5.521e-02   4.035e-01
+bicgstab:    13   4.304e-06  -1.089e+00  -4.794e+00   5.281e+00
+Newton: it=1 	 |F|=1.298633e-05
+bare mass: mp=0.576976 	 mm=0.378578
+bicgstab:  itmax 100, tol 1.298633e-08
+bicgstab:     0   8.219e-05
+bicgstab:     1   2.026e-04   1.002e+00   0.000e+00   4.725e-01
+bicgstab:     2   2.572e-04   7.400e-01   6.508e-02  -1.162e+00
+bicgstab:     3   3.021e-04  -1.801e+00   1.040e+00   1.015e+00
+bicgstab:     4   1.640e-04  -6.935e+00  -1.315e+00   4.926e-01
+bicgstab:     5   4.447e-05   3.116e-01   2.501e+00   1.378e+00
+bicgstab:     6   2.694e-05   2.557e+00  -2.062e-01   3.589e-01
+bicgstab:     7   3.477e-06   3.674e-01  -1.081e+00   6.442e+00
+bicgstab:     8   1.289e-05  -7.911e+00  -1.708e-02   4.292e-01
+bicgstab:     9   8.394e-07  -2.180e-01  -5.753e+01   1.199e+00
+bicgstab:    10   4.371e-06   2.325e+01  -9.591e-03   5.886e-01
+bicgstab:    11   1.061e-07   6.479e-02  -3.095e+02   7.283e-01
+bicgstab:    12   7.559e-08   6.458e-02   3.348e-05   9.759e-01
+bicgstab:    13   2.131e-08   1.558e+01  -8.335e-01   2.266e-01
+bicgstab:    14   1.234e-08   9.014e-01   4.033e+00   4.708e-01
+Newton: it=2 	 |F|=3.004889e-09
+bare mass: mp=0.576976 	 mm=0.378578
+bicgstab:  itmax 100, tol 3.004889e-12
+bicgstab:     0   1.234e-08
+bicgstab:     1   2.903e-08  -1.343e+01   0.000e+00   3.951e-01
+bicgstab:     2   3.512e-08  -1.669e+00  -2.223e+01   1.004e+00
+bicgstab:     3   4.678e-09   2.992e-01   2.318e+00   1.143e+01
+bicgstab:     4   1.956e-09   5.457e-01  -1.341e-03   6.813e-01
+bicgstab:     5   1.045e-09   6.792e-01   7.234e-02   2.183e+00
+bicgstab:     6   8.713e-10   5.239e-01  -2.307e+00   4.109e-01
+bicgstab:     7   8.992e-10  -4.070e+00   5.164e-01   4.661e-01
+bicgstab:     8   6.349e-11  -8.166e+00  -1.286e+01   5.831e-01
+bicgstab:     9   4.124e-11   2.154e-01  -7.229e-01   6.040e-01
+bicgstab:    10   4.853e-12   1.679e+00  -4.240e-01   2.735e+00
+bicgstab:    11   5.285e-12   7.091e-01  -2.840e-02  -7.308e-01
+bicgstab:    12   5.333e-12   3.417e-01   1.197e-01  -4.620e-01
+bicgstab:    13   1.117e-11  -1.926e+01  -5.525e-01   1.271e+00
+bicgstab:    14   1.081e-11  -1.114e+00  -4.284e+01   7.515e-01
+bicgstab:    15   1.378e-12   4.228e-01   1.344e-01   4.897e+00
+Newton: it=3 	 |F|=1.890351e-13 
+The two puncture masses are mp = 0.576976 and mm = 0.378578
+                   resulted Mp = 0.598837 and Mm = 0.401163
+The total ADM mass is 0.983557
+Prolongated 24x24x14 spectral predictor to the requested grid.
+Attempting to find bare masses.
+Target ADM masses: M_p=0.598837 and M_m=0.401163
+ADM mass tolerance: 1e-08
+Bare masses: mp=0.576976, mm=0.378578
+Newton: it=0 	 |F|=2.371492e-05
+bare mass: mp=0.576976 	 mm=0.378578
+bicgstab:  itmax 100, tol 2.371492e-08
+bicgstab:     0   3.711e-04
+bicgstab:     1   9.438e-05   9.276e-01   0.000e+00   5.036e-01
+bicgstab:     2   9.089e-05   2.157e-01   6.333e-03   3.298e-01
+bicgstab:     3   2.561e-04  -9.922e+01  -8.829e-01   4.822e-01
+bicgstab:     4   2.053e-04  -7.960e-02  -3.098e+01   5.255e-01
+bicgstab:     5   2.476e-05   7.448e+00  -1.280e+00   1.357e+00
+bicgstab:     6   4.288e-06   6.306e-01  -1.132e+00   2.048e+00
+bicgstab:     7   7.053e-06  -3.768e+00   1.835e-02   5.628e-01
+bicgstab:     8   2.740e-06  -4.433e-01  -1.397e+01   6.014e-01
+bicgstab:     9   2.247e-06   3.589e-01  -1.201e-01   4.776e+00
+bicgstab:    10   1.795e-06   5.372e+00  -1.201e-01   3.980e-01
+bicgstab:    11   1.249e-06   3.404e+00   1.503e+00   4.529e-01
+bicgstab:    12   1.022e-06   2.718e-01   2.690e+00   1.461e+00
+bicgstab:    13   3.025e-07   9.176e-01  -5.037e-01   1.819e+01
+bicgstab:    14   1.451e-07   1.253e+00   5.620e-02   5.716e-01
+bicgstab:    15   1.140e-07   1.379e+00   6.843e-01   3.912e-01
+bicgstab:    16   1.050e-07  -3.884e-01   7.972e-02   1.526e+00
+bicgstab:    17   7.106e-08  -2.047e+00  -2.363e+00   4.727e+00
+bicgstab:    18   6.741e-08   1.268e+00   5.421e-01   5.213e-01
+bicgstab:    19   6.144e-08   2.911e+00   1.884e+00   5.843e-01
+bicgstab:    20   2.272e-07  -1.041e+01   6.264e+00   6.325e-01
+bicgstab:    21   5.333e-08  -5.132e-01  -3.367e+01   9.458e-01
+bicgstab:    22   1.583e-08   6.654e-01   1.049e-01   9.458e-01
+Newton: it=1 	 |F|=3.322714e-09
+bare mass: mp=0.576976 	 mm=0.378578
+bicgstab:  itmax 100, tol 3.322714e-12
+bicgstab:     0   1.583e-08
+bicgstab:     1   1.203e-08   1.979e+00   0.000e+00   4.109e-01
+bicgstab:     2   5.466e-09   3.014e+00   3.325e+00   4.310e-01
+bicgstab:     3   1.255e-08   1.142e+01   1.437e-01   1.042e+00
+bicgstab:     4   7.879e-09   4.308e-01   1.071e+01   4.738e+00
+bicgstab:     5   2.790e-09   1.306e+00  -4.542e-01   9.270e-01
+bicgstab:     6   8.813e-10   5.223e-01  -1.706e-01   3.936e+00
+bicgstab:     7   9.271e-10   5.596e+00  -8.394e-02   6.140e-01
+bicgstab:     8   9.095e-10   2.365e-01  -6.517e-01  -1.123e+00
+bicgstab:     9   1.029e-09   3.668e+00  -3.267e-01   2.062e+00
+bicgstab:    10   9.847e-10   8.061e-01   1.087e+00   2.284e-01
+bicgstab:    11   8.077e-10   3.067e+00  -2.545e-01   5.653e-01
+bicgstab:    12   7.172e-10   5.029e-01   2.981e+00   7.561e-01
+bicgstab:    13   5.889e-10   7.402e-02  -3.341e-02   3.612e+00
+bicgstab:    14   2.683e-10   3.479e+01  -8.684e-01   7.031e-01
+bicgstab:    15   2.507e-10   8.570e-01  -2.229e+00   9.241e-01
+bicgstab:    16   2.235e-10   6.657e-01  -1.081e-01   8.959e-01
+bicgstab:    17   2.133e-10   7.253e-02   6.952e-02   5.548e-01
+bicgstab:    18   3.359e-10  -6.208e+02  -9.152e-01   4.407e-01
+bicgstab:    19   1.937e-10   1.259e-01   2.280e+03   7.245e+00
+bicgstab:    20   3.356e-09   2.198e+02  -1.081e-01   4.486e-01
+bicgstab:    21   2.604e-11  -1.168e-02   1.975e+04   3.443e+00
+bicgstab:    22   1.631e-11   4.112e-01   5.248e-05   3.641e-01
+bicgstab:    23   3.078e-10  -8.825e+01  -4.549e-01   6.031e-01
+bicgstab:    24   1.115e-11   2.521e-02   3.454e+03   5.515e-01
+bicgstab:    25   1.507e-11   1.180e+00   7.160e-04   4.262e+00
+bicgstab:    26   1.078e-11  -1.611e+00   1.761e-01   4.301e-01
+bicgstab:    27   3.418e-12  -4.145e-01  -1.062e+01   6.825e+00
+bicgstab:    28   2.341e-12   8.787e+00  -9.948e-02   6.514e-01
+Newton: it=2 	 |F|=8.737162e-13 
+ADM mass error: M_p_err=1.23496e-09, M_m_err=4.0411e-09
+Found bare masses resulted Mp = 0.598837 and Mm = 0.401163
+The two puncture masses are mp = 0.576976 and mm = 0.378578
+                   resulted Mp = 0.598837 and Mm = 0.401163
+The total ADM mass is 0.983557
+===============================================================
+Initial data is successfully producede!!
+ ABE compiler: Clang 19.1
+ OpenMP enabled: max threads per MPI rank = 4, MPI thread support = 1
+ CPU affinity (allowed logical CPUs/current CPU): r0=4/3 r1=4/4 r2=4/8 r3=4/12 r4=4/16 r5=4/20 r6=4/24 r7=4/28 r8=4/32 r9=4/36 r10=4/40 r11=4/44 r12=4/48 r13=4/52 r14=4/56
+ OpenMP placement: proc_bind=3, places=4
+
+ /////////////////////////////////////////////////////////////// 
+ AMSS-NCKU Begin !!! 
+ /////////////////////////////////////////////////////////////// 
+
+                                 new run
+   simulation with cpu numbers = 15
+               simulation time = (0, 40)
+ simulation steps for this run = 10000000
+                Courant number = 0.5
+            Initial Data Type: Numerical Ansorg TwoPuncture
+             Symmetry setting: Equatorial
+ Courant = 0.5
+ artificial dissipation for shell patches = 0.15
+ artificial dissipation for fixed levels = 0.15
+ artificial dissipation for moving levels = 0.15
+ Dumpt Time = 1000
+ Check Time = 1000
+ Analysis Time = 0.1
+ Analysis level = 0
+ checkfile = bssn.chk
+ fourth order finite difference is used
+///////////////////////////////////////////////////////////////
+-----------------------------------------------------------------------
+ spherical integration for wave form extraction with Gauss method      
+ N_phi   = 384
+ N_theta = 192
+-----------------------------------------------------------------------
+ chitiny = 1e-05
+ time refinement start from level #3
+ checkpoint class created 
+ BSSN class successfully created 
+ you have setted 167 grid functions.
+
+ cgh has levels: 9
+
+ level #0 has boxes: 1
+ #0 box is  (-320:320,-320:320,0:320).
+ level #1 has boxes: 1
+ #0 box is  (-160:160,-160:160,0:160).
+ level #2 has boxes: 1
+ #0 box is  (-80:80,-80:80,0:80).
+ level #3 has boxes: 1
+ #0 box is  (-40:40,-40:40,0:40).
+ level #4 has boxes: 1
+ #0 box is  (-20:20,-20:20,0:20).
+ level #5 has boxes: 2
+ #0 box is  (-12:12,-9.5:14.5,0:12).
+ #1 box is  (-12:12,-15.5:8.5,0:12).
+ level #6 has boxes: 2
+ #0 box is  (-6:6,-3.5:8.5,0:6).
+ #1 box is  (-6:6,-9.5:2.5,0:6).
+ level #7 has boxes: 2
+ #0 box is  (-3:3,-0.625:5.375,0:3).
+ #1 box is  (-3:3,-6.625:-0.625,0:3).
+ level #8 has boxes: 2
+ #0 box is  (-1.5:1.5,0.9375:3.9375,0:1.5).
+ #1 box is  (-1.5:1.5,-5.0625:-2.0625,0:1.5).
+
+ moving levels are lev #5--8
+
+ belong to level 0
+ shape: [40,40,20] resolution: [16,16,16]
+ range:(-320:320,-320:320,0:320)
+ AMR distribution: 30 numerical partitions over 15 MPI ranks
+Parallel::distribute CAUSTION: level#0 uses essencially 9 processors vs 30 nodes run, your scientific computation scale is not as large as you estimate.
+ belong to level 1
+ shape: [40,40,20] resolution: [8,8,8]
+ range:(-160:160,-160:160,0:160)
+ belong to level 2
+ shape: [40,40,20] resolution: [4,4,4]
+ range:(-80:80,-80:80,0:80)
+ belong to level 3
+ shape: [40,40,20] resolution: [2,2,2]
+ range:(-40:40,-40:40,0:40)
+ belong to level 4
+ shape: [40,40,20] resolution: [1,1,1]
+ range:(-20:20,-20:20,0:20)
+ belong to level 5
+ shape: [48,60,24] resolution: [0.5,0.5,0.5]
+ range:(-12:12,-15.5:14.5,0:12)
+ belong to level 6
+ shape: [48,72,24] resolution: [0.25,0.25,0.25]
+ range:(-6:6,-9.5:8.5,0:6)
+ belong to level 7
+ shape: [48,96,24] resolution: [0.125,0.125,0.125]
+ range:(-3:3,-6.625:5.375,0:3)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,0.9375:3.9375,0:1.5)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,-5.0625:-2.0625,0:1.5)
+
+ initial information of 2 Black Hole(s) 
+        Mass           x           y           z              Px              Py          Pz          Sx          Sy          Sz
+    0.576976           0     2.40698           0         -0.1275     -0.00514081           0           0           0           0
+    0.378578           0    -3.59302           0          0.1275      0.00514081           0           0           0           0
+
+ Read initial data from Ansorg's solver, please be sure the input parameters for black holes are puncture parameters!! 
+
+  reading data from Ansorg.psid
+  found data with dimensions 50 x 50 x 26 = 65000
+  bhx1 = 0
+  bhy1 = 2.40698
+  bhz1 = 0
+  bhx2 = 0
+  bhy2 = -3.59302
+  bhz2 = 0
+  read 65000 data lines
+
+
+ Before Evolve, it takes 2.73319 seconds
+
+
+ Timestep # 1: integrating to time: 1    Wall time 7.6475 seconds! 
+ Memory usage: current 2899/193.3/2899MB, peak 2928/195.2/2928MB
+
+ puncture position: no. 0 = (-0.00774797 2.40643 7.71641e-05)
+ puncture position: no. 1 = (0.0218525 -3.58904 0.00147487)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 2: integrating to time: 2    Wall time 7.4885 seconds! 
+ Memory usage: current 3405/227/3405MB, peak 3405/227/3405MB
+
+ puncture position: no. 0 = (-0.0493106 2.40187 7.86771e-06)
+ puncture position: no. 1 = (0.152579 -3.57952 1.6922e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 3: integrating to time: 3    Wall time 7.221 seconds! 
+ Memory usage: current 3432/228.8/3432MB, peak 3452/230.2/3452MB
+
+ puncture position: no. 0 = (-0.140559 2.39082 5.31221e-05)
+ puncture position: no. 1 = (0.304955 -3.56316 2.44383e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 4: integrating to time: 4    Wall time 7.35935 seconds! 
+ Memory usage: current 3484/232.3/3484MB, peak 3495/233/3495MB
+
+ puncture position: no. 0 = (-0.242624 2.37633 2.09893e-05)
+ puncture position: no. 1 = (0.454381 -3.53985 7.16151e-06)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 5: integrating to time: 5    Wall time 7.46088 seconds! 
+ Memory usage: current 3477/231.8/3477MB, peak 3509/234/3509MB
+
+ puncture position: no. 0 = (-0.339287 2.35817 1.00091e-05)
+ puncture position: no. 1 = (0.600471 -3.50831 6.9259e-07)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 6: integrating to time: 6    Wall time 7.54965 seconds! 
+ Memory usage: current 3522/234.8/3522MB, peak 3550/236.7/3550MB
+
+ puncture position: no. 0 = (-0.436583 2.33452 1.9184e-06)
+ puncture position: no. 1 = (0.74415 -3.47086 6.84174e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 7: integrating to time: 7    Wall time 7.71978 seconds! 
+ Memory usage: current 3554/236.9/3554MB, peak 3573/238.2/3573MB
+
+ puncture position: no. 0 = (-0.53371 2.30749 1.16245e-05)
+ puncture position: no. 1 = (0.888109 -3.42883 0.000113381)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 8: integrating to time: 8    Wall time 7.56425 seconds! 
+ Memory usage: current 3555/237/3555MB, peak 3619/241.3/3619MB
+
+ puncture position: no. 0 = (-0.630304 2.27873 6.93586e-05)
+ puncture position: no. 1 = (1.03541 -3.38254 0.000148225)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 9: integrating to time: 9    Wall time 7.5714 seconds! 
+ Memory usage: current 3576/238.4/3576MB, peak 3703/246.8/3703MB
+
+ puncture position: no. 0 = (-0.726505 2.24711 0.000112989)
+ puncture position: no. 1 = (1.18793 -3.33062 0.000126496)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 10: integrating to time: 10    Wall time 7.48522 seconds! 
+ Memory usage: current 3650/243.3/3650MB, peak 3725/248.3/3725MB
+
+ puncture position: no. 0 = (-0.821924 2.20846 0.000143636)
+ puncture position: no. 1 = (1.34483 -3.26943 8.49398e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 11: integrating to time: 11    Wall time 7.54475 seconds! 
+ Memory usage: current 3587/239.1/3587MB, peak 3742/249.5/3742MB
+
+ puncture position: no. 0 = (-0.915659 2.16039 0.000155107)
+ puncture position: no. 1 = (1.50335 -3.1959 6.363e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 12: integrating to time: 12    Wall time 7.46831 seconds! 
+ Memory usage: current 3586/239.1/3586MB, peak 3742/249.5/3742MB
+
+ puncture position: no. 0 = (-1.00719 2.10385 0.000150406)
+ puncture position: no. 1 = (1.66001 -3.10995 6.45521e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 13: integrating to time: 13    Wall time 7.46564 seconds! 
+ Memory usage: current 3574/238.3/3574MB, peak 3742/249.5/3742MB
+
+ puncture position: no. 0 = (-1.09672 2.04177 0.000147314)
+ puncture position: no. 1 = (1.81251 -3.01308 0.000102797)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 14: integrating to time: 14    Wall time 7.46813 seconds! 
+ Memory usage: current 3585/239/3585MB, peak 3742/249.5/3742MB
+
+ puncture position: no. 0 = (-1.18475 1.976 0.00013884)
+ puncture position: no. 1 = (1.95953 -2.90683 0.000115006)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 15: integrating to time: 15    Wall time 7.54295 seconds! 
+ Memory usage: current 3542/236.1/3542MB, peak 3742/249.5/3742MB
+
+ puncture position: no. 0 = (-1.2712 1.906 0.000129815)
+ puncture position: no. 1 = (2.1009 -2.79227 0.000139117)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 16: integrating to time: 16    Wall time 7.45272 seconds! 
+ Memory usage: current 3552/236.8/3552MB, peak 3742/249.5/3742MB
+
+ puncture position: no. 0 = (-1.35544 1.83013 0.000140506)
+ puncture position: no. 1 = (2.23689 -2.67018 0.000139076)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 17: integrating to time: 17    Wall time 7.52426 seconds! 
+ Memory usage: current 3546/236.4/3546MB, peak 3746/249.7/3746MB
+
+ puncture position: no. 0 = (-1.43658 1.74757 0.000139264)
+ puncture position: no. 1 = (2.36774 -2.54086 0.000133907)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 18: integrating to time: 18    Wall time 7.63221 seconds! 
+ Memory usage: current 3577/238.5/3577MB, peak 3746/249.7/3746MB
+
+ puncture position: no. 0 = (-1.51393 1.65885 0.000133337)
+ puncture position: no. 1 = (2.49339 -2.40429 0.000130206)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 19: integrating to time: 19    Wall time 7.45077 seconds! 
+ Memory usage: current 3576/238.4/3576MB, peak 3746/249.7/3746MB
+
+ puncture position: no. 0 = (-1.58706 1.56495 0.000131907)
+ puncture position: no. 1 = (2.61334 -2.26039 0.000137159)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 20: integrating to time: 20    Wall time 7.53529 seconds! 
+ Memory usage: current 3574/238.3/3574MB, peak 3746/249.7/3746MB
+
+ puncture position: no. 0 = (-1.65564 1.46652 0.000132627)
+ puncture position: no. 1 = (2.72666 -2.10909 0.000119953)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 21: integrating to time: 21    Wall time 7.46556 seconds! 
+ Memory usage: current 3569/237.9/3569MB, peak 3746/249.7/3746MB
+
+ puncture position: no. 0 = (-1.71933 1.36374 0.000130233)
+ puncture position: no. 1 = (2.83224 -1.95063 0.000116692)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 22: integrating to time: 22    Wall time 7.4914 seconds! 
+ Memory usage: current 3592/239.4/3592MB, peak 3746/249.7/3746MB
+
+ puncture position: no. 0 = (-1.77788 1.25667 0.000133142)
+ puncture position: no. 1 = (2.92911 -1.78577 0.000119965)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 23: integrating to time: 23    Wall time 7.58886 seconds! 
+ Memory usage: current 3569/237.9/3569MB, peak 3748/249.9/3748MB
+
+ puncture position: no. 0 = (-1.831 1.14548 0.000128993)
+ puncture position: no. 1 = (3.01671 -1.61535 0.000103731)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 24: integrating to time: 24    Wall time 7.47146 seconds! 
+ Memory usage: current 3594/239.6/3594MB, peak 3748/249.9/3748MB
+
+ puncture position: no. 0 = (-1.87834 1.03048 0.000129576)
+ puncture position: no. 1 = (3.09476 -1.43997 0.00011934)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 25: integrating to time: 25    Wall time 7.46491 seconds! 
+ Memory usage: current 3612/240.8/3612MB, peak 3748/249.9/3748MB
+
+ puncture position: no. 0 = (-1.9196 0.912095 0.000132898)
+ puncture position: no. 1 = (3.16289 -1.25989 0.000123693)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 26: integrating to time: 26    Wall time 7.58169 seconds! 
+ Memory usage: current 3608/240.5/3608MB, peak 3752/250.1/3752MB
+
+ puncture position: no. 0 = (-1.95436 0.79074 0.000113928)
+ puncture position: no. 1 = (3.22063 -1.07549 0.000112529)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 27: integrating to time: 27    Wall time 7.49519 seconds! 
+ Memory usage: current 3587/239.1/3587MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-1.98242 0.666723 0.000125818)
+ puncture position: no. 1 = (3.26753 -0.887355 7.49777e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 28: integrating to time: 28    Wall time 7.30169 seconds! 
+ Memory usage: current 3625/241.7/3625MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-2.00331 0.540361 0.000103971)
+ puncture position: no. 1 = (3.30355 -0.69613 8.17926e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 29: integrating to time: 29    Wall time 7.20651 seconds! 
+ Memory usage: current 3595/239.7/3595MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-2.01693 0.412041 8.69943e-05)
+ puncture position: no. 1 = (3.32818 -0.502587 2.2319e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 30: integrating to time: 30    Wall time 7.07802 seconds! 
+ Memory usage: current 3609/240.6/3609MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-2.02301 0.282244 8.94348e-05)
+ puncture position: no. 1 = (3.3417 -0.307391 4.77327e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 31: integrating to time: 31    Wall time 7.01222 seconds! 
+ Memory usage: current 3598/239.8/3598MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-2.02144 0.151494 9.45981e-05)
+ puncture position: no. 1 = (3.34349 -0.111226 5.39545e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 32: integrating to time: 32    Wall time 6.81429 seconds! 
+ Memory usage: current 3573/238.2/3573MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-2.01207 0.0203133 9.26144e-05)
+ puncture position: no. 1 = (3.3333 0.0852063 6.11163e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 33: integrating to time: 33    Wall time 6.80187 seconds! 
+ Memory usage: current 3564/237.6/3564MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-1.99471 -0.110863 7.99725e-05)
+ puncture position: no. 1 = (3.31093 0.281074 2.83415e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 34: integrating to time: 34    Wall time 6.89057 seconds! 
+ Memory usage: current 3565/237.7/3565MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-1.96915 -0.241604 9.94658e-05)
+ puncture position: no. 1 = (3.27613 0.475395 4.86205e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 35: integrating to time: 35    Wall time 7.08961 seconds! 
+ Memory usage: current 3561/237.4/3561MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-1.93555 -0.371251 0.000101011)
+ puncture position: no. 1 = (3.22873 0.667341 5.20889e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 36: integrating to time: 36    Wall time 7.2123 seconds! 
+ Memory usage: current 3572/238.1/3572MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-1.89375 -0.499194 0.000118854)
+ puncture position: no. 1 = (3.16829 0.856079 7.96006e-05)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 37: integrating to time: 37    Wall time 7.36564 seconds! 
+ Memory usage: current 3574/238.2/3574MB, peak 3767/251.1/3767MB
+
+ puncture position: no. 0 = (-1.84387 -0.624923 0.000122972)
+ puncture position: no. 1 = (3.09512 1.04077 0.000110267)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 38: integrating to time: 38    Wall time 7.37523 seconds! 
+ Memory usage: current 3597/239.8/3597MB, peak 3774/251.6/3774MB
+
+ puncture position: no. 0 = (-1.78577 -0.747998 0.000128943)
+ puncture position: no. 1 = (3.00972 1.22037 0.000132791)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 39: integrating to time: 39    Wall time 7.47348 seconds! 
+ Memory usage: current 3645/243/3645MB, peak 3778/251.9/3778MB
+
+ puncture position: no. 0 = (-1.71946 -0.86791 0.000138862)
+ puncture position: no. 1 = (2.91239 1.3942 0.000126173)
+
+ If you think the physical evolution time is enough for this simulation, please input 'stop' in the terminal to stop the MPI processes in the next evolution step ! 
+
+ Timestep # 40: integrating to time: 40    Wall time 7.51646 seconds! 
+
+ Total Evolve Time: 296 seconds!
+ Total Running Time: 298.733 seconds!
+
+
+ =============================================================== 
+ Simulation is successfully done!! 
+ =============================================================== 
+
+ This run used 298.747 seconds! 
+
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_final15
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/runs/final15-nocache/GW250118
+==> Cache    : /workspace/lab4/twopuncture_cache
+ Output directory has been generated
+
+------------------------------------------------------------------------------------------
+
+ Printing the basic parameter and setting in the AMSS-NCKU simulation 
+
+ The number of MPI processes in the AMSS-NCKU simulation =  15
+
+ The form of computational equation  =  BSSN
+ The initial data in this simulation =  Ansorg-TwoPuncture
+
+ Starting evolution time   =  0.0
+ Final evolution time      =  40.0
+ Maximal iteration number  =  10000000
+ Courant factor            =  0.5
+ Strength of dissipation   =  0.15
+ Symmetry of system        =  equatorial-symmetry
+ The Runge-Kutta scheme in the time evolution   =  runge-kutta-45
+ The finite-difference scheme in the simulation =  4th-order
+
+ The static AMR grid type =  Linear
+ The moving AMR grid type =  Linear
+
+ The number of static AMR grid levels =  5
+ The number of moving AMR grid levels =  4
+ The number of total  AMR grid levels =  9
+
+ The grid number of each static AMR grid level =  40
+ The grid number of each moving AMR grid level =  48
+
+ The scale for largest  static AMR grid in X direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Y direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Z direction =  [-320.  320.]
+ The scale for smallest static AMR grid in X direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Y direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Z direction =  [-20.  20.]
+
+ The scale for largest  moving AMR grid =  [-12.  12.]
+ The scale for smallest moving AMR grid =  [-1.5  1.5]
+
+ The coarest resolution for static AMR grid =  16.0
+ The finest  resolution for static AMR grid =  1.0
+ The coarest resolution for moving AMR grid =  0.5
+ The finest  resolution for moving AMR grid =  0.0625
+
+ The time refinement starts from AMR grid level =  4
+ The time interval in each step for coarest AMR grid during time evaluation =  1.0
+
+ This simulation uses the Patch AMR grid structure 
+
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+ Printing the puncture information 
+
+ The information for 1 puncture 
+ Mass(1) =   0.598837,  Charge(1) =   0.000000,  a(1)  =   0.000000
+ X(1)    =   0.000000,  Y(1)      =   2.406977,  Z(1)  =   0.000000
+ Px(1)   =  -0.127500,  Py(1)     =  -0.005141,  Pz(1) =   0.000000
+ Jx(1)   =   0.000000,  Jy(1)     =   0.000000,  Jz(1) =   0.000000
+
+ The information for 2 puncture 
+ Mass(2) =   0.401163,  Charge(2) =   0.000000,  a(2)  =   0.000000
+ X(2)    =   0.000000,  Y(2)      =  -3.593023,  Z(2)  =   0.000000
+ Px(2)   =   0.127500,  Py(2)     =   0.005141,  Pz(2) =   0.000000
+ Jx(2)   =   0.000000,  Jy(2)     =   0.000000,  Jz(2) =   0.000000
+
+------------------------------------------------------------------------------------------
+
+ Generating the AMSS-NCKU input parfile for the ABE executable.
+
+
+ Setting Puncture's position and momentum 
+
+
+ Wirte Down The Grid Information 
+
+ Number of Total Grid Level =  9
+ Number of Static Grid Level =  5
+ Number of Moving Grid Level =  4
+
+
+ Setting the demanded numerical grid 
+
+ adjusting the static gird points, making the original point (0,0,0) to the static gird points 
+
+
+ adjusting the moving gird points, ensuring the alliance of moving grids points and static grids points 
+
+ adjust_puncture[5,0,0] = 0.0 
+ adjust_puncture[5,0,1] = 2.5 
+ adjust_puncture[5,0,2] = 0.0 
+ adjust_puncture[5,1,0] = 0.0 
+ adjust_puncture[5,1,1] = -3.5 
+ adjust_puncture[5,1,2] = 0.0 
+ adjust_puncture[6,0,0] = 0.0 
+ adjust_puncture[6,0,1] = 2.5 
+ adjust_puncture[6,0,2] = 0.0 
+ adjust_puncture[6,1,0] = 0.0 
+ adjust_puncture[6,1,1] = -3.5 
+ adjust_puncture[6,1,2] = 0.0 
+ adjust_puncture[7,0,0] = 0.0 
+ adjust_puncture[7,0,1] = 2.375 
+ adjust_puncture[7,0,2] = 0.0 
+ adjust_puncture[7,1,0] = 0.0 
+ adjust_puncture[7,1,1] = -3.625 
+ adjust_puncture[7,1,2] = 0.0 
+ adjust_puncture[8,0,0] = 0.0 
+ adjust_puncture[8,0,1] = 2.4375 
+ adjust_puncture[8,0,2] = 0.0 
+ adjust_puncture[8,1,0] = 0.0 
+ adjust_puncture[8,1,1] = -3.5625 
+ adjust_puncture[8,1,2] = 0.0 
+
+ The moving grid puncture position adjustment is done 
+
+
+ Initial data method: Ansorg-TwoPuncture
+
+
+ Running the AMSS-NCKU executable file TwoPunctureABE
+
+
+ The TwoPunctureABE simulation is finished
+
+
+ Running ./ABE with 15 MPI ranks and OMP_NUM_THREADS=4
+
+ MPI launcher: mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=4 -n 15 env OMP_NUM_THREADS=4 OMP_DYNAMIC=FALSE OMP_PROC_BIND=close OMP_PLACES=threads OMP_STACKSIZE=1G OMP_WAIT_POLICY=ACTIVE GOMP_SPINCOUNT=INFINITE OPENBLAS_NUM_THREADS=1 LD_LIBRARY_PATH=/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64:/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib64:/opt/arm/gcc-14.2.0_Ubuntu-22.04/lib:/opt/arm/arm-linux-compiler-24.10.1_Ubuntu-22.04/lib/clang/19/armpl_links/lib AMSS_DISTRIBUTION_NODES=30
+
+ The ./ABE simulation is finished
+
+
+ Skipping result plotting (AMSS_SKIP_PLOTS=1); figures are not graded.
+
+
+ This Program Cost = 349.1194260120392 Seconds
+
+ The AMSS-NCKU-Python simulation is successfully finished.
+

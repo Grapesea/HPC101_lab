@@ -110,8 +110,7 @@ set(ABE_SOURCES
 add_executable(ABE ${ABE_SOURCES})
 target_link_libraries(ABE PRIVATE MPI::MPI_CXX)
 target_compile_definitions(ABE PRIVATE
-  AMSS_DEFAULT_DISTRIBUTION_NODES=${AMSS_DISTRIBUTION_NODES}
-  AMSS_CPU_OMP_THREADS=5)
+  AMSS_DEFAULT_DISTRIBUTION_NODES=${AMSS_DISTRIBUTION_NODES})
 # The Fortran stencil kernels below are linked with OpenMP when requested.
 
 # --- TwoPunctureABE: initial-data solver -----------------------------------

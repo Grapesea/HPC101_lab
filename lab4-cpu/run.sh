@@ -57,20 +57,11 @@ resolve_under_root() {
 AMSS_BUILD_DIR="$(resolve_under_root "${AMSS_BUILD_DIR:-$ROOT_DIR/build}")"
 AMSS_OUTPUT_ROOT="$(resolve_under_root "${AMSS_OUTPUT_ROOT:-$ROOT_DIR}")"
 AMSS_CACHE_DIR="$(resolve_under_root "${AMSS_CACHE_DIR:-$ROOT_DIR/twopuncture_cache}")"
-# compile.sh generates the strict fixed-course initial data into the build
-# tree.  Opt into the driver's content-addressed cache only when that artifact
-# is present.  Since the driver hashes the generated TwoPuncture parameter
-# file, any different case misses this cache and executes the full solver.
-build_cache_dir="$AMSS_BUILD_DIR/twopuncture_cache"
-if find "$build_cache_dir" -mindepth 2 -maxdepth 2 -type f \
-     -name Ansorg.psid -size +0c -print -quit 2>/dev/null | grep -q .; then
-  AMSS_CACHE_DIR="$build_cache_dir"
-  export AMSS_NCKU_TWOP_CACHE=1
-fi
-# The evaluation allocation exposes 30 physical cores as 60 hardware threads.
-# A 12x5 run therefore has to bind five hardware threads per rank; CORE/PE=5
-# asks for 60 physical cores and OpenMPI rejects the mapping with status 213.
-AMSS_MPIEXEC="mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=5"
+# The mesh distributor creates 30 numerical partitions.  One MPI rank per
+# partition avoids the 2/3-block rank imbalance of 12x5 and also avoids paying
+# for many tiny OpenMP regions inside each stencil.  The judge exposes exactly
+# 30 physical cores, so this mapping is valid without oversubscription.
+AMSS_MPIEXEC="mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=4"
 export OMP_DYNAMIC=FALSE
 export OMP_PROC_BIND=close
 export OMP_PLACES=threads

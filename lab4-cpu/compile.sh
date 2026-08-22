@@ -160,73 +160,6 @@ build_gnu_twopuncture() {
     "${omp_link[@]}" "-Wl,-rpath,$runpath" -o "$out_dir/TwoPunctureABE"
 }
 
-# Precompute the fixed course initial data as a build artifact.  The OJ runs
-# compilation and execution in the same workspace, while only submitted source
-# files are copied into it.  Generating this artifact here therefore avoids
-# submitting a cache and, because it runs beside the Arm ABE build, hides the
-# strict spectral solve behind compilation.  The runtime cache is keyed by the
-# exact parameter-file bytes; any changed physical/grid input is a cache miss
-# and is solved normally by TwoPunctureABE.
-precompute_course_twopuncture() {
-  local twop_dir="$1"
-  local work_dir="$twop_dir/course_twop_work"
-  local cache_root="$twop_dir/twopuncture_cache"
-  local parfile="$work_dir/TwoPunctureinput.par"
-
-  mkdir -p "$work_dir"
-  cat > "$parfile" <<'EOF'
-#  -----0-----> y
-#   -      +      use Brugmann's convention
-ABE::mp        = -1.0
-ABE::mm        = -1.0
-# b            =  D/2
-ABE::b         =  3.0
-ABE::P_plusx   =  -0.1275
-ABE::P_plusy   =  -0.00514081481119059
-ABE::P_plusz   =  0.0
-ABE::P_minusx  =  0.1275
-ABE::P_minusy  =  0.00514081481119059
-ABE::P_minusz  =  0.0
-ABE::S_plusx   =  0.0
-ABE::S_plusy   =  0.0
-ABE::S_plusz   =  0.0
-ABE::S_minusx  =  0.0
-ABE::S_minusy  =  0.0
-ABE::S_minusz  =  0.0
-ABE::Mp        =  0.5988372093023255
-ABE::Mm        =  0.4011627906976744
-ABE::admtol    =  1e-8
-ABE::Newtontol =  5e-12
-ABE::nA        =  50
-ABE::nB        =  50
-ABE::nphi      =  26
-ABE::Newtonmaxit =  50
-EOF
-
-  local key cache_dir
-  key="$(sha1sum "$parfile" | awk '{print substr($1,1,16)}')"
-  cache_dir="$cache_root/$key"
-  if [[ -s "$cache_dir/Ansorg.psid" &&
-        -s "$cache_dir/puncture_parameters_new.txt" ]]; then
-    echo "==> Course TwoPuncture cache already built ($key)"
-    return 0
-  fi
-
-  echo "==> Precomputing strict course TwoPuncture cache ($key)"
-  cp -f "$twop_dir/TwoPunctureABE" "$work_dir/TwoPunctureABE"
-  (
-    cd "$work_dir"
-    env OMP_NUM_THREADS="${AMSS_TWOP_THREADS:-20}" \
-        AMSS_TWOP_THREADS="${AMSS_TWOP_THREADS:-20}" \
-        OMP_DYNAMIC=FALSE OMP_PROC_BIND=close OMP_PLACES=cores \
-        ./TwoPunctureABE < /dev/null > TwoPunctureABE_precompute.log 2>&1
-  )
-  grep -E 'Newton: it=|ADM mass error:|Initial data is successfully' \
-    "$work_dir/TwoPunctureABE_precompute.log" | tail -n 8
-  mkdir -p "$cache_dir"
-  cp -f "$work_dir/Ansorg.psid" "$work_dir/puncture_parameters_new.txt" "$cache_dir/"
-}
-
 # --- Decide hybrid vs. legacy single-toolchain build -------------------
 # The OJ may predefine CXX/FC as generic GNU compilers.  They are ambient
 # toolchain hints, not an intentional request to disable the measured hybrid
@@ -264,7 +197,6 @@ if [[ "$want_hybrid" == "1" ]]; then
   # TwoPuncture compile latency without exhausting a 60-core evaluation node.
   (
     build_gnu_twopuncture "$GNU_BUILD_DIR"
-    precompute_course_twopuncture "$GNU_BUILD_DIR"
   ) &
   twop_pid=$!
 
@@ -283,8 +215,6 @@ if [[ "$want_hybrid" == "1" ]]; then
 
   echo "==> Staging GNU-built TwoPunctureABE (faster relaxation) into the Arm build tree (faster evolution)"
   cp -f "$GNU_BUILD_DIR/TwoPunctureABE" "$BUILD_DIR/TwoPunctureABE"
-  mkdir -p "$BUILD_DIR/twopuncture_cache"
-  cp -Rf "$GNU_BUILD_DIR/twopuncture_cache/." "$BUILD_DIR/twopuncture_cache/"
 else
   # Legacy single-toolchain path.
   base_cmake_args
