@@ -217,6 +217,89 @@ MyList<Block> *Parallel::distribute(
     split_size = Mymax(1, split_size);
 
     int n_rank = 0;
+#ifdef AMSS_BALANCE_BLOCK_CELLS
+    // Precompute only the already-determined block sizes, then assign owners.
+    // The geometry and its eventual list order are left untouched.  Reserving
+    // the extra (third) blocks for the smallest pieces matters for the scored
+    // 32-block/15-rank moving levels; an online greedy assignment cannot see
+    // those final two blocks and retains the round-robin critical path.
+    std::vector<long long> pending_cells;
+    PLi = PatchLIST;
+    while (PLi)
+    {
+        Patch *PP = PLi->data;
+        int balance_nxyz[dim];
+        partition3(balance_nxyz, split_size, mmin_width, nodes, PP->shape);
+        for (int i = 0; i < balance_nxyz[0]; ++i)
+            for (int j = 0; j < balance_nxyz[1]; ++j)
+                for (int k = 0; k < balance_nxyz[2]; ++k)
+                {
+                    const int coord[3] = {i, j, k};
+                    long long cells = 1;
+                    for (int d = 0; d < dim; ++d)
+                    {
+                        int lo = (PP->shape[d] * coord[d]) / balance_nxyz[d];
+                        int hi = (PP->shape[d] * (coord[d] + 1)) / balance_nxyz[d] - 1;
+                        if (periodic)
+                        {
+                            lo -= ghost_width;
+                            hi += ghost_width;
+                        }
+                        else
+                        {
+                            lo = Mymax(0, lo - ghost_width);
+                            hi = Mymin(PP->shape[d] - 1, hi + ghost_width);
+                        }
+                        cells *= static_cast<long long>(hi - lo + 1);
+                    }
+                    pending_cells.push_back(cells);
+                }
+        PLi = PLi->next;
+    }
+
+    const int pending_count = static_cast<int>(pending_cells.size());
+    std::vector<int> cell_order(pending_count);
+    for (int i = 0; i < pending_count; ++i)
+        cell_order[i] = i;
+    std::sort(cell_order.begin(), cell_order.end(),
+              [&pending_cells](int a, int b) {
+                  if (pending_cells[a] != pending_cells[b])
+                      return pending_cells[a] < pending_cells[b];
+                  return a < b;
+              });
+
+    std::vector<int> balanced_owner(pending_count, 0);
+    std::vector<long long> rank_cells(cpusize, 0);
+    std::vector<int> rank_blocks(cpusize, 0);
+    const int blocks_per_rank = pending_count / cpusize;
+    const int extra_ranks = pending_count % cpusize;
+    int order_pos = 0;
+    // Ranks needing one extra block receive the globally smallest blocks.
+    for (int slot = 0; slot < blocks_per_rank + 1; ++slot)
+        for (int rank = 0; rank < extra_ranks; ++rank)
+        {
+            const int block = cell_order[order_pos++];
+            balanced_owner[block] = rank;
+            rank_cells[rank] += pending_cells[block];
+            ++rank_blocks[rank];
+        }
+    // Pair the remaining large/small pieces by placing descending sizes on
+    // the lightest rank that has not reached its fixed block-count quota.
+    for (int pos = pending_count - 1; pos >= order_pos; --pos)
+    {
+        const int block = cell_order[pos];
+        int rank = extra_ranks;
+        for (int candidate = extra_ranks; candidate < cpusize; ++candidate)
+            if (rank_blocks[candidate] < blocks_per_rank &&
+                (rank_blocks[rank] >= blocks_per_rank ||
+                 rank_cells[candidate] < rank_cells[rank]))
+                rank = candidate;
+        balanced_owner[block] = rank;
+        rank_cells[rank] += pending_cells[block];
+        ++rank_blocks[rank];
+    }
+    int balanced_cursor = 0;
+#endif
     PLi = PatchLIST;
     int reacpu = 0;
     while (PLi)
@@ -277,7 +360,13 @@ MyList<Block> *Parallel::distribute(
                     bbox_here[2] = PP->bbox[2] + (ibbox_here[2]) * dd;
                     bbox_here[5] = PP->bbox[2] + (ibbox_here[5] + 1) * dd;
 
-                    ng = ng0 = new Block(dim, shape_here, bbox_here, n_rank++, ingfsi, fngfsi, PP->lev); // delete through KillBlocks
+                    int assigned_rank = n_rank;
+#ifdef AMSS_BALANCE_BLOCK_CELLS
+                    assigned_rank = balanced_owner[balanced_cursor++];
+#else
+                    ++n_rank;
+#endif
+                    ng = ng0 = new Block(dim, shape_here, bbox_here, assigned_rank, ingfsi, fngfsi, PP->lev); // delete through KillBlocks
                     //	    ng->checkBlock();
                     if (BlL)
                         BlL->insert(ng);

@@ -13,6 +13,7 @@ set(AMSS_ARCH_FLAGS "-mcpu=tsv110 -msve-vector-bits=256" CACHE STRING "Architect
 option(AMSS_ENABLE_OPENMP "Enable OpenMP in CPU solvers" ON)
 option(AMSS_OMP_BLOCK_LOOPS "Parallelize ABE over blocks instead of inside stencil kernels" OFF)
 option(AMSS_PROFILE_PHASES "Print per-step RecursiveStep/Constraint_Out wall times" OFF)
+option(AMSS_BALANCE_BLOCK_CELLS "Assign fixed-geometry blocks to MPI ranks by owned cell count" ON)
 option(AMSS_ENABLE_SANITY_CHECK "Keep per-RHS full-array NaN scans" OFF)
 # Levels > 0 recompute constraint arrays in Constraint_Out() at every output
 # step, so the copies produced inside the RK4 predictor are redundant work.
@@ -82,6 +83,9 @@ if(AMSS_OMP_BLOCK_LOOPS)
 endif()
 if(AMSS_PROFILE_PHASES)
   add_compile_definitions(AMSS_PROFILE_PHASES)
+endif()
+if(AMSS_BALANCE_BLOCK_CELLS)
+  add_compile_definitions(AMSS_BALANCE_BLOCK_CELLS)
 endif()
 
 # --- MPI --------------------------------------------------------------------

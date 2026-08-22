@@ -1,0 +1,12 @@
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_final_submission
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/topology_core2_output
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/twopuncture_cache
+==> MPI exec : mpiexec --allow-run-as-root --report-bindings --bind-to core --map-by slot:PE=2
+==> Build    : /home/h3240104505/HPC101_lab/lab4-cpu/build_final_submission
+==> Output   : /home/h3240104505/HPC101_lab/lab4-cpu/topology_core2_output/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-cpu/twopuncture_cache
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab4-cpu/AMSS_NCKU_Program.py", line 145, in <module>
+    os.mkdir(File_directory)
+    ~~~~~~~~^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/h3240104505/HPC101_lab/lab4-cpu/topology_core2_output/GW250118'

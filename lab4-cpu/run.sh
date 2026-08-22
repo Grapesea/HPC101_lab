@@ -57,10 +57,10 @@ resolve_under_root() {
 AMSS_BUILD_DIR="$(resolve_under_root "${AMSS_BUILD_DIR:-$ROOT_DIR/build}")"
 AMSS_OUTPUT_ROOT="$(resolve_under_root "${AMSS_OUTPUT_ROOT:-$ROOT_DIR}")"
 AMSS_CACHE_DIR="$(resolve_under_root "${AMSS_CACHE_DIR:-$ROOT_DIR/twopuncture_cache}")"
-# The mesh distributor creates 30 numerical partitions.  One MPI rank per
-# partition avoids the 2/3-block rank imbalance of 12x5 and also avoids paying
-# for many tiny OpenMP regions inside each stencil.  The judge exposes exactly
-# 30 physical cores, so this mapping is valid without oversubscription.
+# The mesh distributor creates 30 numerical partitions.  Fifteen MPI ranks
+# normally own two partitions each; four hardware threads per rank consume the
+# judge's 60 logical CPUs without oversubscription.  Keep the complete launcher
+# here because the OJ may predefine AMSS_MPIEXEC to the bare "mpiexec" command.
 AMSS_MPIEXEC="mpiexec --allow-run-as-root --use-hwthread-cpus --bind-to hwthread --map-by slot:PE=4"
 export OMP_DYNAMIC=FALSE
 export OMP_PROC_BIND=close

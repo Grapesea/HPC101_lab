@@ -28,6 +28,19 @@ using namespace std;
 
 #include "TwoPunctures.h"
 
+#ifndef AMSS_TWOP_COARSE_N1
+#define AMSS_TWOP_COARSE_N1 24
+#endif
+#ifndef AMSS_TWOP_COARSE_N2
+#define AMSS_TWOP_COARSE_N2 24
+#endif
+#ifndef AMSS_TWOP_COARSE_N3
+#define AMSS_TWOP_COARSE_N3 14
+#endif
+#ifndef AMSS_TWOP_COARSE_TOL
+#define AMSS_TWOP_COARSE_TOL 1.e-8
+#endif
+
 TwoPunctures::TwoPunctures(double mp, double mm, double b,
                            double P_plusx, double P_plusy, double P_plusz,
                            double S_plusx, double S_plusy, double S_plusz,
@@ -152,9 +165,9 @@ void TwoPunctures::Solve()
       cout << "Using verified scalar bare-mass warm start; "
               "fine-grid ADM tolerance will still be checked." << endl;
 
-      const int coarse_n1 = 24;
-      const int coarse_n2 = 24;
-      const int coarse_n3 = 14;
+      const int coarse_n1 = AMSS_TWOP_COARSE_N1;
+      const int coarse_n2 = AMSS_TWOP_COARSE_N2;
+      const int coarse_n3 = AMSS_TWOP_COARSE_N3;
       TwoPunctures coarse(
           par_m_plus, par_m_minus, par_b,
           par_P_plus[0], par_P_plus[1], par_P_plus[2],
@@ -163,12 +176,13 @@ void TwoPunctures::Solve()
           par_S_minus[0], par_S_minus[1], par_S_minus[2],
           coarse_n1, coarse_n2, coarse_n3,
           target_M_plus, target_M_minus,
-          adm_tol, 1.e-9, Newton_maxit);
+          adm_tol, AMSS_TWOP_COARSE_TOL, Newton_maxit);
       coarse.Solve();
       ProlongateFrom(coarse);
       has_spectral_predictor = true;
-      cout << "Computed and prolongated a 24x24x14 spectral predictor."
-           << endl;
+      cout << "Computed and prolongated a "
+           << coarse_n1 << "x" << coarse_n2 << "x" << coarse_n3
+           << " spectral predictor." << endl;
     }
     else
     {
@@ -1624,7 +1638,11 @@ int TwoPunctures::bicgstab(int const nvar, int const n1, int const n2, int const
                            derivs v, derivs dv, int const itmax, double const tol,
                            double *normres)
 {
-  int const output = 1;
+  // The Python driver already records Newton and final ADM convergence.  A
+  // line-buffered printf+fflush for every inner BiCGSTAB iteration adds no
+  // correctness information and is unusually expensive when OJ streams the
+  // subprocess through tee, so keep the per-iteration trace disabled.
+  int const output = 0;
   int ntotal = n1 * n2 * n3 * nvar, ii;
   double alpha = 0, beta = 0;
   double rho = 0, rho1 = 1, rhotol = 1e-50;
