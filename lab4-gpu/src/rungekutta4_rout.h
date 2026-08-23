@@ -61,6 +61,20 @@ void gpu_rungekutta4_rout_launch(
     int ex[3], double dT,
     double* d_f0, double* d_f1, double* d_f_rhs, int RK4
 );
+
+// The BSSN state list has 24 independent fields.  On refined patches the
+// correct-step Sommerfeld operation is only f1=f0 on the physical boundary,
+// so fold that copy into the batched RK pass instead of launching another
+// full-volume kernel for every field.
+void gpu_rungekutta4_rout_batch_launch(
+    cudaStream_t &stream,
+    int ex[3], double dT,
+    double** d_f0, double** d_f1, double** d_f_rhs, int RK4,
+    bool fix_boundary,
+    const double* d_X, const double* d_Y, const double* d_Z,
+    double xmin, double ymin, double zmin,
+    double xmax, double ymax, double zmax, int Symmetry
+);
 #endif
 
 #endif /* RUNGEKUTTA4_H */

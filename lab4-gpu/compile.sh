@@ -1,10 +1,8 @@
 #!/bin/bash
 # compile.sh — portable build driver for AMSS-NCKU Lab 4.
 #
-# Toolchain comes from environment (CC/CXX/FC/MPI_CXX_COMPILER/CUDACXX) or
-# PATH (mpicxx/mpifort). AMSS_* vars are forwarded to CMake only when set.
-# Build directory: AMSS_BUILD_DIR (default <lab-root>/build), relative to
-# lab root. Extra args (e.g. -DAMSS_ENABLE_GPU=ON) override at the end.
+# GPU submission build for one A100 1g.10gb MIG instance.  The course target
+# is fixed to CUDA sm_80; all three executables are rebuilt in one CMake tree.
 set -euo pipefail
 
 ROOT_DIR="$(pwd)"
@@ -31,14 +29,23 @@ if [[ -n "${MPI_CXX_COMPILER:-}" ]]; then
 elif [[ -n "${CXX:-}" ]]; then
   cmake_args+=("-DCMAKE_CXX_COMPILER=$CXX")
 fi
-[[ -n "${FC:-}" ]]                && cmake_args+=("-DCMAKE_Fortran_COMPILER=$FC")
-[[ -n "${CUDACXX:-}" ]]           && cmake_args+=("-DCMAKE_CUDA_COMPILER=$CUDACXX")
-[[ -n "${AMSS_ENABLE_GPU:-}" ]]    && cmake_args+=("-DAMSS_ENABLE_GPU=$AMSS_ENABLE_GPU")
-[[ -n "${AMSS_CUDA_ARCHITECTURES:-}" ]] && cmake_args+=("-DCMAKE_CUDA_ARCHITECTURES=$AMSS_CUDA_ARCHITECTURES")
-[[ -n "${AMSS_OPT:-}" ]]           && cmake_args+=("-DAMSS_OPT=$AMSS_OPT")
-[[ -n "${AMSS_ARCH_FLAGS:-}" ]]    && cmake_args+=("-DAMSS_ARCH_FLAGS=$AMSS_ARCH_FLAGS")
-[[ -n "${AMSS_ENABLE_OPENMP:-}" ]] && cmake_args+=("-DAMSS_ENABLE_OPENMP=$AMSS_ENABLE_OPENMP")
-[[ -n "${AMSS_MPI_CUDA_AWARE:-}" ]] && cmake_args+=("-DAMSS_MPI_CUDA_AWARE=$AMSS_MPI_CUDA_AWARE")
+[[ -n "${FC:-}" ]] && cmake_args+=("-DCMAKE_Fortran_COMPILER=$FC")
+if [[ -n "${CUDACXX:-}" ]]; then
+  cmake_args+=("-DCMAKE_CUDA_COMPILER=$CUDACXX")
+elif [[ -x /usr/local/cuda/bin/nvcc ]]; then
+  cmake_args+=("-DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc")
+fi
+
+# These options are deliberately explicit so an old CMake cache or inherited
+# CPU settings cannot silently turn this submission into a CPU build.
+cmake_args+=(
+  "-DAMSS_ENABLE_GPU=ON"
+  "-DCMAKE_CUDA_ARCHITECTURES=80"
+  "-DAMSS_ENABLE_OPENMP=ON"
+  "-DAMSS_MPI_CUDA_AWARE=0"
+  "-DAMSS_OPT=${AMSS_OPT:--Ofast -ffast-math}"
+  "-DAMSS_ARCH_FLAGS=${AMSS_ARCH_FLAGS:--march=native}"
+)
 
 echo "==> Configure: $CMAKE -S \"$ROOT_DIR\" -B \"$BUILD_DIR\" ${cmake_args[*]:-} $*"
 "$CMAKE" -S "$ROOT_DIR" -B "$BUILD_DIR" "${cmake_args[@]}" "$@"

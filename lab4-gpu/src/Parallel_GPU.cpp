@@ -54,7 +54,61 @@ int Parallel::gpu_data_packer(
         ) {
             varls = VarLists;
             varld = VarListd;
+            int nfields = 0;
             while (varls && varld) {
+                ++nfields;
+                varls = varls->next;
+                varld = varld->next;
+            }
+
+            // All 24 BSSN state fields share this transfer segment's grid
+            // geometry.  Let the CUDA kernel use a field dimension instead
+            // of launching the same prolong/restrict geometry 24 times.
+            // Other lists retain the original one-field route below.
+            bool batched_amr = false;
+            if (d_data && dir == PACK && nfields == 24 && (type == 2 || type == 3)) {
+                constexpr int fields = 24;
+                double* h_src[fields];
+                double* h_dst[fields];
+                double h_soa[3 * fields];
+                const int points = dst->data->shape[0] * dst->data->shape[1] * dst->data->shape[2];
+                varls = VarLists;
+                varld = VarListd;
+                for (int field = 0; field < fields; ++field) {
+                    h_src[field] = src->data->Bg->d_fgfs[varls->data->sgfn];
+                    h_dst[field] = d_data + size_out + field * points;
+                    h_soa[3 * field] = varls->data->SoA[0];
+                    h_soa[3 * field + 1] = varls->data->SoA[1];
+                    h_soa[3 * field + 2] = varls->data->SoA[2];
+                    varls = varls->next;
+                    varld = varld->next;
+                }
+                Block* bg = src->data->Bg;
+                CUDA_CHECK(cudaMemcpyAsync(bg->d_batch_src, h_src, sizeof(h_src), cudaMemcpyHostToDevice, bg->stream));
+                CUDA_CHECK(cudaMemcpyAsync(bg->d_batch_dst, h_dst, sizeof(h_dst), cudaMemcpyHostToDevice, bg->stream));
+                CUDA_CHECK(cudaMemcpyAsync(bg->d_batch_soa, h_soa, sizeof(h_soa), cudaMemcpyHostToDevice, bg->stream));
+                if (type == 2) {
+                    gpu_restrict3_batch_launch(
+                        bg->stream, bg->d_batch_src, bg->d_batch_dst, bg->d_batch_soa,
+                        dst->data->llb, dst->data->uub, dst->data->shape,
+                        bg->bbox, bg->bbox + dim, bg->shape,
+                        dst->data->llb, dst->data->uub, Symmetry, fields
+                    );
+                } else {
+                    gpu_prolong3_batch_launch(
+                        bg->stream, bg->d_batch_src, bg->d_batch_dst, bg->d_batch_soa,
+                        bg->bbox, bg->bbox + dim, bg->shape,
+                        dst->data->llb, dst->data->uub, dst->data->shape,
+                        dst->data->llb, dst->data->uub, Symmetry, fields
+                    );
+                }
+                size_out += fields * points;
+                batched_amr = true;
+            }
+
+            varls = VarLists;
+            varld = VarListd;
+            while (!batched_amr && varls && varld) {
                 if (d_data) {
                     if (dir == PACK) {
                         double* d_dst_ptr = d_data + size_out; 

@@ -9,7 +9,11 @@
 // ==========================================
 // Device Function: 一阶导数 (4th Order)
 // ==========================================
-__device__ void d_fderivs_point(
+#ifndef AMSS_DERIV_ATTR
+#define AMSS_DERIV_ATTR __device__
+#endif
+
+AMSS_DERIV_ATTR void d_fderivs_point(
     const int ex[3], const double* f,
     double* fx, double* fy, double* fz,
     const double* X, const double* Y, const double* Z,
@@ -59,8 +63,28 @@ __device__ void d_fderivs_point(
     const double d2dy = ONE / TWO / dY;
     const double d2dz = ONE / TWO / dZ;
 
+    // Most grid points are at least two cells away from a symmetry plane or
+    // an outer boundary.  For these points d_symmetry_bd_1b() only performs
+    // range checks before returning the same contiguous element.  Take that
+    // common path directly; the original symmetry-aware path below remains
+    // responsible for every boundary point.
+    if (i >= 2 && i + 2 <= imax &&
+        j >= 2 && j + 2 <= jmax &&
+        k >= 2 && k + 2 <= kmax) {
+        const int sy = ex[0];
+        const int sz = ex[0] * ex[1];
+        const int p = i + sy * j + sz * k;
+        *fx = d12dx * (f[p - 2] - EIT * f[p - 1] + EIT * f[p + 1] - f[p + 2]);
+        *fy = d12dy * (f[p - 2 * sy] - EIT * f[p - sy] + EIT * f[p + sy] - f[p + 2 * sy]);
+        *fz = d12dz * (f[p - 2 * sz] - EIT * f[p - sz] + EIT * f[p + sz] - f[p + 2 * sz]);
+        return;
+    }
+
     // Helper lambda for symmetry boundary access
     const auto fh = [&](int ii, int jj, int kk) -> double {
+        if (ii >= 0 && ii < ex[0] && jj >= 0 && jj < ex[1] && kk >= 0 && kk < ex[2]) {
+            return f[ii + ex[0] * (jj + ex[1] * kk)];
+        }
         return d_symmetry_bd_1b(2, ex, f, ii + 1, jj + 1, kk + 1, SoA);
     };
     
@@ -88,7 +112,7 @@ __device__ void d_fderivs_point(
 // ==========================================
 // Device Function: 二阶导数 (4th Order)
 // ==========================================
-__device__ void d_fdderivs_point(
+AMSS_DERIV_ATTR void d_fdderivs_point(
     const int ex[3], const double* f,
     double* fxx, double* fxy, double* fxz,
     double* fyy, double* fyz, double* fzz,
@@ -144,7 +168,45 @@ __device__ void d_fdderivs_point(
     const double Fdxdz = F1o144 / (dX * dZ);
     const double Fdydz = F1o144 / (dY * dZ);
 
+    // Fast interior stencil.  This is algebraically identical to the
+    // symmetry helper path, but avoids 78 helper calls for each second
+    // derivative evaluation at a point that cannot touch a boundary.
+    if (i >= 2 && i + 2 <= imax &&
+        j >= 2 && j + 2 <= jmax &&
+        k >= 2 && k + 2 <= kmax) {
+        const int sy = ex[0];
+        const int sz = ex[0] * ex[1];
+        const int p = i + sy * j + sz * k;
+
+        *fxx = Fdxdx * (-f[p - 2] + F16 * f[p - 1] - F30 * f[p]
+                         - f[p + 2] + F16 * f[p + 1]);
+        *fyy = Fdydy * (-f[p - 2 * sy] + F16 * f[p - sy] - F30 * f[p]
+                         - f[p + 2 * sy] + F16 * f[p + sy]);
+        *fzz = Fdzdz * (-f[p - 2 * sz] + F16 * f[p - sz] - F30 * f[p]
+                         - f[p + 2 * sz] + F16 * f[p + sz]);
+
+        *fxy = Fdxdy * (
+            (f[p - 2 * sy - 2] - F8 * f[p - 2 * sy - 1] + F8 * f[p - 2 * sy + 1] - f[p - 2 * sy + 2])
+          - F8 * (f[p - sy - 2]     - F8 * f[p - sy - 1]     + F8 * f[p - sy + 1]     - f[p - sy + 2])
+          + F8 * (f[p + sy - 2]     - F8 * f[p + sy - 1]     + F8 * f[p + sy + 1]     - f[p + sy + 2])
+          -      (f[p + 2 * sy - 2] - F8 * f[p + 2 * sy - 1] + F8 * f[p + 2 * sy + 1] - f[p + 2 * sy + 2]));
+        *fxz = Fdxdz * (
+            (f[p - 2 * sz - 2] - F8 * f[p - 2 * sz - 1] + F8 * f[p - 2 * sz + 1] - f[p - 2 * sz + 2])
+          - F8 * (f[p - sz - 2]     - F8 * f[p - sz - 1]     + F8 * f[p - sz + 1]     - f[p - sz + 2])
+          + F8 * (f[p + sz - 2]     - F8 * f[p + sz - 1]     + F8 * f[p + sz + 1]     - f[p + sz + 2])
+          -      (f[p + 2 * sz - 2] - F8 * f[p + 2 * sz - 1] + F8 * f[p + 2 * sz + 1] - f[p + 2 * sz + 2]));
+        *fyz = Fdydz * (
+            (f[p - 2 * sz - 2 * sy] - F8 * f[p - 2 * sz - sy] + F8 * f[p - 2 * sz + sy] - f[p - 2 * sz + 2 * sy])
+          - F8 * (f[p - sz - 2 * sy]     - F8 * f[p - sz - sy]     + F8 * f[p - sz + sy]     - f[p - sz + 2 * sy])
+          + F8 * (f[p + sz - 2 * sy]     - F8 * f[p + sz - sy]     + F8 * f[p + sz + sy]     - f[p + sz + 2 * sy])
+          -      (f[p + 2 * sz - 2 * sy] - F8 * f[p + 2 * sz - sy] + F8 * f[p + 2 * sz + sy] - f[p + 2 * sz + 2 * sy]));
+        return;
+    }
+
     const auto fh = [&](int ii, int jj, int kk) -> double {
+        if (ii >= 0 && ii < ex[0] && jj >= 0 && jj < ex[1] && kk >= 0 && kk < ex[2]) {
+            return f[ii + ex[0] * (jj + ex[1] * kk)];
+        }
         return d_symmetry_bd_1b(2, ex, f, ii + 1, jj + 1, kk + 1, SoA);
     };
     

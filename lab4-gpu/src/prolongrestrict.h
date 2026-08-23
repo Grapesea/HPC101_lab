@@ -81,6 +81,15 @@ void gpu_prolong3_launch(
     const double* SoA, int Symmetry
 );
 
+void gpu_prolong3_batch_launch(
+    cudaStream_t stream,
+    double* const* d_src_c, double* const* d_dst_f, const double* d_soa,
+    const double* llbc, const double* uubc, const int* extc,
+    const double* llbf, const double* uubf, const int* extf,
+    const double* llbt, const double* uubt,
+    int Symmetry, int nfields
+);
+
 void gpu_restrict3_launch(
     cudaStream_t stream,
     const double* d_src_f, double* d_dst_c,
@@ -88,6 +97,15 @@ void gpu_restrict3_launch(
     const double* llbf, const double* uubf, const int* extf,
     const double* llbt, const double* uubt,
     const double* SoA, int Symmetry
+);
+
+void gpu_restrict3_batch_launch(
+    cudaStream_t stream,
+    double* const* d_src_f, double* const* d_dst_c, const double* d_soa,
+    const double* llbc, const double* uubc, const int* extc,
+    const double* llbf, const double* uubf, const int* extf,
+    const double* llbt, const double* uubt,
+    int Symmetry, int nfields
 );
 #endif
 

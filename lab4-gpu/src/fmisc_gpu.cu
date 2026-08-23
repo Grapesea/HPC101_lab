@@ -84,6 +84,33 @@ __device__ void d_polin3_1b(
 	polint(x1a, ymtmp, x1, y, dy, ordn);
 }
 
+// All production interpolation calls use the fixed six-point stencil
+// (ORDN=2*ghost_width).  Neville interpolation first copies 216 values to a
+// thread-local cube and then repeatedly reduces it.  The equivalent tensor
+// product of one-dimensional Lagrange weights needs no cube: it keeps the
+// same stencil and symmetry mapping while substantially reducing local-memory
+// traffic on sm_80.
+__device__ __forceinline__ double lagrange_weight(double x, int i, int ordn) {
+    double weight = 1.0;
+#pragma unroll
+    for (int j = 0; j < MAX_ORDN; ++j) {
+        if (j < ordn && j != i) weight *= (x - (double)j) / (double)(i - j);
+    }
+    return weight;
+}
+
+__device__ __forceinline__ double interp_sample_1b(
+    const int ex[3], const double* f, int i1b, int j1b, int k1b,
+    const double SoA[3]
+) {
+    int i = i1b, j = j1b, k = k1b;
+    double factor = 1.0;
+    if (i <= 0) { i = 1 - i; factor *= SoA[0]; }
+    if (j <= 0) { j = 1 - j; factor *= SoA[1]; }
+    if (k <= 0) { k = 1 - k; factor *= SoA[2]; }
+    return f_at_1b(f, ex, i, j, k) * factor;
+}
+
 __device__ bool d_decide3d(
 	const int ex[3], const double* f, const double* fpi,
 	const int cxB[3], const int cxT[3], const double SoA[3],
@@ -197,22 +224,39 @@ __device__ void global_interp_device(
 	cx[1] = (cxB[1] > 0) ? (y1 - X_at_1b(Y, cxB[1])) / dY : (y1 + X_at_1b(Y, 1 - cxB[1])) / dY;
 	cx[2] = (cxB[2] > 0) ? (z1 - X_at_1b(Z, cxB[2])) / dZ : (z1 + X_at_1b(Z, 1 - cxB[2])) / dZ;
 
-	double ya[MAX_ORDN * MAX_ORDN * MAX_ORDN];
-	if (d_decide3d(ex, f, f, cxB, cxT, SoA, ya, ORDN, symmetry)) {
-#if GPU_DEBUG_PRINT
-        printf("global_interp position: %f %f %f\n", x1, y1, z1);
-        printf("data range: %f %f %f %f %f %f\n",
-               X_at_1b(X, 1), X_at_1b(X, ex[0]),
-               X_at_1b(Y, 1), X_at_1b(Y, ex[1]),
-               X_at_1b(Z, 1), X_at_1b(Z, ex[2]));
-#endif
-		f_int[0] = NAN;
-		gpu_stop();
-		return;
+	// cxB/cxT are clamped above, so every positive sample is inside ex; a
+	// non-positive index is the same equatorial reflection handled by
+	// d_decide3d().  Evaluate the separable polynomial directly instead of
+	// materialising its 6*6*6 input cube in local memory.
+	double wx[MAX_ORDN], wy[MAX_ORDN], wz[MAX_ORDN];
+#pragma unroll
+	for (int i = 0; i < MAX_ORDN; ++i) {
+		if (i < ORDN) {
+			wx[i] = lagrange_weight(cx[0], i, ORDN);
+			wy[i] = lagrange_weight(cx[1], i, ORDN);
+			wz[i] = lagrange_weight(cx[2], i, ORDN);
+		}
 	}
 
-	double ddy = 0.0;
-	d_polin3_1b(x1a, x1a, x1a, ya, cx[0], cx[1], cx[2], f_int[0], ddy, ORDN);
+	double xsum = 0.0;
+#pragma unroll
+	for (int i = 0; i < MAX_ORDN; ++i) {
+		if (i >= ORDN) break;
+		double ysum = 0.0;
+#pragma unroll
+		for (int j = 0; j < MAX_ORDN; ++j) {
+			if (j >= ORDN) break;
+			double zsum = 0.0;
+#pragma unroll
+			for (int k = 0; k < MAX_ORDN; ++k) {
+				if (k >= ORDN) break;
+				zsum += wz[k] * interp_sample_1b(ex, f, cxB[0] + i, cxB[1] + j, cxB[2] + k, SoA);
+			}
+			ysum += wy[j] * zsum;
+		}
+		xsum += wx[i] * ysum;
+	}
+	f_int[0] = xsum;
 }
 
 __device__ double d_symmetry_bd_1b(

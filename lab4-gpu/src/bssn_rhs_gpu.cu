@@ -11,6 +11,66 @@
 #include <device_launch_parameters.h>
 #include <iostream>
 
+// diff_new_gpu.cu and lopsidediff_gpu.cu use this small accessor only for
+// samples that cannot be proven in bounds.  They are included privately below
+// so keep the reflection code in the same compilation unit as the callers:
+// with RDC the ordinary d_symmetry_bd_1b call otherwise remains a device-call
+// boundary even though its body is just bounds/reflection/index arithmetic.
+// This is a literal 0-based transcription of fmisc_gpu.cu:d_symmetry_bd_1b;
+// no reflected value or sign rule is changed.
+__device__ __forceinline__ double rhs_inline_symmetry_bd_1b(
+    int ord, const int extc[3], const double* func,
+    int i1b, int j1b, int k1b, const double SoA[3]
+) {
+    if (i1b < -ord + 1 || i1b > extc[0] ||
+        j1b < -ord + 1 || j1b > extc[1] ||
+        k1b < -ord + 1 || k1b > extc[2]) {
+        return 0.0;
+    }
+    int ii = i1b, jj = j1b, kk = k1b;
+    double factor = 1.0;
+    if (ii <= 0) { ii = 1 - ii; factor *= SoA[0]; }
+    if (jj <= 0) { jj = 1 - jj; factor *= SoA[1]; }
+    if (kk <= 0) { kk = 1 - kk; factor *= SoA[2]; }
+    if (ii < 1 || ii > extc[0] ||
+        jj < 1 || jj > extc[1] ||
+        kk < 1 || kk > extc[2]) {
+        return 0.0;
+    }
+    return func[(ii - 1) + extc[0] * ((jj - 1) + extc[1] * (kk - 1))] * factor;
+}
+
+// The hot RHS calls the finite-difference helpers many times per point.  RDC
+// normally keeps those calls across translation units.  Make an RHS-private
+// copy here so ptxas can inline the interior fast paths without changing the
+// callable copies needed by the other CUDA kernels.
+#define d_symmetry_bd_1b rhs_inline_symmetry_bd_1b
+#define d_fderivs_point rhs_inline_fderivs_point
+#define d_fdderivs_point rhs_inline_fdderivs_point
+#define AMSS_DERIV_ATTR __device__ __forceinline__
+#include "diff_new_gpu.cu"
+#undef d_fderivs_point
+#undef d_fdderivs_point
+#undef AMSS_DERIV_ATTR
+
+#define d_fderivs_point rhs_inline_fderivs_point
+#define d_fdderivs_point rhs_inline_fdderivs_point
+
+// Boundary advection is split into small six-field kernels, so the original
+// RDC call to the per-field upwind stencil is now visible inline without
+// inflating the main physical RHS.  Keep the callable copy for other CUDA
+// translation units untouched.
+#define d_idx3d rhs_inline_lopsided_idx3d
+#define d_lopsided_point rhs_inline_lopsided_point
+#define AMSS_LOPSIDE_ATTR __device__ __forceinline__
+#include "lopsidediff_gpu.cu"
+#undef d_idx3d
+#undef d_lopsided_point
+#undef AMSS_LOPSIDE_ATTR
+#undef d_symmetry_bd_1b
+
+#define d_lopsided_point rhs_inline_lopsided_point
+
 // ==========================================
 // 宏定义 (对应 macrodef.fh 和 bssn_rhs.f90)
 // ==========================================
@@ -34,7 +94,340 @@ constexpr double eta = 2.0;
 constexpr double F8 = 8.0;
 constexpr double F16 = 16.0;
 
-__global__ void rhs_kernel(
+// This is the interior half of d_fderivs_point.  The RHS calls that helper
+// many times at the same grid point; selecting the common path once lets the
+// compiler reuse the point/stride setup instead of rebuilding it in every
+// derivative call.  Boundary points still call the complete symmetry-aware
+// helper below.
+__device__ __forceinline__ void rhs_fderivs_interior(
+    const double* f, int p, int sy, int sz,
+    double d12dx, double d12dy, double d12dz,
+    double* fx, double* fy, double* fz
+) {
+    *fx = d12dx * (f[p - 2] - EIGHT * f[p - 1] + EIGHT * f[p + 1] - f[p + 2]);
+    *fy = d12dy * (f[p - 2 * sy] - EIGHT * f[p - sy] + EIGHT * f[p + sy] - f[p + 2 * sy]);
+    *fz = d12dz * (f[p - 2 * sz] - EIGHT * f[p - sz] + EIGHT * f[p + sz] - f[p + 2 * sz]);
+}
+
+// Same idea for the six second derivatives.  d_fdderivs_point has an
+// interior fast path already, but the physical RHS invokes it eleven times at
+// one grid point.  Sharing the once-known point/strides/coefficients avoids
+// rebuilding that setup in every invocation.  The expression below is copied
+// verbatim from that interior branch; non-interior points still take the
+// original symmetry-aware routine.
+__device__ __forceinline__ void rhs_fdderivs_interior(
+    const double* f, int p, int sy, int sz,
+    double Fdxdx, double Fdydy, double Fdzdz,
+    double Fdxdy, double Fdxdz, double Fdydz,
+    double* fxx, double* fxy, double* fxz,
+    double* fyy, double* fyz, double* fzz
+) {
+    *fxx = Fdxdx * (-f[p - 2] + 16.0 * f[p - 1] - 30.0 * f[p]
+                     - f[p + 2] + 16.0 * f[p + 1]);
+    *fyy = Fdydy * (-f[p - 2 * sy] + 16.0 * f[p - sy] - 30.0 * f[p]
+                     - f[p + 2 * sy] + 16.0 * f[p + sy]);
+    *fzz = Fdzdz * (-f[p - 2 * sz] + 16.0 * f[p - sz] - 30.0 * f[p]
+                     - f[p + 2 * sz] + 16.0 * f[p + sz]);
+    *fxy = Fdxdy * (
+        (f[p - 2 * sy - 2] - 8.0 * f[p - 2 * sy - 1] + 8.0 * f[p - 2 * sy + 1] - f[p - 2 * sy + 2])
+      - 8.0 * (f[p - sy - 2]     - 8.0 * f[p - sy - 1]     + 8.0 * f[p - sy + 1]     - f[p - sy + 2])
+      + 8.0 * (f[p + sy - 2]     - 8.0 * f[p + sy - 1]     + 8.0 * f[p + sy + 1]     - f[p + sy + 2])
+      -        (f[p + 2 * sy - 2] - 8.0 * f[p + 2 * sy - 1] + 8.0 * f[p + 2 * sy + 1] - f[p + 2 * sy + 2]));
+    *fxz = Fdxdz * (
+        (f[p - 2 * sz - 2] - 8.0 * f[p - 2 * sz - 1] + 8.0 * f[p - 2 * sz + 1] - f[p - 2 * sz + 2])
+      - 8.0 * (f[p - sz - 2]     - 8.0 * f[p - sz - 1]     + 8.0 * f[p - sz + 1]     - f[p - sz + 2])
+      + 8.0 * (f[p + sz - 2]     - 8.0 * f[p + sz - 1]     + 8.0 * f[p + sz + 1]     - f[p + sz + 2])
+      -        (f[p + 2 * sz - 2] - 8.0 * f[p + 2 * sz - 1] + 8.0 * f[p + 2 * sz + 1] - f[p + 2 * sz + 2]));
+    *fyz = Fdydz * (
+        (f[p - 2 * sz - 2 * sy] - 8.0 * f[p - 2 * sz - sy] + 8.0 * f[p - 2 * sz + sy] - f[p - 2 * sz + 2 * sy])
+      - 8.0 * (f[p - sz - 2 * sy]     - 8.0 * f[p - sz - sy]     + 8.0 * f[p - sz + sy]     - f[p - sz + 2 * sy])
+      + 8.0 * (f[p + sz - 2 * sy]     - 8.0 * f[p + sz - sy]     + 8.0 * f[p + sz + sy]     - f[p + sz + 2 * sy])
+      -        (f[p + 2 * sz - 2 * sy] - 8.0 * f[p + 2 * sz - sy] + 8.0 * f[p + 2 * sz + sy] - f[p + 2 * sz + 2 * sy]));
+}
+
+__device__ __forceinline__ double rhs_lopsided_interior(
+    const double* f, int p, int sy, int sz,
+    double vx, double vy, double vz, double d12dx, double d12dy, double d12dz
+) {
+    double rhs_add = 0.0;
+    if (vx > 0.0) rhs_add += vx * d12dx * (-3.0 * f[p - 1] - 10.0 * f[p] + 18.0 * f[p + 1] - 6.0 * f[p + 2] + f[p + 3]);
+    else if (vx < 0.0) rhs_add -= vx * d12dx * (-3.0 * f[p + 1] - 10.0 * f[p] + 18.0 * f[p - 1] - 6.0 * f[p - 2] + f[p - 3]);
+    if (vy > 0.0) rhs_add += vy * d12dy * (-3.0 * f[p - sy] - 10.0 * f[p] + 18.0 * f[p + sy] - 6.0 * f[p + 2 * sy] + f[p + 3 * sy]);
+    else if (vy < 0.0) rhs_add -= vy * d12dy * (-3.0 * f[p + sy] - 10.0 * f[p] + 18.0 * f[p - sy] - 6.0 * f[p - 2 * sy] + f[p - 3 * sy]);
+    if (vz > 0.0) rhs_add += vz * d12dz * (-3.0 * f[p - sz] - 10.0 * f[p] + 18.0 * f[p + sz] - 6.0 * f[p + 2 * sz] + f[p + 3 * sz]);
+    else if (vz < 0.0) rhs_add -= vz * d12dz * (-3.0 * f[p + sz] - 10.0 * f[p] + 18.0 * f[p - sz] - 6.0 * f[p - 2 * sz] + f[p - 3 * sz]);
+    return rhs_add;
+}
+
+__device__ __forceinline__ double rhs_kodis_interior(
+    const double* f, int p, int sy, int sz, double dx, double dy, double dz, double eps
+) {
+    return eps / 64.0 * (
+        ((f[p - 3] + f[p + 3]) - 6.0 * (f[p - 2] + f[p + 2]) + 15.0 * (f[p - 1] + f[p + 1]) - 20.0 * f[p]) / dx +
+        ((f[p - 3 * sy] + f[p + 3 * sy]) - 6.0 * (f[p - 2 * sy] + f[p + 2 * sy]) + 15.0 * (f[p - sy] + f[p + sy]) - 20.0 * f[p]) / dy +
+        ((f[p - 3 * sz] + f[p + 3 * sz]) - 6.0 * (f[p - 2 * sz] + f[p + 2 * sz]) + 15.0 * (f[p - sz] + f[p + sz]) - 20.0 * f[p]) / dz
+    );
+}
+
+// The overwhelmingly common case needs only ordinary interior stencils.  It
+// deliberately has no reference to the symmetry helpers below, so its
+// register allocation is not constrained by the boundary fallback.
+__global__ __launch_bounds__(128, 7) void rhs_advection_interior_kernel(
+    int ex0, int ex1, int ex2,
+    const double* X, const double* Y, const double* Z,
+    const double* betax, const double* betay, const double* betaz,
+    const double* chi, double* chi_rhs, const double* trK, double* trK_rhs,
+    const double* dxx, double* gxx_rhs, const double* gxy, double* gxy_rhs,
+    const double* gxz, double* gxz_rhs, const double* dyy, double* gyy_rhs,
+    const double* gyz, double* gyz_rhs, const double* dzz, double* gzz_rhs,
+    const double* Axx, double* Axx_rhs, const double* Axy, double* Axy_rhs,
+    const double* Axz, double* Axz_rhs, const double* Ayy, double* Ayy_rhs,
+    const double* Ayz, double* Ayz_rhs, const double* Azz, double* Azz_rhs,
+    const double* Gamx, double* Gamx_rhs, const double* Gamy, double* Gamy_rhs,
+    const double* Gamz, double* Gamz_rhs, const double* Lap, double* Lap_rhs,
+    double* betax_rhs, double* betay_rhs, double* betaz_rhs,
+    const double* dtSfx, double* dtSfx_rhs, const double* dtSfy, double* dtSfy_rhs,
+    const double* dtSfz, double* dtSfz_rhs,
+    int symmetry, double eps
+) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const int j = blockIdx.y * blockDim.y + threadIdx.y;
+    const int k = blockIdx.z * blockDim.z + threadIdx.z;
+    if (i < 3 || i + 3 >= ex0 || j < 3 || j + 3 >= ex1 || k < 3 || k + 3 >= ex2) return;
+    const int idx = IDX3D(i, j, k, ex0, ex1, ex2);
+    const int sy = ex0;
+    const int sz = ex0 * ex1;
+    const double dx = X[1] - X[0];
+    const double dy = Y[1] - Y[0];
+    const double dz = Z[1] - Z[0];
+    const double vx = betax[idx], vy = betay[idx], vz = betaz[idx];
+    const double d12dx = 1.0 / 12.0 / dx;
+    const double d12dy = 1.0 / 12.0 / dy;
+    const double d12dz = 1.0 / 12.0 / dz;
+#define FAST_ADVECT_KO(field, rhs) do { \
+    (rhs)[idx] += rhs_lopsided_interior((field), idx, sy, sz, vx, vy, vz, d12dx, d12dy, d12dz); \
+    if (eps > 0.0) (rhs)[idx] += rhs_kodis_interior((field), idx, sy, sz, dx, dy, dz, eps); \
+} while (0)
+    FAST_ADVECT_KO(dxx, gxx_rhs); FAST_ADVECT_KO(gxy, gxy_rhs); FAST_ADVECT_KO(gxz, gxz_rhs);
+    FAST_ADVECT_KO(dyy, gyy_rhs); FAST_ADVECT_KO(gyz, gyz_rhs); FAST_ADVECT_KO(dzz, gzz_rhs);
+    FAST_ADVECT_KO(Axx, Axx_rhs); FAST_ADVECT_KO(Axy, Axy_rhs); FAST_ADVECT_KO(Axz, Axz_rhs);
+    FAST_ADVECT_KO(Ayy, Ayy_rhs); FAST_ADVECT_KO(Ayz, Ayz_rhs); FAST_ADVECT_KO(Azz, Azz_rhs);
+    FAST_ADVECT_KO(chi, chi_rhs); FAST_ADVECT_KO(trK, trK_rhs);
+    FAST_ADVECT_KO(Gamx, Gamx_rhs); FAST_ADVECT_KO(Gamy, Gamy_rhs); FAST_ADVECT_KO(Gamz, Gamz_rhs);
+    FAST_ADVECT_KO(Lap, Lap_rhs); FAST_ADVECT_KO(betax, betax_rhs); FAST_ADVECT_KO(betay, betay_rhs);
+    FAST_ADVECT_KO(betaz, betaz_rhs); FAST_ADVECT_KO(dtSfx, dtSfx_rhs); FAST_ADVECT_KO(dtSfy, dtSfy_rhs);
+    FAST_ADVECT_KO(dtSfz, dtSfz_rhs);
+#undef FAST_ADVECT_KO
+}
+
+// Keeping all 24 fields in one interior kernel leaves every field pointer in
+// the parameter/register set at once.  The stencil itself has no cross-field
+// dependency, so process six fields per launch: the shift and spacing are
+// reloaded a few times, but ptxas can keep far more resident warps for the
+// overwhelmingly larger per-field stencil work.  Boundary points still use
+// the single generic kernel below.
+__global__ __launch_bounds__(128, 8) void rhs_advection_interior_group_kernel(
+    int ex0, int ex1, int ex2,
+    const double* X, const double* Y, const double* Z,
+    const double* betax, const double* betay, const double* betaz,
+    const double* f0, double* rhs0, const double* f1, double* rhs1,
+    const double* f2, double* rhs2, const double* f3, double* rhs3,
+    const double* f4, double* rhs4, const double* f5, double* rhs5,
+    double eps
+) {
+    const int i = blockIdx.x * blockDim.x + threadIdx.x;
+    const int j = blockIdx.y * blockDim.y + threadIdx.y;
+    const int k = blockIdx.z * blockDim.z + threadIdx.z;
+    if (i < 3 || i + 3 >= ex0 || j < 3 || j + 3 >= ex1 || k < 3 || k + 3 >= ex2) return;
+    const int idx = IDX3D(i, j, k, ex0, ex1, ex2);
+    const int sy = ex0;
+    const int sz = ex0 * ex1;
+    const double dx = X[1] - X[0];
+    const double dy = Y[1] - Y[0];
+    const double dz = Z[1] - Z[0];
+    const double vx = betax[idx], vy = betay[idx], vz = betaz[idx];
+    const double d12dx = 1.0 / 12.0 / dx;
+    const double d12dy = 1.0 / 12.0 / dy;
+    const double d12dz = 1.0 / 12.0 / dz;
+#define FAST_ADVECT_KO(field, rhs) do { \
+    (rhs)[idx] += rhs_lopsided_interior((field), idx, sy, sz, vx, vy, vz, d12dx, d12dy, d12dz); \
+    if (eps > 0.0) (rhs)[idx] += rhs_kodis_interior((field), idx, sy, sz, dx, dy, dz, eps); \
+} while (0)
+    FAST_ADVECT_KO(f0, rhs0); FAST_ADVECT_KO(f1, rhs1); FAST_ADVECT_KO(f2, rhs2);
+    FAST_ADVECT_KO(f3, rhs3); FAST_ADVECT_KO(f4, rhs4); FAST_ADVECT_KO(f5, rhs5);
+#undef FAST_ADVECT_KO
+}
+
+// Map a compact one-dimensional boundary-shell launch to the original grid
+// coordinates.  The six slabs are disjoint: x faces keep full y/z, then y
+// faces exclude x faces, then z faces exclude both.  Reusing this mapping in
+// the per-field boundary kernels below avoids launching interior no-op work.
+__device__ __forceinline__ bool rhs_boundary_coord(
+    int ex0, int ex1, int ex2, int linear, int &i, int &j, int &k
+) {
+    const int total = ex0 * ex1 * ex2;
+    if (ex0 <= 6 || ex1 <= 6 || ex2 <= 6) {
+        if (linear >= total) return false;
+        i = linear % ex0;
+        j = (linear / ex0) % ex1;
+        k = linear / (ex0 * ex1);
+        return true;
+    }
+    const int x_slab = 3 * ex1 * ex2;
+    const int nx = ex0 - 6;
+    const int y_slab = nx * 3 * ex2;
+    const int ny = ex1 - 6;
+    const int z_slab = nx * ny * 3;
+    int q = linear;
+    if (q < x_slab) {
+        i = q / (ex1 * ex2);
+        q %= ex1 * ex2;
+        j = q % ex1;
+        k = q / ex1;
+    } else if ((q -= x_slab) < x_slab) {
+        i = ex0 - 3 + q / (ex1 * ex2);
+        q %= ex1 * ex2;
+        j = q % ex1;
+        k = q / ex1;
+    } else if ((q -= x_slab) < y_slab) {
+        i = 3 + q % nx;
+        j = (q / nx) % 3;
+        k = q / (nx * 3);
+    } else if ((q -= y_slab) < y_slab) {
+        i = 3 + q % nx;
+        j = ex1 - 3 + (q / nx) % 3;
+        k = q / (nx * 3);
+    } else if ((q -= y_slab) < z_slab) {
+        i = 3 + q % nx;
+        j = 3 + (q / nx) % ny;
+        k = q / (nx * ny);
+    } else if ((q -= z_slab) < z_slab) {
+        i = 3 + q % nx;
+        j = 3 + (q / nx) % ny;
+        k = ex2 - 3 + q / (nx * ny);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+// KO is independent of the field's symmetry signs until its seven-point box
+// is known to exist.  A compact three-cell boundary shell almost always
+// fails this test, so decide it once per point instead of making every field
+// rebuild the same spacing/symmetry state only to return zero.
+__device__ __forceinline__ bool rhs_kodis_available(
+    int ex0, int ex1, int ex2,
+    const double* X, const double* Y, const double* Z,
+    int symmetry, int i, int j, int k
+) {
+    const double dX = X[1] - X[0];
+    const double dY = Y[1] - Y[0];
+    const double dZ = Z[1] - Z[0];
+    int imin = 0, jmin = 0, kmin = 0;
+    if (symmetry > 0 && fabs(Z[0]) < dZ) kmin = -3;
+    if (symmetry == 2 && fabs(X[0]) < dX) imin = -3;
+    if (symmetry == 2 && fabs(Y[0]) < dY) jmin = -3;
+    return i - 3 >= imin && i + 3 < ex0 &&
+           j - 3 >= jmin && j + 3 < ex1 &&
+           k - 3 >= kmin && k + 3 < ex2;
+}
+
+// The physical RHS has already been stored before these upwind/KO additions.
+// Separating them avoids carrying 23 stencil-call live ranges through the
+// curvature/constraint calculation.  This is the small boundary fallback.
+__global__ __launch_bounds__(128, 4) void rhs_advection_kernel(
+    int ex0, int ex1, int ex2,
+    const double* X, const double* Y, const double* Z,
+    const double* betax, const double* betay, const double* betaz,
+    const double* chi, double* chi_rhs, const double* trK, double* trK_rhs,
+    const double* dxx, double* gxx_rhs, const double* gxy, double* gxy_rhs,
+    const double* gxz, double* gxz_rhs, const double* dyy, double* gyy_rhs,
+    const double* gyz, double* gyz_rhs, const double* dzz, double* gzz_rhs,
+    const double* Axx, double* Axx_rhs, const double* Axy, double* Axy_rhs,
+    const double* Axz, double* Axz_rhs, const double* Ayy, double* Ayy_rhs,
+    const double* Ayz, double* Ayz_rhs, const double* Azz, double* Azz_rhs,
+    const double* Gamx, double* Gamx_rhs, const double* Gamy, double* Gamy_rhs,
+    const double* Gamz, double* Gamz_rhs, const double* Lap, double* Lap_rhs,
+    double* betax_rhs, double* betay_rhs, double* betaz_rhs,
+    const double* dtSfx, double* dtSfx_rhs, const double* dtSfy, double* dtSfy_rhs,
+    const double* dtSfz, double* dtSfz_rhs,
+    int symmetry, double eps
+) {
+    // Only the three-cell shell reaches this generic path.  Launching the
+    // full volume merely to let interior threads return costs a third of the
+    // short-z patches.  Map a compact 1-D index to six disjoint slabs so
+    // every launched thread does a real boundary stencil.
+    const int linear = blockIdx.x * blockDim.x + threadIdx.x;
+    int i, j, k;
+    if (!rhs_boundary_coord(ex0, ex1, ex2, linear, i, j, k)) return;
+    const int dims[3] = {ex0, ex1, ex2};
+    const int idx = IDX3D(i, j, k, ex0, ex1, ex2);
+
+#define ADVECT_KO(field, rhs, sx, sy, sz) do { \
+    (rhs)[idx] += d_lopsided_point(dims, (field), (rhs), betax, betay, betaz, X, Y, Z, symmetry, (sx), (sy), (sz), i, j, k); \
+    if (eps > 0.0) (rhs)[idx] += d_kodis_point(dims, (field), X, Y, Z, (sx), (sy), (sz), symmetry, eps, i, j, k); \
+} while (0)
+    ADVECT_KO(dxx, gxx_rhs, SYM, SYM, SYM); ADVECT_KO(gxy, gxy_rhs, ANTI, ANTI, SYM);
+    ADVECT_KO(gxz, gxz_rhs, ANTI, SYM, ANTI); ADVECT_KO(dyy, gyy_rhs, SYM, SYM, SYM);
+    ADVECT_KO(gyz, gyz_rhs, SYM, ANTI, ANTI); ADVECT_KO(dzz, gzz_rhs, SYM, SYM, SYM);
+    ADVECT_KO(Axx, Axx_rhs, SYM, SYM, SYM); ADVECT_KO(Axy, Axy_rhs, ANTI, ANTI, SYM);
+    ADVECT_KO(Axz, Axz_rhs, ANTI, SYM, ANTI); ADVECT_KO(Ayy, Ayy_rhs, SYM, SYM, SYM);
+    ADVECT_KO(Ayz, Ayz_rhs, SYM, ANTI, ANTI); ADVECT_KO(Azz, Azz_rhs, SYM, SYM, SYM);
+    ADVECT_KO(chi, chi_rhs, SYM, SYM, SYM); ADVECT_KO(trK, trK_rhs, SYM, SYM, SYM);
+    ADVECT_KO(Gamx, Gamx_rhs, ANTI, SYM, SYM); ADVECT_KO(Gamy, Gamy_rhs, SYM, ANTI, SYM);
+    ADVECT_KO(Gamz, Gamz_rhs, SYM, SYM, ANTI); ADVECT_KO(Lap, Lap_rhs, SYM, SYM, SYM);
+    ADVECT_KO(betax, betax_rhs, ANTI, SYM, SYM); ADVECT_KO(betay, betay_rhs, SYM, ANTI, SYM);
+    ADVECT_KO(betaz, betaz_rhs, SYM, SYM, ANTI); ADVECT_KO(dtSfx, dtSfx_rhs, ANTI, SYM, SYM);
+    ADVECT_KO(dtSfy, dtSfy_rhs, SYM, ANTI, SYM); ADVECT_KO(dtSfz, dtSfz_rhs, SYM, SYM, ANTI);
+#undef ADVECT_KO
+}
+
+// The boundary fallback has no cross-field dependency.  Six fields per
+// launch keep the symmetry-correct stencil but avoid putting all 48 field/RHS
+// pointers in one register-constrained kernel.  GROUP is a compile-time
+// field family, so each instance keeps only its own SoA signs.
+template <int GROUP>
+__global__ __launch_bounds__(128, 5) void rhs_advection_boundary_group_kernel(
+    int ex0, int ex1, int ex2,
+    const double* X, const double* Y, const double* Z,
+    const double* betax, const double* betay, const double* betaz,
+    const double* f0, double* rhs0, const double* f1, double* rhs1,
+    const double* f2, double* rhs2, const double* f3, double* rhs3,
+    const double* f4, double* rhs4, const double* f5, double* rhs5,
+    int symmetry, double eps
+) {
+    const int linear = blockIdx.x * blockDim.x + threadIdx.x;
+    int i, j, k;
+    if (!rhs_boundary_coord(ex0, ex1, ex2, linear, i, j, k)) return;
+    const int dims[3] = {ex0, ex1, ex2};
+    const int idx = IDX3D(i, j, k, ex0, ex1, ex2);
+    const bool ko_available = eps > 0.0 &&
+        rhs_kodis_available(ex0, ex1, ex2, X, Y, Z, symmetry, i, j, k);
+#define GROUP_ADVECT(field, rhs, sx, sy, sz) do { \
+    (rhs)[idx] += d_lopsided_point(dims, (field), (rhs), betax, betay, betaz, X, Y, Z, symmetry, (sx), (sy), (sz), i, j, k); \
+    if (ko_available) (rhs)[idx] += d_kodis_point(dims, (field), X, Y, Z, (sx), (sy), (sz), symmetry, eps, i, j, k); \
+} while (0)
+    if (GROUP == 0 || GROUP == 1) {
+        GROUP_ADVECT(f0, rhs0, SYM, SYM, SYM); GROUP_ADVECT(f1, rhs1, ANTI, ANTI, SYM);
+        GROUP_ADVECT(f2, rhs2, ANTI, SYM, ANTI); GROUP_ADVECT(f3, rhs3, SYM, SYM, SYM);
+        GROUP_ADVECT(f4, rhs4, SYM, ANTI, ANTI); GROUP_ADVECT(f5, rhs5, SYM, SYM, SYM);
+    } else if (GROUP == 2) {
+        GROUP_ADVECT(f0, rhs0, SYM, SYM, SYM); GROUP_ADVECT(f1, rhs1, SYM, SYM, SYM);
+        GROUP_ADVECT(f2, rhs2, ANTI, SYM, SYM); GROUP_ADVECT(f3, rhs3, SYM, ANTI, SYM);
+        GROUP_ADVECT(f4, rhs4, SYM, SYM, ANTI); GROUP_ADVECT(f5, rhs5, SYM, SYM, SYM);
+    } else {
+        GROUP_ADVECT(f0, rhs0, ANTI, SYM, SYM); GROUP_ADVECT(f1, rhs1, SYM, ANTI, SYM);
+        GROUP_ADVECT(f2, rhs2, SYM, SYM, ANTI); GROUP_ADVECT(f3, rhs3, ANTI, SYM, SYM);
+        GROUP_ADVECT(f4, rhs4, SYM, ANTI, SYM); GROUP_ADVECT(f5, rhs5, SYM, SYM, ANTI);
+    }
+#undef GROUP_ADVECT
+}
+
+// The RHS has a high live-register count on sm_80.  Keeping at least four
+// 128-thread blocks resident gives ptxas a concrete spill/occupancy trade-off
+// instead of accepting the default one-block (12.5%) occupancy.
+template <bool COMPUTE_CONSTRAINTS>
+__global__ __launch_bounds__(128, 3) void rhs_kernel(
     int ex0, int ex1, int ex2, double T, double* X, double* Y, double* Z,
     double* chi, double* trK,
     double* dxx, double* gxy, double* gxz,
@@ -67,7 +460,7 @@ __global__ void rhs_kernel(
     double* Ryy, double* Ryz, double* Rzz,
     double* ham_Res, double* movx_Res, double* movy_Res, double* movz_Res,
     double* Gmx_Res, double* Gmy_Res, double* Gmz_Res,
-    int symmetry, int lev, double eps, int co
+    int symmetry, int lev, double eps
 ) {
     // ------------------------------------------------------------------------------------
     // bssn_derivatives_kernel
@@ -83,6 +476,41 @@ __global__ void rhs_kernel(
 
     int idx = IDX3D(i, j, k, ex0, ex1, ex2);
     int dims[3] = {ex0, ex1, ex2}; // 用于传给 device 函数
+    const bool rhs_fast_interior =
+        i >= 2 && i + 2 < ex0 && j >= 2 && j + 2 < ex1 && k >= 2 && k + 2 < ex2;
+    const int rhs_sy = ex0;
+    const int rhs_sz = ex0 * ex1;
+    const double rhs_dx = X[1] - X[0];
+    const double rhs_dy = Y[1] - Y[0];
+    const double rhs_dz = Z[1] - Z[0];
+    const double rhs_d12dx = 1.0 / (12.0 * rhs_dx);
+    const double rhs_d12dy = 1.0 / (12.0 * rhs_dy);
+    const double rhs_d12dz = 1.0 / (12.0 * rhs_dz);
+    const double rhs_Fdxdx = (1.0 / 12.0) / (rhs_dx * rhs_dx);
+    const double rhs_Fdydy = (1.0 / 12.0) / (rhs_dy * rhs_dy);
+    const double rhs_Fdzdz = (1.0 / 12.0) / (rhs_dz * rhs_dz);
+    const double rhs_Fdxdy = (1.0 / 144.0) / (rhs_dx * rhs_dy);
+    const double rhs_Fdxdz = (1.0 / 144.0) / (rhs_dx * rhs_dz);
+    const double rhs_Fdydz = (1.0 / 144.0) / (rhs_dy * rhs_dz);
+
+#define RHS_FDERIVS(field, fx, fy, fz, sx, sy, sz) do { \
+    if (rhs_fast_interior) { \
+        rhs_fderivs_interior((field), idx, rhs_sy, rhs_sz, rhs_d12dx, rhs_d12dy, rhs_d12dz, (fx), (fy), (fz)); \
+    } else { \
+        d_fderivs_point(dims, (field), (fx), (fy), (fz), X, Y, Z, (sx), (sy), (sz), symmetry, lev, i, j, k); \
+    } \
+} while (0)
+
+#define RHS_FDDERIVS(field, fxx, fxy, fxz, fyy, fyz, fzz, sx, sy, sz) do { \
+    if (rhs_fast_interior) { \
+        rhs_fdderivs_interior((field), idx, rhs_sy, rhs_sz, \
+            rhs_Fdxdx, rhs_Fdydy, rhs_Fdzdz, rhs_Fdxdy, rhs_Fdxdz, rhs_Fdydz, \
+            (fxx), (fxy), (fxz), (fyy), (fyz), (fzz)); \
+    } else { \
+        d_fdderivs_point(dims, (field), (fxx), (fxy), (fxz), (fyy), (fyz), (fzz), \
+            X, Y, Z, (sx), (sy), (sz), symmetry, lev, i, j, k); \
+    } \
+} while (0)
 
     // ==========================================
     // 1. 读取基础变量并进行代数变换
@@ -92,6 +520,11 @@ __global__ void rhs_kernel(
     double val_chi = chi[idx];
     double alpn1 = val_Lap + ONE;
     double chin1 = val_chi + ONE;
+    // The BSSN core uses the same conformal-factor denominator repeatedly.
+    // One IEEE double division plus multiplies is both algebraically
+    // equivalent and much cheaper than issuing the identical division at
+    // every tensor component.
+    const double inv_chin1 = ONE / chin1;
 
     // Metric (dxx 是偏差量，gxx 是物理量 gxx = dxx + 1)
     double val_gxx = dxx[idx] + ONE;
@@ -114,9 +547,9 @@ __global__ void rhs_kernel(
     double betayx, betayy, betayz;
     double betazx, betazy, betazz;
 
-    d_fderivs_point(dims, betax, &betaxx, &betaxy, &betaxz, X, Y, Z, ANTI, SYM, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, betay, &betayx, &betayy, &betayz, X, Y, Z, SYM, ANTI, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, betaz, &betazx, &betazy, &betazz, X, Y, Z, SYM, SYM, ANTI, symmetry, lev, i, j, k);
+    RHS_FDERIVS(betax, &betaxx, &betaxy, &betaxz, ANTI, SYM, SYM);
+    RHS_FDERIVS(betay, &betayx, &betayy, &betayz, SYM, ANTI, SYM);
+    RHS_FDERIVS(betaz, &betazx, &betazy, &betazz, SYM, SYM, ANTI);
 
     double div_beta = betaxx + betayy + betazz;
 
@@ -128,7 +561,7 @@ __global__ void rhs_kernel(
     // 3. 计算 Chi 的导数与 RHS
     // ==========================================
     double chix, chiy, chiz;
-    d_fderivs_point(dims, chi, &chix, &chiy, &chiz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDERIVS(chi, &chix, &chiy, &chiz, SYM, SYM, SYM);
 
     chi_rhs[idx] = F2o3 * chin1 * (alpn1 * val_trK - div_beta);
     
@@ -144,12 +577,12 @@ __global__ void rhs_kernel(
     double gyzx, gyzy, gyzz;
     double gzzx, gzzy, gzzz;
 
-    d_fderivs_point(dims, dxx, &gxxx, &gxxy, &gxxz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, gxy, &gxyx, &gxyy, &gxyz, X, Y, Z, ANTI, ANTI, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, gxz, &gxzx, &gxzy, &gxzz, X, Y, Z, ANTI, SYM, ANTI, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, dyy, &gyyx, &gyyy, &gyyz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, gyz, &gyzx, &gyzy, &gyzz, X, Y, Z, SYM, ANTI, ANTI, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, dzz, &gzzx, &gzzy, &gzzz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDERIVS(dxx, &gxxx, &gxxy, &gxxz, SYM, SYM, SYM);
+    RHS_FDERIVS(gxy, &gxyx, &gxyy, &gxyz, ANTI, ANTI, SYM);
+    RHS_FDERIVS(gxz, &gxzx, &gxzy, &gxzz, ANTI, SYM, ANTI);
+    RHS_FDERIVS(dyy, &gyyx, &gyyy, &gyyz, SYM, SYM, SYM);
+    RHS_FDERIVS(gyz, &gyzx, &gyzy, &gyzz, SYM, ANTI, ANTI);
+    RHS_FDERIVS(dzz, &gzzx, &gzzy, &gzzz, SYM, SYM, SYM);
 
     // gxxx_out[idx] = gxxx; gxxy_out[idx] = gxxy; gxxz_out[idx] = gxxz;
     // gxyx_out[idx] = gxyx; gxyy_out[idx] = gxyy; gxyz_out[idx] = gxyz;
@@ -200,9 +633,9 @@ __global__ void rhs_kernel(
     // gupyy_out[idx] = gupyy; gupyz_out[idx] = gupyz; gupzz_out[idx] = gupzz;
 
     // ==========================================
-    // 7. 计算连接系数残差 (仅 co == 0)
+    // 7. 计算连接系数残差（只在输出 constraint 的专用实例中保留）
     // ==========================================
-    if (co == 0) {
+    if (COMPUTE_CONSTRAINTS) {
         // Gmx_Res
         double term_x = gupxx*(gupxx*gxxx+gupxy*gxyx+gupxz*gxzx)
                       + gupxy*(gupxx*gxyx+gupxy*gyyx+gupxz*gyzx)
@@ -340,8 +773,8 @@ __global__ void rhs_kernel(
     // Step 2: 计算 Gam^i_rhs (Part 1: No shift)
     // ==========================================
     double Lapx, Lapy, Lapz, Kx, Ky, Kz;
-    d_fderivs_point(dims, Lap, &Lapx, &Lapy, &Lapz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, trK, &Kx, &Ky, &Kz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDERIVS(Lap, &Lapx, &Lapy, &Lapz, SYM, SYM, SYM);
+    RHS_FDERIVS(trK, &Kx, &Ky, &Kz, SYM, SYM, SYM);
 
     // double chix = chix_in[idx]; double chiy = chiy_in[idx]; double chiz = chiz_in[idx];
     double val_Sx = Sx[idx]; double val_Sy = Sy[idx]; double val_Sz = Sz[idx];
@@ -349,7 +782,7 @@ __global__ void rhs_kernel(
     // Gamx_rhs
     double val_Gamx_rhs = - TWO * (Lapx * l_Rxx + Lapy * l_Rxy + Lapz * l_Rxz) + 
         TWO * alpn1 * (
-        -F3o2/chin1 * (chix * l_Rxx + chiy * l_Rxy + chiz * l_Rxz) - 
+        -F3o2 * inv_chin1 * (chix * l_Rxx + chiy * l_Rxy + chiz * l_Rxz) -
         gupxx * (F2o3 * Kx + EIGHT * PI * val_Sx) - 
         gupxy * (F2o3 * Ky + EIGHT * PI * val_Sy) - 
         gupxz * (F2o3 * Kz + EIGHT * PI * val_Sz) + 
@@ -359,7 +792,7 @@ __global__ void rhs_kernel(
     // Gamy_rhs
     double val_Gamy_rhs = - TWO * (Lapx * l_Rxy + Lapy * l_Ryy + Lapz * l_Ryz) + 
         TWO * alpn1 * (
-        -F3o2/chin1 * (chix * l_Rxy + chiy * l_Ryy + chiz * l_Ryz) - 
+        -F3o2 * inv_chin1 * (chix * l_Rxy + chiy * l_Ryy + chiz * l_Ryz) -
         gupxy * (F2o3 * Kx + EIGHT * PI * val_Sx) - 
         gupyy * (F2o3 * Ky + EIGHT * PI * val_Sy) - 
         gupyz * (F2o3 * Kz + EIGHT * PI * val_Sz) + 
@@ -369,7 +802,7 @@ __global__ void rhs_kernel(
     // Gamz_rhs
     double val_Gamz_rhs = - TWO * (Lapx * l_Rxz + Lapy * l_Ryz + Lapz * l_Rzz) + 
         TWO * alpn1 * (
-        -F3o2/chin1 * (chix * l_Rxz + chiy * l_Ryz + chiz * l_Rzz) - 
+        -F3o2 * inv_chin1 * (chix * l_Rxz + chiy * l_Ryz + chiz * l_Rzz) -
         gupxz * (F2o3 * Kx + EIGHT * PI * val_Sx) - 
         gupyz * (F2o3 * Ky + EIGHT * PI * val_Sy) - 
         gupzz * (F2o3 * Kz + EIGHT * PI * val_Sz) + 
@@ -379,18 +812,18 @@ __global__ void rhs_kernel(
     
     // betax 二阶导
     double bx_gxxx, bx_gxyx, bx_gxzx, bx_gyyx, bx_gyzx, bx_gzzx;
-    d_fdderivs_point(dims, betax, &bx_gxxx, &bx_gxyx, &bx_gxzx, &bx_gyyx, &bx_gyzx, &bx_gzzx,
-                     X, Y, Z, ANTI, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(betax, &bx_gxxx, &bx_gxyx, &bx_gxzx, &bx_gyyx, &bx_gyzx, &bx_gzzx,
+                  ANTI, SYM, SYM);
 
     // betay 二阶导
     double by_gxxy, by_gxyy, by_gxzy, by_gyyy, by_gyzy, by_gzzy;
-    d_fdderivs_point(dims, betay, &by_gxxy, &by_gxyy, &by_gxzy, &by_gyyy, &by_gyzy, &by_gzzy,
-                     X, Y, Z, SYM, ANTI, SYM, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(betay, &by_gxxy, &by_gxyy, &by_gxzy, &by_gyyy, &by_gyzy, &by_gzzy,
+                  SYM, ANTI, SYM);
 
     // betaz 二阶导
     double bz_gxxz, bz_gxyz, bz_gxzz, bz_gyyz, bz_gyzz, bz_gzzz;
-    d_fdderivs_point(dims, betaz, &bz_gxxz, &bz_gxyz, &bz_gxzz, &bz_gyyz, &bz_gyzz, &bz_gzzz,
-                     X, Y, Z, SYM, SYM, ANTI, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(betaz, &bz_gxxz, &bz_gxyz, &bz_gxzz, &bz_gyyz, &bz_gyzz, &bz_gzzz,
+                  SYM, SYM, ANTI);
 
     double fxx, fxy, fxz, fyy, fyz, fzz;
 
@@ -409,9 +842,9 @@ __global__ void rhs_kernel(
     double dGamxx, dGamxy, dGamxz;
     double dGamyx, dGamyy, dGamyz;
     double dGamzx, dGamzy, dGamzz;
-    d_fderivs_point(dims, Gamx, &dGamxx, &dGamxy, &dGamxz, X, Y, Z, ANTI, SYM, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, Gamy, &dGamyx, &dGamyy, &dGamyz, X, Y, Z, SYM, ANTI, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, Gamz, &dGamzx, &dGamzy, &dGamzz, X, Y, Z, SYM, SYM, ANTI, symmetry, lev, i, j, k);
+    RHS_FDERIVS(Gamx, &dGamxx, &dGamxy, &dGamxz, ANTI, SYM, SYM);
+    RHS_FDERIVS(Gamy, &dGamyx, &dGamyy, &dGamyz, SYM, ANTI, SYM);
+    RHS_FDERIVS(Gamz, &dGamzx, &dGamzy, &dGamzz, SYM, SYM, ANTI);
 
     // double betaxx, betaxy, betaxz, betayx, betayy, betayz, betazx, betazy, betazz;
     // d_fderivs_point(dims, betax, &betaxx, &betaxy, &betaxz, X, Y, Z, ANTI, SYM, SYM, symmetry, lev, i, j, k);
@@ -465,26 +898,26 @@ __global__ void rhs_kernel(
     gzzz = l_gxz * l_Gamxzz + l_gyz * l_Gamyzz + l_gzz * l_Gamzzz;
     
     // Rxx
-    d_fdderivs_point(dims, dxx, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(dxx, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, SYM, SYM, SYM);
     l_Rxx = gupxx * fxx + gupyy * fyy + gupzz * fzz + (gupxy * fxy + gupxz * fxz + gupyz * fyz) * TWO;
     // Ryy
-    d_fdderivs_point(dims, dyy, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(dyy, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, SYM, SYM, SYM);
     l_Ryy = gupxx * fxx + gupyy * fyy + gupzz * fzz + (gupxy * fxy + gupxz * fxz + gupyz * fyz) * TWO;
 
     // Rzz
-    d_fdderivs_point(dims, dzz, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(dzz, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, SYM, SYM, SYM);
     l_Rzz = gupxx * fxx + gupyy * fyy + gupzz * fzz + (gupxy * fxy + gupxz * fxz + gupyz * fyz) * TWO;
 
     // Rxy
-    d_fdderivs_point(dims, gxy, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, X, Y, Z, ANTI, ANTI, SYM, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(gxy, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, ANTI, ANTI, SYM);
     l_Rxy = gupxx * fxx + gupyy * fyy + gupzz * fzz + (gupxy * fxy + gupxz * fxz + gupyz * fyz) * TWO;
 
     // Rxz
-    d_fdderivs_point(dims, gxz, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, X, Y, Z, ANTI, SYM, ANTI, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(gxz, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, ANTI, SYM, ANTI);
     l_Rxz = gupxx * fxx + gupyy * fyy + gupzz * fzz + (gupxy * fxy + gupxz * fxz + gupyz * fyz) * TWO;
 
     // Ryz
-    d_fdderivs_point(dims, gyz, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, X, Y, Z, SYM, ANTI, ANTI, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(gyz, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, SYM, ANTI, ANTI);
     l_Ryz = gupxx * fxx + gupyy * fyy + gupzz * fzz + (gupxy * fxy + gupxz * fxz + gupyz * fyz) * TWO;
 
     // ==========================================
@@ -570,7 +1003,7 @@ __global__ void rhs_kernel(
     // ==========================================
     // Step 6: Chi 二阶导数与 Ricci 修正
     // ==========================================
-    d_fdderivs_point(dims, chi, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(chi, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, SYM, SYM, SYM);
     
     // 协变导数修正
     fxx -= l_Gamxxx * chix + l_Gamyxx * chiy + l_Gamzxx * chiz;
@@ -580,51 +1013,51 @@ __global__ void rhs_kernel(
     fyz -= l_Gamxyz * chix + l_Gamyyz * chiy + l_Gamzyz * chiz;
     fzz -= l_Gamxzz * chix + l_Gamyzz * chiy + l_Gamzzz * chiz;
 
-    double f_scalar = gupxx * (fxx - F3o2/chin1 * chix * chix) + 
-                      gupyy * (fyy - F3o2/chin1 * chiy * chiy) + 
-                      gupzz * (fzz - F3o2/chin1 * chiz * chiz) + 
-                      TWO * (gupxy * (fxy - F3o2/chin1 * chix * chiy) + 
-                             gupxz * (fxz - F3o2/chin1 * chix * chiz) + 
-                             gupyz * (fyz - F3o2/chin1 * chiy * chiz));
+    double f_scalar = gupxx * (fxx - F3o2 * inv_chin1 * chix * chix) +
+                      gupyy * (fyy - F3o2 * inv_chin1 * chiy * chiy) +
+                      gupzz * (fzz - F3o2 * inv_chin1 * chiz * chiz) +
+                      TWO * (gupxy * (fxy - F3o2 * inv_chin1 * chix * chiy) +
+                             gupxz * (fxz - F3o2 * inv_chin1 * chix * chiz) +
+                             gupyz * (fyz - F3o2 * inv_chin1 * chiy * chiz));
     
     // Add to Ricci
-    l_Rxx += (fxx - chix*chix/chin1/TWO + l_gxx * f_scalar)/chin1/TWO;
-    l_Ryy += (fyy - chiy*chiy/chin1/TWO + l_gyy * f_scalar)/chin1/TWO;
-    l_Rzz += (fzz - chiz*chiz/chin1/TWO + l_gzz * f_scalar)/chin1/TWO;
-    l_Rxy += (fxy - chix*chiy/chin1/TWO + l_gxy * f_scalar)/chin1/TWO;
-    l_Rxz += (fxz - chix*chiz/chin1/TWO + l_gxz * f_scalar)/chin1/TWO;
-    l_Ryz += (fyz - chiy*chiz/chin1/TWO + l_gyz * f_scalar)/chin1/TWO;
+    l_Rxx += (fxx - chix * chix * inv_chin1 * HALF + l_gxx * f_scalar) * inv_chin1 * HALF;
+    l_Ryy += (fyy - chiy * chiy * inv_chin1 * HALF + l_gyy * f_scalar) * inv_chin1 * HALF;
+    l_Rzz += (fzz - chiz * chiz * inv_chin1 * HALF + l_gzz * f_scalar) * inv_chin1 * HALF;
+    l_Rxy += (fxy - chix * chiy * inv_chin1 * HALF + l_gxy * f_scalar) * inv_chin1 * HALF;
+    l_Rxz += (fxz - chix * chiz * inv_chin1 * HALF + l_gxz * f_scalar) * inv_chin1 * HALF;
+    l_Ryz += (fyz - chiy * chiz * inv_chin1 * HALF + l_gyz * f_scalar) * inv_chin1 * HALF;
 
     // ==========================================
     // Step 7: Lapse 二阶导数 & trK_rhs
     // ==========================================
-    d_fdderivs_point(dims, Lap, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDDERIVS(Lap, &fxx, &fxy, &fxz, &fyy, &fyz, &fzz, SYM, SYM, SYM);
 
     // 计算物理连接系数 (暂存到 Gam 数组中以节省寄存器，最后会写回 Global)
-    double gx_phy = (gupxx * chix + gupxy * chiy + gupxz * chiz)/chin1;
-    double gy_phy = (gupxy * chix + gupyy * chiy + gupyz * chiz)/chin1;
-    double gz_phy = (gupxz * chix + gupyz * chiy + gupzz * chiz)/chin1;
+    double gx_phy = (gupxx * chix + gupxy * chiy + gupxz * chiz) * inv_chin1;
+    double gy_phy = (gupxy * chix + gupyy * chiy + gupyz * chiz) * inv_chin1;
+    double gz_phy = (gupxz * chix + gupyz * chiy + gupzz * chiz) * inv_chin1;
     
     // 更新为物理连接系数 (对应 Fortran 241-258)
-    l_Gamxxx -= ((chix + chix)/chin1 - l_gxx * gx_phy)*HALF; // l_Gamxxx = l_Gamxxx;
+    l_Gamxxx -= ((chix + chix) * inv_chin1 - l_gxx * gx_phy)*HALF; // l_Gamxxx = l_Gamxxx;
     l_Gamyxx -= (                            - l_gxx * gy_phy)*HALF; // l_Gamyxx = l_Gamyxx;
     l_Gamzxx -= (                            - l_gxx * gz_phy)*HALF; // l_Gamzxx = l_Gamzxx;
     l_Gamxyy -= (                            - l_gyy * gx_phy)*HALF; // l_Gamxyy = l_Gamxyy;
-    l_Gamyyy -= ((chiy + chiy)/chin1 - l_gyy * gy_phy)*HALF; // l_Gamyyy = l_Gamyyy;
+    l_Gamyyy -= ((chiy + chiy) * inv_chin1 - l_gyy * gy_phy)*HALF; // l_Gamyyy = l_Gamyyy;
     l_Gamzyy -= (                            - l_gyy * gz_phy)*HALF; // l_Gamzyy = l_Gamzyy;
     l_Gamxzz -= (                            - l_gzz * gx_phy)*HALF; // l_Gamxzz = l_Gamxzz;
     l_Gamyzz -= (                            - l_gzz * gy_phy)*HALF; // l_Gamyzz = l_Gamyzz;
-    l_Gamzzz -= ((chiz + chiz)/chin1 - l_gzz * gz_phy)*HALF; // l_Gamzzz = l_Gamzzz;
+    l_Gamzzz -= ((chiz + chiz) * inv_chin1 - l_gzz * gz_phy)*HALF; // l_Gamzzz = l_Gamzzz;
 
-    l_Gamxxy -= (chiy/chin1 - l_gxy * gx_phy)*HALF; // l_Gamxxy = l_Gamxxy;
-    l_Gamyxy -= (chix/chin1 - l_gxy * gy_phy)*HALF; // l_Gamyxy = l_Gamyxy;
+    l_Gamxxy -= (chiy * inv_chin1 - l_gxy * gx_phy)*HALF; // l_Gamxxy = l_Gamxxy;
+    l_Gamyxy -= (chix * inv_chin1 - l_gxy * gy_phy)*HALF; // l_Gamyxy = l_Gamyxy;
     l_Gamzxy -= (                 - l_gxy * gz_phy)*HALF; // l_Gamzxy = l_Gamzxy;
-    l_Gamxxz -= (chiz/chin1 - l_gxz * gx_phy)*HALF; // l_Gamxxz = l_Gamxxz;
+    l_Gamxxz -= (chiz * inv_chin1 - l_gxz * gx_phy)*HALF; // l_Gamxxz = l_Gamxxz;
     l_Gamyxz -= (                 - l_gxz * gy_phy)*HALF; // l_Gamyxz = l_Gamyxz;
-    l_Gamzxz -= (chix/chin1 - l_gxz * gz_phy)*HALF; // l_Gamzxz = l_Gamzxz;
+    l_Gamzxz -= (chix * inv_chin1 - l_gxz * gz_phy)*HALF; // l_Gamzxz = l_Gamzxz;
     l_Gamxyz -= (                 - l_gyz * gx_phy)*HALF; // l_Gamxyz = l_Gamxyz;
-    l_Gamyyz -= (chiz/chin1 - l_gyz * gy_phy)*HALF; // l_Gamyyz = l_Gamyyz;
-    l_Gamzyz -= (chiy/chin1 - l_gyz * gz_phy)*HALF; // l_Gamzyz = l_Gamzyz;
+    l_Gamyyz -= (chiz * inv_chin1 - l_gyz * gy_phy)*HALF; // l_Gamyyz = l_Gamyyz;
+    l_Gamzyz -= (chiy * inv_chin1 - l_gyz * gz_phy)*HALF; // l_Gamzyz = l_Gamzyz;
 
     // Lapse 的协变导数 D_i D_j alpha
     fxx = fxx - l_Gamxxx*Lapx - l_Gamyxx*Lapy - l_Gamzxx*Lapz;
@@ -652,7 +1085,7 @@ __global__ void rhs_kernel(
     double trA2 = gupxx * term_xx + gupyy * term_yy + gupzz * term_zz + TWO * (gupxy * term_xy + gupxz * term_xz + gupyz * term_yz);
 
     double f = F2o3 * val_trK * val_trK - trA2 - F16*PI*rho[idx] + EIGHT*PI*S;
-    double f_trace = -F1o3 * (trK_rhs_val + alpn1/chin1 * f);
+    double f_trace = -F1o3 * (trK_rhs_val + alpn1 * inv_chin1 * f);
 
     // 计算 Aij 源项
     double src_xx = alpn1 * (l_Rxx - EIGHT*PI*Sxx[idx]) - fxx; // fxx is D_i D_j Lap
@@ -706,6 +1139,7 @@ __global__ void rhs_kernel(
     // Rxx[idx] = l_Rxx; Ryy[idx] = l_Ryy; Rzz[idx] = l_Rzz;
     // Rxy[idx] = l_Rxy; Rxz[idx] = l_Rxz; Ryz[idx] = l_Ryz;
 
+    if (false) {
     // ------------------------------------------------------------------------------------
     // bssn_advection_dissipation_kernel
     // ------------------------------------------------------------------------------------
@@ -845,11 +1279,12 @@ __global__ void rhs_kernel(
     dtSfz_rhs[idx] += d_lopsided_point(dims, dtSfz, dtSfz_rhs, betax, betay, betaz, X, Y, Z, symmetry, SYM, SYM, ANTI, i, j, k);
     if (eps > 0.0) dtSfz_rhs[idx] += d_kodis_point(dims, dtSfz, X, Y, Z, SYM, SYM, ANTI, symmetry, eps, i, j, k);
 
+    }
     // ------------------------------------------------------------------------------------
     // bssn_constraints_kernel
     // ------------------------------------------------------------------------------------
 
-    if (co != 0) return;
+    if (!COMPUTE_CONSTRAINTS) return;
 
     // ==========================================
     // 0. 加载数据
@@ -894,7 +1329,7 @@ __global__ void rhs_kernel(
 
     // 需要 trK 的导数
     // double Kx, Ky, Kz;
-    d_fderivs_point(dims, trK, &Kx, &Ky, &Kz, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDERIVS(trK, &Kx, &Ky, &Kz, SYM, SYM, SYM);
 
     // 需要 Aij 的导数 (Fortran calls fderivs 6 times)
     // 为了节省寄存器和避免创建大数组，我们分量计算并直接应用 Covariant 修正
@@ -912,12 +1347,12 @@ __global__ void rhs_kernel(
     double d_Ayy_x, d_Ayy_y, d_Ayy_z;
     double d_Ayz_x, d_Ayz_y, d_Ayz_z;
     double d_Azz_x, d_Azz_y, d_Azz_z;
-    d_fderivs_point(dims, Axx, &d_Axx_x, &d_Axx_y, &d_Axx_z, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, Axy, &d_Axy_x, &d_Axy_y, &d_Axy_z, X, Y, Z, ANTI, ANTI, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, Axz, &d_Axz_x, &d_Axz_y, &d_Axz_z, X, Y, Z, ANTI, SYM, ANTI, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, Ayy, &d_Ayy_x, &d_Ayy_y, &d_Ayy_z, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, Ayz, &d_Ayz_x, &d_Ayz_y, &d_Ayz_z, X, Y, Z, SYM, ANTI, ANTI, symmetry, lev, i, j, k);
-    d_fderivs_point(dims, Azz, &d_Azz_x, &d_Azz_y, &d_Azz_z, X, Y, Z, SYM, SYM, SYM, symmetry, lev, i, j, k);
+    RHS_FDERIVS(Axx, &d_Axx_x, &d_Axx_y, &d_Axx_z, SYM, SYM, SYM);
+    RHS_FDERIVS(Axy, &d_Axy_x, &d_Axy_y, &d_Axy_z, ANTI, ANTI, SYM);
+    RHS_FDERIVS(Axz, &d_Axz_x, &d_Axz_y, &d_Axz_z, ANTI, SYM, ANTI);
+    RHS_FDERIVS(Ayy, &d_Ayy_x, &d_Ayy_y, &d_Ayy_z, SYM, SYM, SYM);
+    RHS_FDERIVS(Ayz, &d_Ayz_x, &d_Ayz_y, &d_Ayz_z, SYM, ANTI, ANTI);
+    RHS_FDERIVS(Azz, &d_Azz_x, &d_Azz_y, &d_Azz_z, SYM, SYM, SYM);
 
 
     double DA_xxx = d_Axx_x - (l_Gamxxx * l_Axx + l_Gamyxx * l_Axy + l_Gamzxx * l_Axz 
@@ -994,6 +1429,12 @@ __global__ void rhs_kernel(
     movz_Res[idx] = movz_Res[idx] - F2o3 * Kz - F8 * PI * Sz[idx];
 }
 
+#undef RHS_FDERIVS
+#undef RHS_FDDERIVS
+#undef d_lopsided_point
+#undef d_fderivs_point
+#undef d_fdderivs_point
+
 void gpu_compute_rhs_bssn_launch( // launch kernel with device pointers
     cudaStream_t &stream,
     int* ex, double T, double* d_X, double* d_Y, double* d_Z,
@@ -1030,47 +1471,119 @@ void gpu_compute_rhs_bssn_launch( // launch kernel with device pointers
     double* d_Gmx_Res, double* d_Gmy_Res, double* d_Gmz_Res,
     int symmetry, int lev, double eps, int co
 ) {
-    dim3 block(8, 8, 4); // 调整 block size 以适应架构
+    dim3 block(8, 8, 2);
     dim3 grid(
         (ex[0] + block.x - 1) / block.x,
         (ex[1] + block.y - 1) / block.y,
         (ex[2] + block.z - 1) / block.z
     );
+    dim3 advection_block(16, 4, 2);
+    dim3 advection_grid(
+        (ex[0] + advection_block.x - 1) / advection_block.x,
+        (ex[1] + advection_block.y - 1) / advection_block.y,
+        (ex[2] + advection_block.z - 1) / advection_block.z
+    );
 
-    // 1. Kernel 1: Derivatives & Connection Coefficients
-    rhs_kernel<<<grid, block, 0, stream>>>(
-        ex[0], ex[1], ex[2], T, d_X, d_Y, d_Z,
-        d_chi, d_trK,
-        d_dxx, d_gxy, d_gxz,
-        d_dyy, d_gyz, d_dzz,
-        d_Axx, d_Axy, d_Axz,
-        d_Ayy, d_Ayz, d_Azz,
-        d_Gamx, d_Gamy, d_Gamz,
-        d_Lap,
-        d_betax, d_betay, d_betaz,
-        d_dtSfx, d_dtSfy, d_dtSfz,
-        d_chi_rhs, d_trK_rhs,
-        d_gxx_rhs, d_gxy_rhs, d_gxz_rhs,
-        d_gyy_rhs, d_gyz_rhs, d_gzz_rhs,
-        d_Axx_rhs, d_Axy_rhs, d_Axz_rhs,
-        d_Ayy_rhs, d_Ayz_rhs, d_Azz_rhs,
-        d_Gamx_rhs, d_Gamy_rhs, d_Gamz_rhs,
-        d_Lap_rhs,
-        d_betax_rhs, d_betay_rhs, d_betaz_rhs,
-        d_dtSfx_rhs, d_dtSfy_rhs, d_dtSfz_rhs,
-        d_rho, d_Sx, d_Sy, d_Sz,
-        d_Sxx, d_Sxy, d_Sxz,
-        d_Syy, d_Syz, d_Szz,
-        d_Gamxxx, d_Gamxxy, d_Gamxxz,
-        d_Gamxyy, d_Gamxyz, d_Gamxzz,
-        d_Gamyxx, d_Gamyxy, d_Gamyxz,
-        d_Gamyyy, d_Gamyyz, d_Gamyzz,
-        d_Gamzxx, d_Gamzxy, d_Gamzxz,
-        d_Gamzyy, d_Gamzyz, d_Gamzzz,
-        d_Rxx, d_Rxy, d_Rxz,
-        d_Ryy, d_Ryz, d_Rzz,
-        d_ham_Res, d_movx_Res, d_movy_Res, d_movz_Res,
-        d_Gmx_Res, d_Gmy_Res, d_Gmz_Res,
-        symmetry, lev, eps, co
+    // The main stencil has no dynamic shared memory.  On Ampere, reserve the
+    // largest normal L1 partition for its many neighbouring loads instead of
+    // letting the default shared/L1 preference choose a smaller cache.
+    static bool rhs_cache_configured = false;
+    if (!rhs_cache_configured) {
+        CUDA_CHECK(cudaFuncSetCacheConfig(rhs_kernel<true>, cudaFuncCachePreferL1));
+        CUDA_CHECK(cudaFuncSetCacheConfig(rhs_kernel<false>, cudaFuncCachePreferL1));
+        rhs_cache_configured = true;
+    }
+
+    // Evolution calls pass co=1, so compiling the diagnostics into their
+    // already register-limited RHS kernel only extends live ranges.  The
+    // direct launches below retain the ordinary CUDA ABI while selecting the
+    // compact instance for evolution and the complete one for Constraint_Out.
+#define AMSS_RHS_ARGS \
+        ex[0], ex[1], ex[2], T, d_X, d_Y, d_Z, \
+        d_chi, d_trK, \
+        d_dxx, d_gxy, d_gxz, \
+        d_dyy, d_gyz, d_dzz, \
+        d_Axx, d_Axy, d_Axz, \
+        d_Ayy, d_Ayz, d_Azz, \
+        d_Gamx, d_Gamy, d_Gamz, \
+        d_Lap, \
+        d_betax, d_betay, d_betaz, \
+        d_dtSfx, d_dtSfy, d_dtSfz, \
+        d_chi_rhs, d_trK_rhs, \
+        d_gxx_rhs, d_gxy_rhs, d_gxz_rhs, \
+        d_gyy_rhs, d_gyz_rhs, d_gzz_rhs, \
+        d_Axx_rhs, d_Axy_rhs, d_Axz_rhs, \
+        d_Ayy_rhs, d_Ayz_rhs, d_Azz_rhs, \
+        d_Gamx_rhs, d_Gamy_rhs, d_Gamz_rhs, \
+        d_Lap_rhs, \
+        d_betax_rhs, d_betay_rhs, d_betaz_rhs, \
+        d_dtSfx_rhs, d_dtSfy_rhs, d_dtSfz_rhs, \
+        d_rho, d_Sx, d_Sy, d_Sz, \
+        d_Sxx, d_Sxy, d_Sxz, \
+        d_Syy, d_Syz, d_Szz, \
+        d_Gamxxx, d_Gamxxy, d_Gamxxz, \
+        d_Gamxyy, d_Gamxyz, d_Gamxzz, \
+        d_Gamyxx, d_Gamyxy, d_Gamyxz, \
+        d_Gamyyy, d_Gamyyz, d_Gamyzz, \
+        d_Gamzxx, d_Gamzxy, d_Gamzxz, \
+        d_Gamzyy, d_Gamzyz, d_Gamzzz, \
+        d_Rxx, d_Rxy, d_Rxz, \
+        d_Ryy, d_Ryz, d_Rzz, \
+        d_ham_Res, d_movx_Res, d_movy_Res, d_movz_Res, \
+        d_Gmx_Res, d_Gmy_Res, d_Gmz_Res, \
+        symmetry, lev, eps
+    if (co == 0) {
+        rhs_kernel<true><<<grid, block, 0, stream>>>(AMSS_RHS_ARGS);
+    } else {
+        rhs_kernel<false><<<grid, block, 0, stream>>>(AMSS_RHS_ARGS);
+    }
+#undef AMSS_RHS_ARGS
+
+    rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_dxx, d_gxx_rhs, d_gxy, d_gxy_rhs, d_gxz, d_gxz_rhs,
+        d_dyy, d_gyy_rhs, d_gyz, d_gyz_rhs, d_dzz, d_gzz_rhs, eps
+    );
+    rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_Axx, d_Axx_rhs, d_Axy, d_Axy_rhs, d_Axz, d_Axz_rhs,
+        d_Ayy, d_Ayy_rhs, d_Ayz, d_Ayz_rhs, d_Azz, d_Azz_rhs, eps
+    );
+    rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_chi, d_chi_rhs, d_trK, d_trK_rhs, d_Gamx, d_Gamx_rhs,
+        d_Gamy, d_Gamy_rhs, d_Gamz, d_Gamz_rhs, d_Lap, d_Lap_rhs, eps
+    );
+    rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_betax, d_betax_rhs, d_betay, d_betay_rhs, d_betaz, d_betaz_rhs,
+        d_dtSfx, d_dtSfx_rhs, d_dtSfy, d_dtSfy_rhs, d_dtSfz, d_dtSfz_rhs, eps
+    );
+
+    const int interior_points = (ex[0] > 6 && ex[1] > 6 && ex[2] > 6)
+        ? (ex[0] - 6) * (ex[1] - 6) * (ex[2] - 6) : 0;
+    const int boundary_points = ex[0] * ex[1] * ex[2] - interior_points;
+    dim3 boundary_block(128);
+    dim3 boundary_grid((boundary_points + boundary_block.x - 1) / boundary_block.x);
+    rhs_advection_boundary_group_kernel<0><<<boundary_grid, boundary_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_dxx, d_gxx_rhs, d_gxy, d_gxy_rhs, d_gxz, d_gxz_rhs,
+        d_dyy, d_gyy_rhs, d_gyz, d_gyz_rhs, d_dzz, d_gzz_rhs,
+        symmetry, eps
+    );
+    rhs_advection_boundary_group_kernel<1><<<boundary_grid, boundary_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_Axx, d_Axx_rhs, d_Axy, d_Axy_rhs, d_Axz, d_Axz_rhs,
+        d_Ayy, d_Ayy_rhs, d_Ayz, d_Ayz_rhs, d_Azz, d_Azz_rhs, symmetry, eps
+    );
+    rhs_advection_boundary_group_kernel<2><<<boundary_grid, boundary_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_chi, d_chi_rhs, d_trK, d_trK_rhs, d_Gamx, d_Gamx_rhs,
+        d_Gamy, d_Gamy_rhs, d_Gamz, d_Gamz_rhs, d_Lap, d_Lap_rhs, symmetry, eps
+    );
+    rhs_advection_boundary_group_kernel<3><<<boundary_grid, boundary_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_betax, d_betax_rhs, d_betay, d_betay_rhs, d_betaz, d_betaz_rhs,
+        d_dtSfx, d_dtSfx_rhs, d_dtSfy, d_dtSfy_rhs, d_dtSfz, d_dtSfz_rhs, symmetry, eps
     );
 }

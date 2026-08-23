@@ -11,7 +11,7 @@ struct GPUManager::Impl {
     std::unordered_map<size_t, std::vector<double*>> memory_pool;
     std::mutex pool_mutex;
 
-    static constexpr int NUM_STREAMS = 4; // 强烈建议开多个流以支持并发
+    static constexpr int NUM_STREAMS = 4; // four concurrent AMR patch groups fit this 14-SM MIG slice well
     cudaStream_t stream_pool[NUM_STREAMS];
     std::atomic<unsigned int> stream_idx{0};
 };

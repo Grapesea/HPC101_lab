@@ -31,6 +31,14 @@ public:
    bool *cpu_valid;
    bool *gpu_valid;
    cudaStream_t stream;
+   // Reusable device-side tables used when a transfer applies the same AMR
+   // geometry to the 24 independent BSSN state fields.  They belong to the
+   // block's stream, so the asynchronous table update and batch kernel keep
+   // their natural ordering without a device-wide synchronization.
+   double **d_batch_src;
+   double **d_batch_dst;
+   double **d_batch_rhs;
+   double *d_batch_soa;
 #endif
 
 public:

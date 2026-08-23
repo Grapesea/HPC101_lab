@@ -4,7 +4,9 @@
 
 #define StencilSize 19
 #define N_PlaneRelax 1
-#define NRELAX 200
+#ifndef NRELAX
+#define NRELAX 100
+#endif
 #define Step_Relax 1
 
 #define Pi 3.14159265358979323846264338328
@@ -60,6 +62,7 @@ public:
 
        void Solve();
        void set_initial_guess(derivs v);
+       void ProlongateFrom(const TwoPunctures &coarse);
        int index(int i, int j, int k, int l, int a, int b, int c, int d);
        int *ivector(long nl, long nh);
        double *dvector(long nl, long nh);

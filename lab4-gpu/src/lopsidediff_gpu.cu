@@ -9,7 +9,11 @@ __device__ __forceinline__ int d_idx3d(int i, int j, int k, const int ex[3]) {
     return i + ex[0] * (j + ex[1] * k);
 }
 
-__device__ double d_lopsided_point(
+#ifndef AMSS_LOPSIDE_ATTR
+#define AMSS_LOPSIDE_ATTR __device__
+#endif
+
+AMSS_LOPSIDE_ATTR double d_lopsided_point(
     const int ex[3], const double* f,
     const double* f_rhs, const double* Sfx, const double* Sfy, const double* Sfz,
     const double* X, const double* Y, const double* Z,
@@ -48,6 +52,9 @@ __device__ double d_lopsided_point(
     double SoA[3] = {SYM1, SYM2, SYM3};
 
     const auto fh = [&](int ii, int jj, int kk) -> double { // 0-based -> 1-based
+        if (ii >= 0 && ii < ex[0] && jj >= 0 && jj < ex[1] && kk >= 0 && kk < ex[2]) {
+            return f[ii + ex[0] * (jj + ex[1] * kk)];
+        }
         return d_symmetry_bd_1b(3, ex, f, ii + 1, jj + 1, kk + 1, SoA);
     };
 
@@ -58,9 +65,24 @@ __device__ double d_lopsided_point(
     const double vz = Sfz[idx];
 
     double rhs_add = 0.0;
+    const int sx = 1;
+    const int sy = ex[0];
+    const int sz = ex[0] * ex[1];
 
     // --- X Direction ---
-    if (vx > ZEO) {
+    // A boundary shell is often close to just one face.  The other two
+    // directions remain ordinary contiguous stencils; do not make them pay
+    // for an unrelated symmetry lookup.  The direct branch below has exactly
+    // the same five samples as the original fh() expression.
+    if (i >= 3 && i + 3 <= imax) {
+        if (vx > ZEO) {
+            rhs_add += vx * d12dx * (-F3 * f[idx - sx] - F10 * f[idx] + F18 * f[idx + sx]
+                                     - F6 * f[idx + 2 * sx] + f[idx + 3 * sx]);
+        } else if (vx < ZEO) {
+            rhs_add -= vx * d12dx * (-F3 * f[idx + sx] - F10 * f[idx] + F18 * f[idx - sx]
+                                     - F6 * f[idx - 2 * sx] + f[idx - 3 * sx]);
+        }
+    } else if (vx > ZEO) {
         if (i + 3 <= imax) {
             rhs_add += vx * d12dx * (-F3*fh(i-1,j,k) - F10*fh(i,j,k) + F18*fh(i+1,j,k)
                                      -F6*fh(i+2,j,k) + fh(i+3,j,k));
@@ -83,7 +105,15 @@ __device__ double d_lopsided_point(
     }
 
     // --- Y Direction ---
-    if (vy > ZEO) {
+    if (j >= 3 && j + 3 <= jmax) {
+        if (vy > ZEO) {
+            rhs_add += vy * d12dy * (-F3 * f[idx - sy] - F10 * f[idx] + F18 * f[idx + sy]
+                                     - F6 * f[idx + 2 * sy] + f[idx + 3 * sy]);
+        } else if (vy < ZEO) {
+            rhs_add -= vy * d12dy * (-F3 * f[idx + sy] - F10 * f[idx] + F18 * f[idx - sy]
+                                     - F6 * f[idx - 2 * sy] + f[idx - 3 * sy]);
+        }
+    } else if (vy > ZEO) {
         if (j + 3 <= jmax) {
             rhs_add += vy * d12dy * (-F3*fh(i,j-1,k) - F10*fh(i,j,k) + F18*fh(i,j+1,k)
                                      -F6*fh(i,j+2,k) + fh(i,j+3,k));
@@ -106,7 +136,15 @@ __device__ double d_lopsided_point(
     }
 
     // --- Z Direction ---
-    if (vz > ZEO) {
+    if (k >= 3 && k + 3 <= kmax) {
+        if (vz > ZEO) {
+            rhs_add += vz * d12dz * (-F3 * f[idx - sz] - F10 * f[idx] + F18 * f[idx + sz]
+                                     - F6 * f[idx + 2 * sz] + f[idx + 3 * sz]);
+        } else if (vz < ZEO) {
+            rhs_add -= vz * d12dz * (-F3 * f[idx + sz] - F10 * f[idx] + F18 * f[idx - sz]
+                                     - F6 * f[idx - 2 * sz] + f[idx - 3 * sz]);
+        }
+    } else if (vz > ZEO) {
         if (k + 3 <= kmax) {
             rhs_add += vz * d12dz * (-F3*fh(i,j,k-1) - F10*fh(i,j,k) + F18*fh(i,j,k+1)
                                      -F6*fh(i,j,k+2) + fh(i,j,k+3));

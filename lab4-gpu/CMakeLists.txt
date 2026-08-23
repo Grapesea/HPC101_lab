@@ -2,14 +2,20 @@ cmake_minimum_required(VERSION 3.20)
 project(amss_ncku_lab LANGUAGES CXX Fortran)
 
 # --- Options ----------------------------------------------------------------
-option(AMSS_ENABLE_GPU "Enable CUDA GPU build (ABEGPU target)" OFF)
-# Default CPU build for the ARM TaiShan-v120 evaluation node.  Keep CUDA
-# architecture selection separate below; AMSS_OPT applies to C++/Fortran.
+# This directory is the A100-MIG submission.  Always build the GPU evolution
+# executable and emit native Ampere (sm_80) device code for the course node.
+option(AMSS_ENABLE_GPU "Enable CUDA GPU build (ABEGPU target)" ON)
+# This is the course's checked A100 baseline flag set.  Its numerical output
+# is revalidated by the full GPU checker below rather than changing physics.
 set(AMSS_OPT "-Ofast -ffast-math" CACHE STRING "C/C++/Fortran optimization level")
-set(AMSS_ARCH_FLAGS "-mcpu=native" CACHE STRING "Architecture-specific compiler flags")
-option(AMSS_ENABLE_OPENMP "Link OpenMP to all executables" OFF)
+set(AMSS_ARCH_FLAGS "-march=native" CACHE STRING "Architecture-specific compiler flags")
+option(AMSS_ENABLE_OPENMP "Link OpenMP to all executables" ON)
 set(AMSS_MPI_CUDA_AWARE 0 CACHE STRING "Set MPI_CUDA_AWARE macro for ABEGPU (0/1)")
 set_property(CACHE AMSS_MPI_CUDA_AWARE PROPERTY STRINGS 0 1)
+
+if(NOT AMSS_ENABLE_GPU)
+  message(FATAL_ERROR "lab4-gpu is fixed to the CUDA ABEGPU execution path")
+endif()
 
 # --- Compile flags ----------------------------------------------------------
 # Legacy AMSS-NCKU has strict-aliasing UB; -fno-strict-aliasing is kept
@@ -86,9 +92,9 @@ set(ABEGPU_CUDA_SOURCES
 )
 
 if(AMSS_ENABLE_GPU)
-  if(NOT CMAKE_CUDA_ARCHITECTURES)
-    set(CMAKE_CUDA_ARCHITECTURES 80 CACHE STRING "CUDA architectures" FORCE)
-  endif()
+  # An A100 MIG instance has the same compute capability as the parent A100;
+  # MIG changes resource partitioning, not the CUDA ISA target.
+  set(CMAKE_CUDA_ARCHITECTURES 80 CACHE STRING "CUDA architectures" FORCE)
   enable_language(CUDA)
   set(CMAKE_CUDA_STANDARD 14)
   find_package(CUDAToolkit REQUIRED)
@@ -96,8 +102,6 @@ if(AMSS_ENABLE_GPU)
   add_executable(ABEGPU ${ABEGPU_CXX_SOURCES} ${ABEGPU_CUDA_SOURCES} ${AMSS_F90SOURCES})
   set_source_files_properties(${ABEGPU_CUDA_SOURCES} PROPERTIES LANGUAGE CUDA)
   set_target_properties(ABEGPU PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
-  target_compile_options(ABEGPU PRIVATE
-    "$<$<COMPILE_LANGUAGE:CUDA>:-rdc=true;-lineinfo>")
   target_compile_definitions(ABEGPU PRIVATE USE_GPU fortran3 newc MPI_CUDA_AWARE=${AMSS_MPI_CUDA_AWARE})
   target_include_directories(ABEGPU PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
   target_link_libraries(ABEGPU PRIVATE CUDA::cudart MPI::MPI_CXX)

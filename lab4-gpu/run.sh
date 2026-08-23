@@ -11,6 +11,15 @@ set -euo pipefail
 # Ansorg-TwoPuncture allocates large Fortran automatic arrays.
 ulimit -s unlimited
 
+# The allocated GPU task has one MPI rank.  OpenMP is used by the separate
+# TwoPuncture initial-data stage, so keep its workers on the 16 allocated CPU
+# cores and give each worker enough stack for the spectral solver.
+export OMP_DYNAMIC=FALSE
+export OMP_PROC_BIND=close
+export OMP_PLACES=threads
+export OMP_STACKSIZE="${OMP_STACKSIZE:-1G}"
+export OPENBLAS_NUM_THREADS=1
+
 # HPC jobs run inside a root container even when submitted by a regular user.
 # Open MPI 5.x (prterun) therefore needs its explicit container opt-in. These
 # variables are ignored for non-root launches and preserve a caller-supplied
@@ -32,8 +41,9 @@ resolve_under_root() {
 AMSS_BUILD_DIR="$(resolve_under_root "${AMSS_BUILD_DIR:-$ROOT_DIR/build}")"
 AMSS_OUTPUT_ROOT="$(resolve_under_root "${AMSS_OUTPUT_ROOT:-$ROOT_DIR}")"
 AMSS_CACHE_DIR="$(resolve_under_root "${AMSS_CACHE_DIR:-$ROOT_DIR/twopuncture_cache}")"
-AMSS_MPIEXEC="${AMSS_MPIEXEC:-mpiexec}"
 export AMSS_BUILD_DIR AMSS_OUTPUT_ROOT AMSS_CACHE_DIR AMSS_MPIEXEC
+
+mkdir -p "$AMSS_OUTPUT_ROOT"
 
 if [[ "${1:-}" == "--twop-cache" ]]; then
   export AMSS_NCKU_TWOP_CACHE=1

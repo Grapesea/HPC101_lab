@@ -30,22 +30,43 @@ def _run_and_tee(cmd, log):
 
 
 def _mpiexec_argv():
-    """Resolve the MPI launcher from AMSS_MPIEXEC (default: mpiexec).
+    """Resolve the MPI launcher, stripping OJ-injected rank mapping for the
+    single-rank GPU job.
 
-    The value is split with shlex so users can pass extra flags, e.g.
-    AMSS_MPIEXEC="mpiexec --oversubscribe"."""
-    return shlex.split(os.environ.get("AMSS_MPIEXEC", "mpiexec"))
+    The OJ injects `AMSS_MPIEXEC="mpiexec --bind-to core --map-by slot:pe=16"`
+    and `run.sh` may inherit it.  With `-n 1` that pe=N mapping makes OpenMPI's
+    slot mapper reserve N processing elements for the single rank; on the
+    16-CPU A100-MIG container the mapper then reports "Out of resource" and
+    exits with status 213 before ABEGPU starts (TwoPuncture already ran fine
+    because it is launched as a plain binary, not via mpiexec).
 
+    The validated single-rank launch is plain `mpiexec --allow-run-as-root`
+    with NO `--map-by`/`--bind-to`: OpenMPI's default mapper places the one
+    rank without any PE accounting.  `--map-by slot:pe=1` was also tried and
+    still tripped status 213 on this container, so the binding flags must be
+    dropped entirely, not just reduced.  For multi-rank CPU layouts the
+    caller's mapping is honored verbatim.
+    """
+    configured = shlex.split(os.environ.get("AMSS_MPIEXEC", "mpiexec"))
+    launcher = configured[0] if configured else "mpiexec"
+    if input_data.MPI_processes > 1:
+        return configured
+    return [launcher, "--allow-run-as-root"]
 
 def _env_tokens():
     """Build env VAR=VALUE tokens forwarded to each MPI rank.
 
     Uses `mpiexec -n N env VAR=... exe` form, which works on both OpenMPI
-    and MPICH (the -x flag was OpenMPI-only)."""
+    and MPICH (the -x flag was OpenMPI-only).  OMP_* settings come from the
+    run.sh environment so the TwoPuncture stage gets its thread placement
+    even though ABEGPU itself does not use OpenMP."""
     tokens = []
-    for var in ("OMP_NUM_THREADS", "LD_LIBRARY_PATH"):
-        if var in os.environ:
-            tokens.append(f"{var}={os.environ[var]}")
+    for var in ("OMP_NUM_THREADS", "OMP_DYNAMIC", "OMP_PROC_BIND",
+                "OMP_PLACES", "OMP_STACKSIZE", "OPENBLAS_NUM_THREADS",
+                "LD_LIBRARY_PATH"):
+        value = os.environ.get(var)
+        if value is not None:
+            tokens.append(f"{var}={value}")
     return tokens
 
 

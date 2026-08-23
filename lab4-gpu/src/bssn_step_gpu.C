@@ -73,7 +73,12 @@ void bssn_class::Step_GPU(int lev, int YN) {
 		ndeps = numepsb;
 	double TRK4 = PhysTime;
 	int iter_count = 0; // count RK4 substeps
-	int pre = 0, cor = 1;
+	// Higher AMR levels are rebuilt by Constraint_Out() after regridding, but
+	// level 0 is the source of the per-time-step diagnostic output.  Keep its
+	// predictor constraint RHS, and skip only the higher-level copies that are
+	// immediately overwritten.  Corrector constraints are not consumed.
+	int pre = (lev == 0) ? 0 : 1;
+	int cor = 1;
 	int ERROR = 0;
 
 	// Predictor
@@ -127,36 +132,62 @@ void bssn_class::Step_GPU(int lev, int YN) {
 					Symmetry, lev, ndeps, pre
 				);
 
-				MyList<var> *varl0 = StateList, *varl = SynchList_pre, *varlrhs = RHSList; // we do not check the correspondence here
-				while (varl0) {
+				MyList<var> *varl0 = StateList, *varl = SynchList_pre, *varlrhs = RHSList;
+				int nstate = 0;
+				while (varl0 && varl && varlrhs) {
+					++nstate;
+					varl0 = varl0->next;
+					varl = varl->next;
+					varlrhs = varlrhs->next;
+				}
+				const bool batch_rk = nstate == 24 && !varl0 && !varl && !varlrhs;
+				varl0 = StateList;
+				varl = SynchList_pre;
+				varlrhs = RHSList;
+				if (batch_rk) {
+					double *h_f0[24], *h_f1[24], *h_rhs[24];
+					for (int field = 0; field < 24; ++field) {
+						if (lev == 0) { // sommerfeld indeed
+							gpu_sommerfeld_routbam_launch(
+								cg->stream, cg->shape, cg->d_X[0], cg->d_X[1], cg->d_X[2],
+								Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
+								cg->d_fgfs[varlrhs->data->sgfn], cg->d_fgfs[varl0->data->sgfn],
+								varl0->data->propspeed, varl0->data->SoA, Symmetry
+							);
+						}
+						h_f0[field] = cg->d_fgfs[varl0->data->sgfn];
+						h_f1[field] = cg->d_fgfs[varl->data->sgfn];
+						h_rhs[field] = cg->d_fgfs[varlrhs->data->sgfn];
+						varl0 = varl0->next;
+						varl = varl->next;
+						varlrhs = varlrhs->next;
+					}
+					CUDA_CHECK(cudaMemcpyAsync(cg->d_batch_src, h_f0, sizeof(h_f0), cudaMemcpyHostToDevice, cg->stream));
+					CUDA_CHECK(cudaMemcpyAsync(cg->d_batch_dst, h_f1, sizeof(h_f1), cudaMemcpyHostToDevice, cg->stream));
+					CUDA_CHECK(cudaMemcpyAsync(cg->d_batch_rhs, h_rhs, sizeof(h_rhs), cudaMemcpyHostToDevice, cg->stream));
+					gpu_rungekutta4_rout_batch_launch(
+						cg->stream, cg->shape, dT_lev, cg->d_batch_src, cg->d_batch_dst, cg->d_batch_rhs, iter_count,
+						lev > 0, cg->d_X[0], cg->d_X[1], cg->d_X[2],
+						Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5], Symmetry
+					);
+				} else while (varl0) {
 					if (lev == 0) { // sommerfeld indeed
 						gpu_sommerfeld_routbam_launch(
-							cg->stream,
-							cg->shape,
-							cg->d_X[0], cg->d_X[1], cg->d_X[2],
+							cg->stream, cg->shape, cg->d_X[0], cg->d_X[1], cg->d_X[2],
 							Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
-							cg->d_fgfs[varlrhs->data->sgfn],
-							cg->d_fgfs[varl0->data->sgfn], varl0->data->propspeed, varl0->data->SoA,
-							Symmetry
+							cg->d_fgfs[varlrhs->data->sgfn], cg->d_fgfs[varl0->data->sgfn], varl0->data->propspeed, varl0->data->SoA, Symmetry
 						);
 					}
-					gpu_rungekutta4_rout_launch(
-						cg->stream,
-						cg->shape, dT_lev, 
-						cg->d_fgfs[varl0->data->sgfn], cg->d_fgfs[varl->data->sgfn], cg->d_fgfs[varlrhs->data->sgfn], iter_count
-					);
-					if (lev > 0) {// fix BD point
+					gpu_rungekutta4_rout_launch(cg->stream, cg->shape, dT_lev,
+						cg->d_fgfs[varl0->data->sgfn], cg->d_fgfs[varl->data->sgfn], cg->d_fgfs[varlrhs->data->sgfn], iter_count);
+					if (lev > 0) { // fix BD point
 						gpu_sommerfeld_rout_launch(
-							cg->stream,
-							cg->shape,
-							cg->d_X[0], cg->d_X[1], cg->d_X[2],
+							cg->stream, cg->shape, cg->d_X[0], cg->d_X[1], cg->d_X[2],
 							Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
-							dT_lev, cg->d_fgfs[phi0->sgfn],
-							cg->d_fgfs[Lap0->sgfn], cg->d_fgfs[varl0->data->sgfn], cg->d_fgfs[varl->data->sgfn], varl0->data->SoA,
-							Symmetry, cor
+							dT_lev, cg->d_fgfs[phi0->sgfn], cg->d_fgfs[Lap0->sgfn],
+							cg->d_fgfs[varl0->data->sgfn], cg->d_fgfs[varl->data->sgfn], varl0->data->SoA, Symmetry, cor
 						);
 					}
-
 					varl0 = varl0->next;
 					varl = varl->next;
 					varlrhs = varlrhs->next;
@@ -238,31 +269,65 @@ void bssn_class::Step_GPU(int lev, int YN) {
 						Symmetry, lev, ndeps, cor
 					);
 
-					MyList<var> *varl0 = StateList, *varl = SynchList_pre, *varl1 = SynchList_cor, *varlrhs = RHSList; // we do not check the correspondence here
-					while (varl0) {
+					MyList<var> *varl0 = StateList, *varl = SynchList_pre, *varl1 = SynchList_cor, *varlrhs = RHSList;
+					int nstate = 0;
+					while (varl0 && varl && varl1 && varlrhs) {
+						++nstate;
+						varl0 = varl0->next;
+						varl = varl->next;
+						varl1 = varl1->next;
+						varlrhs = varlrhs->next;
+					}
+					const bool batch_rk = nstate == 24 && !varl0 && !varl && !varl1 && !varlrhs;
+					varl0 = StateList;
+					varl = SynchList_pre;
+					varl1 = SynchList_cor;
+					varlrhs = RHSList;
+					if (batch_rk) {
+						double *h_f0[24], *h_f1[24], *h_rhs[24];
+						for (int field = 0; field < 24; ++field) {
+							if (lev == 0) { // sommerfeld indeed
+								gpu_sommerfeld_routbam_launch(
+									cg->stream, cg->shape, cg->d_X[0], cg->d_X[1], cg->d_X[2],
+									Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
+									cg->d_fgfs[varl1->data->sgfn], cg->d_fgfs[varl->data->sgfn],
+									varl0->data->propspeed, varl0->data->SoA, Symmetry
+								);
+							}
+							h_f0[field] = cg->d_fgfs[varl0->data->sgfn];
+							h_f1[field] = cg->d_fgfs[varl1->data->sgfn];
+							h_rhs[field] = cg->d_fgfs[varlrhs->data->sgfn];
+							varl0 = varl0->next;
+							varl = varl->next;
+							varl1 = varl1->next;
+							varlrhs = varlrhs->next;
+						}
+						CUDA_CHECK(cudaMemcpyAsync(cg->d_batch_src, h_f0, sizeof(h_f0), cudaMemcpyHostToDevice, cg->stream));
+						CUDA_CHECK(cudaMemcpyAsync(cg->d_batch_dst, h_f1, sizeof(h_f1), cudaMemcpyHostToDevice, cg->stream));
+						CUDA_CHECK(cudaMemcpyAsync(cg->d_batch_rhs, h_rhs, sizeof(h_rhs), cudaMemcpyHostToDevice, cg->stream));
+						gpu_rungekutta4_rout_batch_launch(
+							cg->stream, cg->shape, dT_lev, cg->d_batch_src, cg->d_batch_dst, cg->d_batch_rhs, iter_count,
+							lev > 0, cg->d_X[0], cg->d_X[1], cg->d_X[2],
+							Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5], Symmetry
+						);
+					} else while (varl0) {
 						if (lev == 0) { // sommerfeld indeed
 							gpu_sommerfeld_routbam_launch(
 								cg->stream, cg->shape, cg->d_X[0], cg->d_X[1], cg->d_X[2],
 								Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
-								cg->d_fgfs[varl1->data->sgfn],
-								cg->d_fgfs[varl->data->sgfn], varl0->data->propspeed, varl0->data->SoA,
-								Symmetry
+								cg->d_fgfs[varl1->data->sgfn], cg->d_fgfs[varl->data->sgfn], varl0->data->propspeed, varl0->data->SoA, Symmetry
 							);
 						}
-						gpu_rungekutta4_rout_launch(
-							cg->stream, cg->shape, dT_lev, 
-							cg->d_fgfs[varl0->data->sgfn], cg->d_fgfs[varl1->data->sgfn], cg->d_fgfs[varlrhs->data->sgfn], iter_count
-						);
+						gpu_rungekutta4_rout_launch(cg->stream, cg->shape, dT_lev,
+							cg->d_fgfs[varl0->data->sgfn], cg->d_fgfs[varl1->data->sgfn], cg->d_fgfs[varlrhs->data->sgfn], iter_count);
 						if (lev > 0) { // fix BD point
 							gpu_sommerfeld_rout_launch(
 								cg->stream, cg->shape, cg->d_X[0], cg->d_X[1], cg->d_X[2],
 								Pp->data->bbox[0], Pp->data->bbox[1], Pp->data->bbox[2], Pp->data->bbox[3], Pp->data->bbox[4], Pp->data->bbox[5],
-								dT_lev, cg->d_fgfs[phi0->sgfn],
-								cg->d_fgfs[Lap0->sgfn], cg->d_fgfs[varl0->data->sgfn], cg->d_fgfs[varl1->data->sgfn], varl0->data->SoA,
-								Symmetry, cor
+								dT_lev, cg->d_fgfs[phi0->sgfn], cg->d_fgfs[Lap0->sgfn],
+								cg->d_fgfs[varl0->data->sgfn], cg->d_fgfs[varl1->data->sgfn], varl0->data->SoA, Symmetry, cor
 							);
 						}
-
 						varl0 = varl0->next;
 						varl = varl->next;
 						varl1 = varl1->next;

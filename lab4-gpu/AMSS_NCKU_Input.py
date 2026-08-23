@@ -18,8 +18,8 @@ import numpy
 File_directory   = "GW250118"                    ## output file directory
 Output_directory = "binary_output"               ## binary data file directory
                                                  ## The file directory name should not be too long
-MPI_processes    = 30  ## number of mpi processes used in the simulation
-OMP_threads      = 1
+MPI_processes    = 1   ## one A100 MIG instance: one GPU-owning MPI rank
+OMP_threads      = 16  ## CPU threads used by the TwoPuncture stage
 
 GPU_Calculation  = "yes"
                                                  ## (prefer "no" in the current version, because the GPU part may have bugs when integrated in this Python interface)
@@ -46,12 +46,12 @@ Finite_Diffenence_Method = "4th-order"             ## fixed in this trimmed lab 
 
 Start_Evolution_Time     = 0.0                    ## start evolution time t0
 ## NOTE: For CPU, set Final_Evolution_Time to 40.0, while GPU keeps it as 100.0
-Final_Evolution_Time = 1.0
+Final_Evolution_Time = 100.0
 Check_Time               = 1000.0
 Dump_Time                = 1000.0                  ## time inteval dT for dumping binary data
 D2_Dump_Time             = 1000.0                  ## dump the ascii data for 2d surface after dT'
 Analysis_Time            = 0.1                    ## dump the puncture position and GW psi4 after dT"
-Evolution_Step_Number = 1
+Evolution_Step_Number = 10000000
 Courant_Factor           = 0.5                    ## Courant Factor
 Dissipation              = 0.15                   ## Kreiss-Oliger Dissipation Strength
 

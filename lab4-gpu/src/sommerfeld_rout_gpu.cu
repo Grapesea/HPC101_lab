@@ -51,7 +51,6 @@ __global__ void sommerfeld_rout_kernel(
     int i0 = blockIdx.x * blockDim.x + threadIdx.x;
     int j0 = blockIdx.y * blockDim.y + threadIdx.y;
     int k0 = blockIdx.z * blockDim.z + threadIdx.z;
-
     if (i0 >= ex0 || j0 >= ex1 || k0 >= ex2) return;
 
     // 转换为 Fortran 的 1-based 索引
@@ -154,7 +153,6 @@ __global__ void sommerfeld_routbam_kernel(
     int i0 = blockIdx.x * blockDim.x + threadIdx.x;
     int j0 = blockIdx.y * blockDim.y + threadIdx.y;
     int k0 = blockIdx.z * blockDim.z + threadIdx.z;
-
     if (i0 >= ex0 || j0 >= ex1 || k0 >= ex2) return;
 
     int i = i0 + 1;
@@ -294,8 +292,8 @@ void gpu_sommerfeld_rout_launch(
     int Symmetry, int precor
 ) {
     dim3 block(8, 8, 4);
-    dim3 grid((ex[0] + block.x - 1) / block.x, 
-              (ex[1] + block.y - 1) / block.y, 
+    dim3 grid((ex[0] + block.x - 1) / block.x,
+              (ex[1] + block.y - 1) / block.y,
               (ex[2] + block.z - 1) / block.z);
 
     sommerfeld_rout_kernel<<<grid, block, 0, stream>>>(
@@ -314,8 +312,8 @@ void gpu_sommerfeld_routbam_launch(
     double velocity, const double SoA[3], int Symmetry
 ) {
     dim3 block(8, 8, 4);
-    dim3 grid((ex[0] + block.x - 1) / block.x, 
-              (ex[1] + block.y - 1) / block.y, 
+    dim3 grid((ex[0] + block.x - 1) / block.x,
+              (ex[1] + block.y - 1) / block.y,
               (ex[2] + block.z - 1) / block.z);
 
     sommerfeld_routbam_kernel<<<grid, block, 0, stream>>>(

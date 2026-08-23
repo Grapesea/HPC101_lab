@@ -65,6 +65,10 @@ Block::Block(int DIM, int *shapei, double *bboxi, int ranki, int ingfsi, int fng
 		d_fgfs = new double *[fngfs];
 		cpu_valid = new bool[fngfs];
 		gpu_valid = new bool[fngfs];
+		CUDA_CHECK(cudaMalloc((void **)&d_batch_src, 24 * sizeof(double *)));
+		CUDA_CHECK(cudaMalloc((void **)&d_batch_dst, 24 * sizeof(double *)));
+		CUDA_CHECK(cudaMalloc((void **)&d_batch_rhs, 24 * sizeof(double *)));
+		CUDA_CHECK(cudaMalloc((void **)&d_batch_soa, 3 * 24 * sizeof(double)));
 #endif
 
 		for (int i = 0; i < fngfs; i++) {
@@ -127,6 +131,10 @@ Block::~Block()
 		delete[] d_fgfs;
 		delete[] cpu_valid;
 		delete[] gpu_valid;
+		CUDA_CHECK(cudaFree(d_batch_src));
+		CUDA_CHECK(cudaFree(d_batch_dst));
+		CUDA_CHECK(cudaFree(d_batch_rhs));
+		CUDA_CHECK(cudaFree(d_batch_soa));
 #endif
 		fgfs = 0;
 #ifdef USE_GPU
