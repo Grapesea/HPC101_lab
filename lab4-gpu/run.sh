@@ -22,11 +22,18 @@ export OPENBLAS_NUM_THREADS=1
 
 # HPC jobs run inside a root container even when submitted by a regular user.
 # Open MPI 5.x (prterun) therefore needs its explicit container opt-in. These
-# variables are ignored for non-root launches and preserve a caller-supplied
-# AMSS_MPIEXEC.
+# variables are ignored for non-root launches.
 export OMPI_ALLOW_RUN_AS_ROOT="${OMPI_ALLOW_RUN_AS_ROOT:-1}"
 export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM="${OMPI_ALLOW_RUN_AS_ROOT_CONFIRM:-1}"
-AMSS_MPIEXEC="${AMSS_MPIEXEC:-mpiexec --allow-run-as-root}"
+
+# The OJ injects `AMSS_MPIEXEC=mpiexec --bind-to core --map-by slot:pe=16`.
+# This submission owns exactly one GPU/MPI rank.  OpenMPI 5's slot mapper on
+# the A100 MIG cpuset rejects those PE/binding options with status 213 before
+# ABEGPU starts; even pe=1 is not reliable on this image.  The OJ-provided
+# launcher is consumed by its platform-owned Python driver, so normalize it
+# here (run.sh is part of the submission, while scripts/ is not) and launch
+# the single rank with the default mapper.
+AMSS_MPIEXEC="mpiexec --allow-run-as-root"
 
 ROOT_DIR="$(pwd)"
 PYTHON="${PYTHON:-python3}"

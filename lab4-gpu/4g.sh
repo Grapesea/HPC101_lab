@@ -10,7 +10,7 @@ set -euo pipefail
 echo "PWD=$(pwd)"
 echo "Start: $(date)"
 
-input_backup="AMSS_NCKU_Input.py.4gsh.$$"
+input_backup="$(mktemp AMSS_NCKU_Input.py.4gsh.XXXXXX)"
 cp AMSS_NCKU_Input.py "$input_backup"
 trap 'cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"' EXIT
 sed -i '/^[[:space:]]*Final_Evolution_Time[[:space:]]*=/c\Final_Evolution_Time = 100.0' AMSS_NCKU_Input.py
@@ -43,5 +43,7 @@ echo "Output=$AMSS_OUTPUT_ROOT"
 echo "CUDA compiler=${CUDACXX:-disabled}"
 
 ./compile.sh
-./run.sh --twop-cache
+mkdir -p results
+./run.sh --twop-cache > results/full-inner.log 2>&1
+tail -120 results/full-inner.log
 ./check.sh "$AMSS_OUTPUT_ROOT/GW250118/AMSS_NCKU_output" golden

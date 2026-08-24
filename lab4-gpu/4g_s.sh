@@ -9,9 +9,9 @@ set -euo pipefail
 echo "PWD=$(pwd)"
 echo "Start GPU host perf: $(date)"
 
-JOB_TAG="${HPC_JOB_ID:-${SLURM_JOB_ID:-${JOB_ID:-%j}}}"
+JOB_TAG="${HPC_JOB_ID:-${SLURM_JOB_ID:-${JOB_ID:-$$}}}"
 
-input_backup="AMSS_NCKU_Input.py.4gssh.$$"
+input_backup="$(mktemp AMSS_NCKU_Input.py.4gssh.XXXXXX)"
 cp AMSS_NCKU_Input.py "$input_backup"
 trap 'cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"' EXIT
 sed -i '/^[[:space:]]*Final_Evolution_Time[[:space:]]*=/c\Final_Evolution_Time = 1.0' AMSS_NCKU_Input.py
@@ -30,8 +30,8 @@ export AMSS_FINAL_EVOLUTION_TIME=1.0
 export AMSS_ENABLE_GPU=ON
 export AMSS_ENABLE_OPENMP=OFF
 export AMSS_CUDA_ARCHITECTURES=80
-export AMSS_BUILD_DIR="$PWD/build_gpu_perf"
-export AMSS_OUTPUT_ROOT="$PWD/gpu_perf_output"
+export AMSS_BUILD_DIR="$PWD/build_gpu_perf-$JOB_TAG"
+export AMSS_OUTPUT_ROOT="$PWD/gpu_perf_output-$JOB_TAG"
 export AMSS_CACHE_DIR="$PWD/twopuncture_cache"
 export AMSS_OPT="-O3 -g"
 export CUDACXX=/usr/local/cuda/bin/nvcc

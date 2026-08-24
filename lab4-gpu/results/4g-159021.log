@@ -1,0 +1,27 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-gpu
+Start: Mon Aug 24 06:17:33 PM UTC 2026
+GPU 0: NVIDIA A100 80GB PCIe (UUID: GPU-9ca16191-ea9a-c551-7f38-0ca7a9e55dce)
+  MIG 1g.10gb     Device  0: (UUID: MIG-9b3e40ca-8f22-5aed-ba30-657ccfccb8eb)
+GPU_Calculation=yes
+MPI ranks=1, OMP threads=1
+Build=/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
+Output=/home/h3240104505/HPC101_lab/lab4-gpu/gpu_output
+CUDA compiler=/usr/local/cuda/bin/nvcc
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-gpu" -B "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DAMSS_ENABLE_GPU=ON -DCMAKE_CUDA_ARCHITECTURES=80 -DAMSS_ENABLE_OPENMP=ON -DAMSS_MPI_CUDA_AWARE=0 -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-march=native 
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : ON, CUDA=/usr/local/cuda/bin/nvcc, arch=80
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-march=native OPENMP=ON MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (10.5s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100" -j 16
+[  3%] Built target TwoPunctureABE
+[ 39%] Built target ABE
+[100%] Built target ABEGPU
+==> Built executables:
+-rwxr-xr-x 1 root root 1.2M Aug 24 02:28 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100/ABE
+-rwxr-xr-x 1 root root 192K Aug 24 02:28 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100/TwoPunctureABE
+-rwxr-xr-x 1 root root 11M Aug 24 17:38 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100/ABEGPU

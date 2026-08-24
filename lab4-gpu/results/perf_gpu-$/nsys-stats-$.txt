@@ -1,0 +1,41 @@
+Generating SQLite file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite from /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.nsys-rep
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/nvtx_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_nvtx_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_nvtx_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/osrt_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_osrt_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_osrt_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/cuda_api_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_cuda_api_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_cuda_api_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/cuda_gpu_kern_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_cuda_gpu_kern_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_cuda_gpu_kern_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/cuda_gpu_mem_time_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_cuda_gpu_mem_time_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_cuda_gpu_mem_time_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/cuda_gpu_mem_size_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_cuda_gpu_mem_size_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_cuda_gpu_mem_size_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/openmp_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_openmp_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_openmp_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/opengl_khr_range_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_opengl_khr_range_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_opengl_khr_range_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/opengl_khr_gpu_range_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_opengl_khr_gpu_range_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_opengl_khr_gpu_range_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/vulkan_marker_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_vulkan_marker_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_vulkan_marker_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/vulkan_gpu_marker_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_vulkan_gpu_marker_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_vulkan_gpu_marker_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/dx11_pix_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_dx11_pix_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_dx11_pix_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/dx12_gpu_marker_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_dx12_gpu_marker_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_dx12_gpu_marker_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/dx12_pix_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_dx12_pix_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_dx12_pix_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/wddm_queue_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_wddm_queue_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_wddm_queue_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/um_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_um_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_um_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/um_total_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_um_total_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_um_total_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/um_cpu_page_faults_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_um_cpu_page_faults_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_um_cpu_page_faults_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/openacc_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_openacc_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_openacc_sum.csv exists.
+
+Processing [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys_gpu-$.sqlite] with [/opt/nvidia/nsight-systems/2026.1.3/target-linux-x64/reports/syscall_sum.py] to [/home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_syscall_sum.csv]... SKIPPED: output file /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/nsys-stats-$_syscall_sum.csv exists.
+
