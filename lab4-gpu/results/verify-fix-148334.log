@@ -1,0 +1,24 @@
+=== NODE ENV ===
+hostname=j148334-rbcw6
+GPU 0: NVIDIA A100 80GB PCIe (UUID: GPU-9ca16191-ea9a-c551-7f38-0ca7a9e55dce)
+  MIG 1g.10gb     Device  0: (UUID: MIG-9b3e40ca-8f22-5aed-ba30-657ccfccb8eb)
+cpus=16
+mpiexec:
+mpiexec (Open MPI) 5.0.7
+
+=== STEP 1: Reproduce the ORIGINAL failing OJ launcher ===
+original pe=16 rc=1
+
+=== STEP 2: Confirm pe=1 ALSO fails (what job 148282 hit) ===
+pe=1 rc=1
+
+=== STEP 3: The FIXED launcher (plain mpiexec, no map-by/bind-to) ===
+fixed rc=0 (0 = mapper accepted)
+
+=== STEP 4: Real ABEGPU launch via the patched driver (short run) ===
+DRIVER CMD: mpiexec --allow-run-as-root -n 1 env OMP_NUM_THREADS=16 OMP_DYNAMIC=FALSE OMP_PROC_BIND=close OMP_PLACES=threads OMP_STACKSIZE=1G OPENBLAS_NUM_THREADS=1 LD_LIBRARY_PATH=/usr/local/cuda/lib64:/usr/local/cuda/lib64: ./ABEGPU
+
+=== SUMMARY ===
+original pe=16 -> rc=1 (expect 213)
+pe=1           -> rc=1 (expect 213, job 148282 bug)
+fixed plain    -> rc=0 (expect 0)

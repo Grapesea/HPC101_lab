@@ -1,0 +1,78 @@
+==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_twop_omp
+==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/ncu_prolong_output
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-gpu/twop_cold_omp_cache
+==> MPI exec : mpiexec
+///////////////////////////////////////////////////////////////
+     mp     = -1
+     mm     = -1
+     b      = 3
+  P_plusx   = -0.00514081
+  P_plusy   = 0.1275
+  P_plusz   = 0
+  P_minusx  = 0.00514081
+  P_minusy  = -0.1275
+  P_minusz  = 0
+  S_plusx   = 0
+  S_plusy   = -0
+  S_plusz   = 0
+  S_minusx  = 0
+  S_minusy  = -0
+  S_minusz  = 0
+     Mp     = 0.598837
+     Mm     = 0.401163
+   admtol   = 1e-08
+ Newtontol  = 5e-12
+    nA      = 50
+    nB      = 50
+   nphi     = 26
+Newtonmaxit = 50
+///////////////////////////////////////////////////////////////
+Attempting to find bare masses.
+Target ADM masses: M_p=0.598837 and M_m=0.401163
+ADM mass tolerance: 1e-08
+Bare masses: mp=-1, mm=-1
+Newton: it=0 	 |F|=9.566257e-03
+bare mass: mp=0.598837 	 mm=0.401163
+bicgstab:  itmax 100, tol 9.566257e-06
+bicgstab:     0   2.018e-01
+bicgstab:     1   5.986e-01   1.209e+00   0.000e+00   4.338e-01
+bicgstab:     2   1.639e+00   2.688e+00   8.688e-02  -2.321e-01
+bicgstab:     3   1.869e+01   2.774e+01   6.209e-01   5.143e-01
+bicgstab:     4   7.247e-01   5.458e-02  -4.287e+02   5.543e+00
+bicgstab:     5   3.351e-01   1.321e+00  -6.422e-04   8.845e-01
+bicgstab:     6   2.189e-01   9.897e-01   3.542e-01   1.710e-01
+bicgstab:     7   1.223e-01   1.548e+00   2.625e-01   6.927e-01
+bicgstab:     8   1.570e-02   2.095e+00   1.021e+00   4.111e-01
+bicgstab:     9   8.411e+02   5.632e+04   3.095e-01   9.387e-01
+bicgstab:    10   1.339e-02   4.506e-06  -1.250e+10   8.612e-01
+bicgstab:    11   6.191e-03  -3.859e-01   2.613e-10   4.452e+00
+bicgstab:    12   1.478e-03   1.310e+00  -8.310e-02   5.976e-01
+bicgstab:    13   8.331e-04   1.115e+00   4.255e-01   7.477e-01
+bicgstab:    14   5.272e-04   3.634e-01   2.004e+00   1.373e-01
+bicgstab:    15   5.498e-04   1.134e+00   4.574e-01   4.751e-01
+bicgstab:    16   4.956e-04   9.280e-01   2.566e-01   1.499e+00
+bicgstab:    17   3.360e-04   1.866e+00   2.173e-01   4.150e-01
+bicgstab:    18   2.622e-04  -3.483e-01   3.067e-01   3.347e+00
+bicgstab:    19   7.137e-05  -2.466e+00  -2.334e+00   5.360e-01
+bicgstab:    20   1.376e-05   2.338e+00  -5.380e-01   4.261e-01
+bicgstab:    21   2.745e-06   7.662e-02  -1.182e+01   7.489e+00
+Newton: it=1 	 |F|=9.054068e-06 
+ADM mass error: M_p_err=1.52135, M_m_err=1.32813
+Bare masses: mp=0.577232, mm=0.379027
+Newton: it=0 	 |F|=1.792930e-03
+bare mass: mp=0.577232 	 mm=0.379027
+bicgstab:  itmax 100, tol 1.792930e-06
+bicgstab:     0   3.319e-02
+bicgstab:     1   8.134e-02   1.151e+00   0.000e+00   4.461e-01
+bicgstab:     2   2.203e-01   2.745e+00   6.289e-02   1.123e-01
+bicgstab:     3   1.520e+00  -2.649e+01   6.208e-01   5.505e-01
+bicgstab:     4   4.794e-02  -5.124e-02  -5.949e+02   5.214e+00
+bicgstab:     5   2.772e-02   1.394e+00  -3.790e-04   8.065e-01
+bicgstab:     6   1.824e-02   1.144e+00   4.242e-01   7.823e-02
+bicgstab:     7   9.548e-03   1.676e+00   3.912e-01   6.655e-01
+bicgstab:     8   3.337e-03   1.280e+00   1.025e+00   5.375e-01
+bicgstab:     9   2.075e-03   1.547e-01   1.810e+00   2.152e-01
+bicgstab:    10   1.012e-03   1.197e+00   1.503e-01   4.373e-01
+bicgstab:    11   9.244e-04   1.255e-01  -1.356e-01   1.437e+00
+bicgstab:    12   6.003e-04   2.603e+00  -5.763e-01   1.522e+00
+bicgstab:    13   3.558e-04   1.671e-01   1.662e+01   6.838e-01

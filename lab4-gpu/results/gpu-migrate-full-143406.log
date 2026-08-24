@@ -1,0 +1,14 @@
+==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_omp16
+==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/gpu_migrate_full_output
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-gpu/twopuncture_cache
+==> MPI exec : mpiexec
+==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_omp16
+==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/gpu_migrate_full_output/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-gpu/twopuncture_cache
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab4-gpu/AMSS_NCKU_Program.py", line 144, in <module>
+    os.mkdir(File_directory)
+    ~~~~~~~~^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/h3240104505/HPC101_lab/lab4-gpu/gpu_migrate_full_output/GW250118'
+ERROR: cannot find bssn_BH.dat and bssn_constraint.dat under /home/h3240104505/HPC101_lab/lab4-gpu/gpu_migrate_full_output/GW250118/AMSS_NCKU_output
+FINAL: FAIL

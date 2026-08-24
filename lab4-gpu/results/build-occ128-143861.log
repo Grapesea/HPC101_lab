@@ -1,0 +1,235 @@
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-gpu" -B "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_occ128" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DAMSS_ENABLE_GPU=ON -DCMAKE_CUDA_ARCHITECTURES=80 -DAMSS_ENABLE_OPENMP=ON -DAMSS_MPI_CUDA_AWARE=0 -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-march=native 
+-- The CXX compiler identification is GNU 14.2.0
+-- The Fortran compiler identification is GNU 14.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Detecting Fortran compiler ABI info
+-- Detecting Fortran compiler ABI info - done
+-- Check for working Fortran compiler: /usr/bin/gfortran - skipped
+-- Found MPI_CXX: /opt/hpcx/ompi5/lib/libmpi.so (found version "3.1")
+-- Found MPI: TRUE (found version "3.1") found components: CXX
+-- Found OpenMP_CXX: -fopenmp (found version "4.5")
+-- Found OpenMP_Fortran: -fopenmp (found version "4.5")
+-- Found OpenMP: TRUE (found version "4.5") found components: CXX Fortran
+-- The CUDA compiler identification is NVIDIA 13.3.73 with host compiler GNU 13.3.0
+-- Detecting CUDA compiler ABI info
+-- Detecting CUDA compiler ABI info - done
+-- Check for working CUDA compiler: /usr/local/cuda/bin/nvcc - skipped
+-- Detecting CUDA compile features
+-- Detecting CUDA compile features - done
+-- Found CUDAToolkit: /usr/local/cuda/targets/x86_64-linux/include (found version "13.3.73")
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : ON, CUDA=/usr/local/cuda/bin/nvcc, arch=80
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-march=native OPENMP=ON MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (31.6s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_occ128
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_occ128" -j 16
+[  2%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctures.C.o
+[  2%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctureABE.C.o
+[  6%] Building CXX object CMakeFiles/ABE.dir/src/Ansorg.C.o
+[  6%] Building CXX object CMakeFiles/ABE.dir/src/ABE.C.o
+[  6%] Building CXX object CMakeFiles/ABE.dir/src/Block.C.o
+[  9%] Building CXX object CMakeFiles/ABE.dir/src/MPatch.C.o
+[  9%] Building CXX object CMakeFiles/ABE.dir/src/Parallel.C.o
+[ 17%] Building CXX object CMakeFiles/ABE.dir/src/misc.C.o
+[ 17%] Building CXX object CMakeFiles/ABE.dir/src/bssn_class.C.o
+[ 17%] Building CXX object CMakeFiles/ABEGPU.dir/src/ABE.C.o
+[ 19%] Building CXX object CMakeFiles/ABE.dir/src/checkpoint.C.o
+[ 19%] Building CXX object CMakeFiles/ABEGPU.dir/src/Ansorg.C.o
+[ 19%] Building CXX object CMakeFiles/ABE.dir/src/cgh.C.o
+[ 21%] Building CXX object CMakeFiles/ABE.dir/src/monitor.C.o
+[ 21%] Building CXX object CMakeFiles/ABE.dir/src/perf.C.o
+[ 21%] Building CXX object CMakeFiles/ABEGPU.dir/src/Block.C.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/TwoPunctureABE.C: In function ‘int main(int, char**)’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/TwoPunctureABE.C:213:13: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+  213 |   ADM->Save("Ansorg.psid");
+      |             ^~~~~~~~~~~~~
+[ 22%] Building CXX object CMakeFiles/ABE.dir/src/surface_integral.C.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/bssn_class.C: In member function ‘virtual void bssn_class::Read_Ansorg()’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/bssn_class.C:1471:24: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+ 1471 |     Ansorg read_ansorg("Ansorg.psid", order);
+      |                        ^~~~~~~~~~~~~
+[ 23%] Building CXX object CMakeFiles/ABEGPU.dir/src/MPatch.C.o
+[ 25%] Building CXX object CMakeFiles/ABE.dir/src/transpbh.C.o
+[ 26%] Building CXX object CMakeFiles/ABEGPU.dir/src/Parallel.C.o
+[ 27%] Building CXX object CMakeFiles/ABE.dir/src/var.C.o
+[ 28%] Building CXX object CMakeFiles/ABEGPU.dir/src/bssn_gpu_class.C.o
+[ 30%] Building CXX object CMakeFiles/ABEGPU.dir/src/bssn_step_gpu.C.o
+[ 31%] Building CXX object CMakeFiles/ABEGPU.dir/src/cgh.C.o
+[ 32%] Building CXX object CMakeFiles/ABEGPU.dir/src/checkpoint.C.o
+[ 34%] Building Fortran object CMakeFiles/ABE.dir/src/bssn_rhs.f90.o
+[ 35%] Building CXX object CMakeFiles/ABEGPU.dir/src/misc.C.o
+[ 36%] Building CXX object CMakeFiles/ABEGPU.dir/src/monitor.C.o
+[ 38%] Building CXX object CMakeFiles/ABEGPU.dir/src/perf.C.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/bssn_gpu_class.C: In member function ‘virtual void bssn_class::Initialize()’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/bssn_gpu_class.C:531:37: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+  531 |     GH = new cgh(0, ngfs, Symmetry, "input.par", checkrun, ErrorMonitor);
+      |                                     ^~~~~~~~~~~
+/home/h3240104505/HPC101_lab/lab4-gpu/src/bssn_gpu_class.C: In member function ‘virtual void bssn_class::Read_Ansorg()’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/bssn_gpu_class.C:1376:28: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+ 1376 |         Ansorg read_ansorg("Ansorg.psid", order);
+      |                            ^~~~~~~~~~~~~
+[ 39%] Building CXX object CMakeFiles/ABEGPU.dir/src/surface_integral.C.o
+[ 40%] Building CXX object CMakeFiles/ABEGPU.dir/src/transpbh.C.o
+[ 42%] Building Fortran object CMakeFiles/ABE.dir/src/diff_new.f90.o
+[ 43%] Building Fortran object CMakeFiles/ABE.dir/src/enforce_algebra.f90.o
+[ 44%] Building CXX object CMakeFiles/ABEGPU.dir/src/var.C.o
+[ 46%] Building Fortran object CMakeFiles/ABE.dir/src/fadmquantites_bssn.f90.o
+[ 47%] Building Fortran object CMakeFiles/ABE.dir/src/fmisc.f90.o
+[ 48%] Building Fortran object CMakeFiles/ABE.dir/src/getnp4.f90.o
+[ 50%] Building Fortran object CMakeFiles/ABE.dir/src/initial_puncture.f90.o
+[ 51%] Building Fortran object CMakeFiles/ABE.dir/src/kodiss.f90.o
+[ 52%] Building CXX object CMakeFiles/ABEGPU.dir/src/helper.cpp.o
+[ 53%] Building Fortran object CMakeFiles/ABE.dir/src/lopsidediff.f90.o
+[ 55%] Building CXX object CMakeFiles/ABEGPU.dir/src/Parallel_GPU.cpp.o
+[ 56%] Building CUDA object CMakeFiles/ABEGPU.dir/src/fmisc_gpu.cu.o
+[ 57%] Building Fortran object CMakeFiles/ABE.dir/src/prolongrestrict_cell.f90.o
+[ 59%] Building CUDA object CMakeFiles/ABEGPU.dir/src/lopsidediff_gpu.cu.o
+[ 60%] Building Fortran object CMakeFiles/ABE.dir/src/rungekutta4_rout.f90.o
+[ 61%] Building Fortran object CMakeFiles/ABE.dir/src/sommerfeld_rout.f90.o
+[ 63%] Building CUDA object CMakeFiles/ABEGPU.dir/src/kodiss_gpu.cu.o
+[ 64%] Building CUDA object CMakeFiles/ABEGPU.dir/src/diff_new_gpu.cu.o
+[ 65%] Building CUDA object CMakeFiles/ABEGPU.dir/src/bssn_rhs_gpu.cu.o
+[ 67%] Building CUDA object CMakeFiles/ABEGPU.dir/src/prolongrestrict_cell_gpu.cu.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/kodiss_gpu.cu(15): warning #177-D: variable "ONE" was declared but never referenced
+      const double ONE = 1.0;
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[ 68%] Building CUDA object CMakeFiles/ABEGPU.dir/src/gpu_manager.cu.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/fmisc_gpu.cu(164): warning #177-D: variable "EQUATORIAL" was declared but never referenced
+   const int NO_SYMM = 0, EQUATORIAL = 1, OCTANT = 2;
+                          ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[ 69%] Building CUDA object CMakeFiles/ABEGPU.dir/src/enforce_algebra_gpu.cu.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/prolongrestrict_cell_gpu.cu(58): warning #550-D: variable "lbpc" was set but never used
+      int lbc[3], lbf[3], lbp[3], ubp[3], lbpc[3], ubpc[3];
+                                          ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/home/h3240104505/HPC101_lab/lab4-gpu/src/prolongrestrict_cell_gpu.cu(58): warning #550-D: variable "ubpc" was set but never used
+      int lbc[3], lbf[3], lbp[3], ubp[3], lbpc[3], ubpc[3];
+                                                   ^
+
+[ 71%] Building CUDA object CMakeFiles/ABEGPU.dir/src/sommerfeld_rout_gpu.cu.o
+[ 72%] Building CUDA object CMakeFiles/ABEGPU.dir/src/rungekutta4_rout_gpu.cu.o
+[ 73%] Linking CXX executable TwoPunctureABE
+[ 73%] Built target TwoPunctureABE
+[ 75%] Building CUDA object CMakeFiles/ABEGPU.dir/src/fadmquantites_bssn_gpu.cu.o
+[ 76%] Building CUDA object CMakeFiles/ABEGPU.dir/src/misc_gpu.cu.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/bssn_rhs_gpu.cu(22): warning #177-D: variable "ZEO" was declared but never referenced
+  constexpr double ZEO = 0.0;
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+[ 77%] Building CUDA object CMakeFiles/ABEGPU.dir/src/MPatch_gpu.cu.o
+[ 78%] Building CUDA object CMakeFiles/ABEGPU.dir/src/surface_integral_gpu.cu.o
+[ 80%] Building CUDA object CMakeFiles/ABEGPU.dir/src/getnp4_gpu.cu.o
+In file included from /usr/include/c++/13/backward/strstream:50,
+                 from /home/h3240104505/HPC101_lab/lab4-gpu/src/surface_integral.h:8,
+                 from /home/h3240104505/HPC101_lab/lab4-gpu/src/surface_integral_gpu.cu:1:
+/usr/include/c++/13/backward/backward_warning.h:32:2: warning: #warning This file includes at least one deprecated or antiquated header which may be removed without further notice at a future date. Please use a non-deprecated interface with equivalent functionality instead. For a listing of replacement headers and interfaces, consult the file backward_warning.h. To disable this warning use -Wno-deprecated. [-Wcpp]
+   32 | #warning \
+      |  ^~~~~~~
+In file included from /home/h3240104505/HPC101_lab/lab4-gpu/src/surface_integral_gpu.cu:4:
+/usr/local/cuda/targets/x86_64-linux/include/device_functions.h:54:2: warning: #warning "device_functions.h is an internal header file and must not be used directly.  This file will be removed in a future CUDA release.  Please use cuda_runtime_api.h or cuda_runtime.h instead." [-Wcpp]
+   54 | #warning "device_functions.h is an internal header file and must not be used directly.  This file will be removed in a future CUDA release.  Please use cuda_runtime_api.h or cuda_runtime.h instead."
+      |  ^~~~~~~
+In file included from /usr/include/c++/13/backward/strstream:50,
+                 from /home/h3240104505/HPC101_lab/lab4-gpu/src/surface_integral.h:8,
+                 from /home/h3240104505/HPC101_lab/lab4-gpu/src/surface_integral_gpu.cu:1:
+/usr/include/c++/13/backward/backward_warning.h:32:2: warning: #warning This file includes at least one deprecated or antiquated header which may be removed without further notice at a future date. Please use a non-deprecated interface with equivalent functionality instead. For a listing of replacement headers and interfaces, consult the file backward_warning.h. To disable this warning use -Wno-deprecated. [-Wcpp]
+   32 | #warning \
+      |  ^~~~~~~
+In file included from /home/h3240104505/HPC101_lab/lab4-gpu/src/surface_integral_gpu.cu:4:
+/usr/local/cuda/targets/x86_64-linux/include/device_functions.h:54:2: warning: #warning "device_functions.h is an internal header file and must not be used directly.  This file will be removed in a future CUDA release.  Please use cuda_runtime_api.h or cuda_runtime.h instead." [-Wcpp]
+   54 | #warning "device_functions.h is an internal header file and must not be used directly.  This file will be removed in a future CUDA release.  Please use cuda_runtime_api.h or cuda_runtime.h instead."
+      |  ^~~~~~~
+[ 81%] Building Fortran object CMakeFiles/ABEGPU.dir/src/bssn_rhs.f90.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/fadmquantites_bssn_gpu.cu(39): warning #177-D: variable "i" was declared but never referenced
+      int i = i0 + 1;
+          ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/home/h3240104505/HPC101_lab/lab4-gpu/src/fadmquantites_bssn_gpu.cu(40): warning #177-D: variable "j" was declared but never referenced
+      int j = j0 + 1;
+          ^
+
+/home/h3240104505/HPC101_lab/lab4-gpu/src/fadmquantites_bssn_gpu.cu(41): warning #177-D: variable "k" was declared but never referenced
+      int k = k0 + 1;
+          ^
+
+[ 82%] Building Fortran object CMakeFiles/ABEGPU.dir/src/diff_new.f90.o
+[ 84%] Building Fortran object CMakeFiles/ABEGPU.dir/src/enforce_algebra.f90.o
+[ 85%] Building Fortran object CMakeFiles/ABEGPU.dir/src/fadmquantites_bssn.f90.o
+[ 86%] Building Fortran object CMakeFiles/ABEGPU.dir/src/fmisc.f90.o
+[ 88%] Building Fortran object CMakeFiles/ABEGPU.dir/src/getnp4.f90.o
+[ 89%] Building Fortran object CMakeFiles/ABEGPU.dir/src/initial_puncture.f90.o
+[ 90%] Building Fortran object CMakeFiles/ABEGPU.dir/src/kodiss.f90.o
+[ 92%] Building Fortran object CMakeFiles/ABEGPU.dir/src/lopsidediff.f90.o
+[ 93%] Building Fortran object CMakeFiles/ABEGPU.dir/src/prolongrestrict_cell.f90.o
+[ 94%] Building Fortran object CMakeFiles/ABEGPU.dir/src/rungekutta4_rout.f90.o
+[ 96%] Building Fortran object CMakeFiles/ABEGPU.dir/src/sommerfeld_rout.f90.o
+/home/h3240104505/HPC101_lab/lab4-gpu/src/surface_integral_gpu.cu(256): warning #177-D: variable "f1o8" was declared but never referenced
+      const double f1o8 = 0.125;
+                   ^
+
+Remark: The warnings can be suppressed with "-diag-suppress <warning-number>"
+
+/home/h3240104505/HPC101_lab/lab4-gpu/src/surface_integral_gpu.cu(349): warning #177-D: variable "costheta_base" was declared but never referenced
+      double costheta_base = d_arcostheta[i];
+             ^
+
+/home/h3240104505/HPC101_lab/lab4-gpu/src/misc.h: In function ‘std::string& misc::lTrim(std::string&)’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/misc.h:26:81: warning: ‘std::pointer_to_unary_function<_Arg, _Result> std::ptr_fun(_Result (*)(_Arg)) [with _Arg = int; _Result = int]’ is deprecated: use 'std::function' instead [-Wdeprecated-declarations]
+   26 |         string::iterator p = find_if(ss.begin(), ss.end(), not1(ptr_fun<int, int>(isspace)));
+      |                                                              ~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+/usr/include/c++/13/bits/stl_function.h:1126:1: note: declared here
+ 1126 |     ptr_fun(_Result (*__x)(_Arg))
+      | ^   ~~~
+/home/h3240104505/HPC101_lab/lab4-gpu/src/misc.h: In function ‘std::string& misc::rTrim(std::string&)’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/misc.h:32:91: warning: ‘std::pointer_to_unary_function<_Arg, _Result> std::ptr_fun(_Result (*)(_Arg)) [with _Arg = int; _Result = int]’ is deprecated: use 'std::function' instead [-Wdeprecated-declarations]
+   32 |         string::reverse_iterator p = find_if(ss.rbegin(), ss.rend(), not1(ptr_fun<int, int>(isspace)));
+      |                                                                        ~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+/usr/include/c++/13/bits/stl_function.h:1126:1: note: declared here
+ 1126 |     ptr_fun(_Result (*__x)(_Arg))
+      | ^   ~~~
+/home/h3240104505/HPC101_lab/lab4-gpu/src/misc.h: In function ‘std::string& misc::lTrim(std::string&)’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/misc.h:26:81: warning: ‘std::pointer_to_unary_function<_Arg, _Result> std::ptr_fun(_Result (*)(_Arg)) [with _Arg = int; _Result = int]’ is deprecated: use 'std::function' instead [-Wdeprecated-declarations]
+   26 |         string::iterator p = find_if(ss.begin(), ss.end(), not1(ptr_fun<int, int>(isspace)));
+      |                                                              ~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+/usr/include/c++/13/bits/stl_function.h:1126:1: note: declared here
+ 1126 |     ptr_fun(_Result (*__x)(_Arg))
+      | ^   ~~~
+/home/h3240104505/HPC101_lab/lab4-gpu/src/misc.h: In function ‘std::string& misc::rTrim(std::string&)’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/misc.h:32:91: warning: ‘std::pointer_to_unary_function<_Arg, _Result> std::ptr_fun(_Result (*)(_Arg)) [with _Arg = int; _Result = int]’ is deprecated: use 'std::function' instead [-Wdeprecated-declarations]
+   32 |         string::reverse_iterator p = find_if(ss.rbegin(), ss.rend(), not1(ptr_fun<int, int>(isspace)));
+      |                                                                        ~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+/usr/include/c++/13/bits/stl_function.h:1126:1: note: declared here
+ 1126 |     ptr_fun(_Result (*__x)(_Arg))
+      | ^   ~~~
+[ 97%] Linking CXX executable ABE
+[ 97%] Built target ABE
+[ 98%] Linking CUDA device code CMakeFiles/ABEGPU.dir/cmake_device_link.o
+[100%] Linking CXX executable ABEGPU
+[100%] Built target ABEGPU
+==> Built executables:
+-rwxr-xr-x 1 root root 1.2M Aug 23 06:55 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_occ128/ABE
+-rwxr-xr-x 1 root root 189K Aug 23 06:55 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_occ128/TwoPunctureABE
+-rwxr-xr-x 1 root root 2.2M Aug 23 06:55 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_occ128/ABEGPU

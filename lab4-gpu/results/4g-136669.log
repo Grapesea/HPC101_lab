@@ -1,0 +1,954 @@
+PWD=/home/h3240104505/HPC101_lab/lab4-gpu
+Start: Sat Aug 22 06:29:38 AM UTC 2026
+GPU 0: NVIDIA A100 80GB PCIe (UUID: GPU-846ad3af-1130-d346-13bb-e3d8d9b8378b)
+  MIG 1g.10gb     Device  0: (UUID: MIG-7f8384fe-c071-54ab-a95a-fd970d19ff28)
+GPU_Calculation=yes
+MPI ranks=1, OMP threads=1
+Build=/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
+Output=/home/h3240104505/HPC101_lab/lab4-gpu/gpu_output
+CUDA compiler=/usr/local/cuda/bin/nvcc
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-gpu" -B "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DAMSS_ENABLE_GPU=ON -DCMAKE_CUDA_ARCHITECTURES=80 -DAMSS_ENABLE_OPENMP=OFF -DAMSS_MPI_CUDA_AWARE=0 
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : ON, CUDA=/usr/local/cuda/bin/nvcc, arch=80
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-mcpu=native OPENMP=OFF MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (10.3s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100" -j 16
+[  3%] Built target TwoPunctureABE
+[ 39%] Built target ABE
+[100%] Built target ABEGPU
+==> Built executables:
+-rwxr-xr-x 1 root root 1.1M Aug 13 13:45 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100/ABE
+-rwxr-xr-x 1 root root 185K Aug 13 13:45 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100/TwoPunctureABE
+-rwxr-xr-x 1 root root 3.8M Aug 13 13:45 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100/ABEGPU
+==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
+==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-gpu/twopuncture_cache
+==> MPI exec : mpiexec
+
+ /////////////////////////////////////////////////////////////// 
+ AMSS-NCKU Begin !!! 
+ /////////////////////////////////////////////////////////////// 
+
+                                 new run
+   simulation with cpu numbers = 1
+               simulation time = (0, 100)
+ simulation steps for this run = 10000000
+                Courant number = 0.5
+            Initial Data Type: Numerical Ansorg TwoPuncture
+             Symmetry setting: Equatorial
+ Courant = 0.5
+ artificial dissipation for shell patches = 0.15
+ artificial dissipation for fixed levels = 0.15
+ artificial dissipation for moving levels = 0.15
+ Dumpt Time = 1000
+ Check Time = 1000
+ Analysis Time = 0.1
+ Analysis level = 0
+ checkfile = bssn.chk
+ fourth order finite difference is used
+///////////////////////////////////////////////////////////////
+-----------------------------------------------------------------------
+ spherical integration for wave form extraction with Gauss method      
+ N_phi   = 384
+ N_theta = 192
+-----------------------------------------------------------------------
+chitiny = 1e-05
+time refinement start from level #3
+ checkpoint class created 
+you have setted 167 grid functions.
+
+ cgh has levels: 9
+
+ level #0 has boxes: 1
+ #0 box is  (-320:320,-320:320,0:320).
+ level #1 has boxes: 1
+ #0 box is  (-160:160,-160:160,0:160).
+ level #2 has boxes: 1
+ #0 box is  (-80:80,-80:80,0:80).
+ level #3 has boxes: 1
+ #0 box is  (-40:40,-40:40,0:40).
+ level #4 has boxes: 1
+ #0 box is  (-20:20,-20:20,0:20).
+ level #5 has boxes: 2
+ #0 box is  (-12:12,-9.5:14.5,0:12).
+ #1 box is  (-12:12,-15.5:8.5,0:12).
+ level #6 has boxes: 2
+ #0 box is  (-6:6,-3.5:8.5,0:6).
+ #1 box is  (-6:6,-9.5:2.5,0:6).
+ level #7 has boxes: 2
+ #0 box is  (-3:3,-0.625:5.375,0:3).
+ #1 box is  (-3:3,-6.625:-0.625,0:3).
+ level #8 has boxes: 2
+ #0 box is  (-1.5:1.5,0.9375:3.9375,0:1.5).
+ #1 box is  (-1.5:1.5,-5.0625:-2.0625,0:1.5).
+
+ moving levels are lev #5--8
+
+ belong to level 0
+ shape: [40,40,20] resolution: [16,16,16]
+ range:(-320:320,-320:320,0:320)
+ belong to level 1
+ shape: [40,40,20] resolution: [8,8,8]
+ range:(-160:160,-160:160,0:160)
+ belong to level 2
+ shape: [40,40,20] resolution: [4,4,4]
+ range:(-80:80,-80:80,0:80)
+ belong to level 3
+ shape: [40,40,20] resolution: [2,2,2]
+ range:(-40:40,-40:40,0:40)
+ belong to level 4
+ shape: [40,40,20] resolution: [1,1,1]
+ range:(-20:20,-20:20,0:20)
+ belong to level 5
+ shape: [48,60,24] resolution: [0.5,0.5,0.5]
+ range:(-12:12,-15.5:14.5,0:12)
+ belong to level 6
+ shape: [48,72,24] resolution: [0.25,0.25,0.25]
+ range:(-6:6,-9.5:8.5,0:6)
+ belong to level 7
+ shape: [48,96,24] resolution: [0.125,0.125,0.125]
+ range:(-3:3,-6.625:5.375,0:3)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,0.9375:3.9375,0:1.5)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,-5.0625:-2.0625,0:1.5)
+initial information of 2 Black Hole(s)
+            Mass               x               y               z              Px              Py              Pz              Sx              Sy              Sz
+        0.576976               0         2.40698               0         -0.1275     -0.00514081               0               0               0               0
+        0.378578               0        -3.59302               0          0.1275      0.00514081               0               0               0               0
+Read initial data from Ansorg's solver, please be sure the input parameters for black holes are puncture parameters!!
+  reading data from Ansorg.psid
+  found data with dimensions 50 x 50 x 26 = 65000
+  bhx1 = 0
+  bhy1 = 2.40698
+  bhz1 = 0
+  bhx2 = 0
+  bhy2 = -3.59302
+  bhz2 = 0
+  read 65000 data lines
+
+
+ Before Evolve, it takes 3.44894 seconds
+
+Before Step: 1 My Rank: 0 takes 0.248463 seconds!
+After Step: 1 My Rank: 0 takes 17.4031 seconds!
+Timestep # 1: integrating to time: 1
+used 17.9622 seconds!
+Memory usage: current 1428/1428/1428MB, peak 1428/1428/1428MB
+Before Step: 2 My Rank: 0 takes 0.310704 seconds!
+After Step: 2 My Rank: 0 takes 17.7601 seconds!
+Timestep # 2: integrating to time: 2
+used 18.0591 seconds!
+Memory usage: current 1703/1703/1703MB, peak 1703/1703/1703MB
+Before Step: 3 My Rank: 0 takes 0.298964 seconds!
+After Step: 3 My Rank: 0 takes 18.0462 seconds!
+Timestep # 3: integrating to time: 3
+used 18.3466 seconds!
+Memory usage: current 1835/1835/1835MB, peak 1835/1835/1835MB
+Before Step: 4 My Rank: 0 takes 0.300376 seconds!
+After Step: 4 My Rank: 0 takes 18.0199 seconds!
+Timestep # 4: integrating to time: 4
+used 18.3189 seconds!
+Memory usage: current 1816/1816/1816MB, peak 1835/1835/1835MB
+Before Step: 5 My Rank: 0 takes 0.298918 seconds!
+After Step: 5 My Rank: 0 takes 17.6897 seconds!
+Timestep # 5: integrating to time: 5
+used 17.9899 seconds!
+Memory usage: current 1816/1816/1816MB, peak 1835/1835/1835MB
+Before Step: 6 My Rank: 0 takes 0.300211 seconds!
+After Step: 6 My Rank: 0 takes 18.2617 seconds!
+Timestep # 6: integrating to time: 6
+used 18.5644 seconds!
+Memory usage: current 1843/1843/1843MB, peak 1843/1843/1843MB
+Before Step: 7 My Rank: 0 takes 0.302645 seconds!
+After Step: 7 My Rank: 0 takes 18.5441 seconds!
+Timestep # 7: integrating to time: 7
+used 18.8522 seconds!
+Memory usage: current 1988/1988/1988MB, peak 1988/1988/1988MB
+Before Step: 8 My Rank: 0 takes 0.308051 seconds!
+After Step: 8 My Rank: 0 takes 18.6782 seconds!
+Timestep # 8: integrating to time: 8
+used 18.9917 seconds!
+Memory usage: current 1928/1928/1928MB, peak 1988/1988/1988MB
+Before Step: 9 My Rank: 0 takes 0.313453 seconds!
+After Step: 9 My Rank: 0 takes 18.9791 seconds!
+Timestep # 9: integrating to time: 9
+used 19.2982 seconds!
+Memory usage: current 2071/2071/2071MB, peak 2071/2071/2071MB
+Before Step: 10 My Rank: 0 takes 0.319058 seconds!
+After Step: 10 My Rank: 0 takes 19.1084 seconds!
+Timestep # 10: integrating to time: 10
+used 19.4272 seconds!
+Memory usage: current 1936/1936/1936MB, peak 2071/2071/2071MB
+Before Step: 11 My Rank: 0 takes 0.318704 seconds!
+After Step: 11 My Rank: 0 takes 19.3692 seconds!
+Timestep # 11: integrating to time: 11
+used 19.6856 seconds!
+Memory usage: current 1859/1859/1859MB, peak 2071/2071/2071MB
+Before Step: 12 My Rank: 0 takes 0.316333 seconds!
+After Step: 12 My Rank: 0 takes 18.9628 seconds!
+Timestep # 12: integrating to time: 12
+used 19.2796 seconds!
+Memory usage: current 1855/1855/1855MB, peak 2071/2071/2071MB
+Before Step: 13 My Rank: 0 takes 0.316709 seconds!
+After Step: 13 My Rank: 0 takes 19.2335 seconds!
+Timestep # 13: integrating to time: 13
+used 19.5521 seconds!
+Memory usage: current 1832/1832/1832MB, peak 2071/2071/2071MB
+Before Step: 14 My Rank: 0 takes 0.318632 seconds!
+After Step: 14 My Rank: 0 takes 19.1264 seconds!
+Timestep # 14: integrating to time: 14
+used 19.4451 seconds!
+Memory usage: current 1866/1866/1866MB, peak 2071/2071/2071MB
+Before Step: 15 My Rank: 0 takes 0.318739 seconds!
+After Step: 15 My Rank: 0 takes 19.3156 seconds!
+Timestep # 15: integrating to time: 15
+used 19.6345 seconds!
+Memory usage: current 1833/1833/1833MB, peak 2071/2071/2071MB
+Before Step: 16 My Rank: 0 takes 0.318944 seconds!
+After Step: 16 My Rank: 0 takes 19.0997 seconds!
+Timestep # 16: integrating to time: 16
+used 19.4243 seconds!
+Memory usage: current 1860/1860/1860MB, peak 2071/2071/2071MB
+Before Step: 17 My Rank: 0 takes 0.324624 seconds!
+After Step: 17 My Rank: 0 takes 19.9943 seconds!
+Timestep # 17: integrating to time: 17
+used 20.3151 seconds!
+Memory usage: current 1864/1864/1864MB, peak 2071/2071/2071MB
+Before Step: 18 My Rank: 0 takes 0.320805 seconds!
+After Step: 18 My Rank: 0 takes 20.8485 seconds!
+Timestep # 18: integrating to time: 18
+used 21.1826 seconds!
+Memory usage: current 1870/1870/1870MB, peak 2071/2071/2071MB
+Before Step: 19 My Rank: 0 takes 0.334081 seconds!
+After Step: 19 My Rank: 0 takes 20.0493 seconds!
+Timestep # 19: integrating to time: 19
+used 20.3724 seconds!
+Memory usage: current 1870/1870/1870MB, peak 2071/2071/2071MB
+Before Step: 20 My Rank: 0 takes 0.323045 seconds!
+After Step: 20 My Rank: 0 takes 19.8629 seconds!
+Timestep # 20: integrating to time: 20
+used 20.1835 seconds!
+Memory usage: current 1870/1870/1870MB, peak 2071/2071/2071MB
+Before Step: 21 My Rank: 0 takes 0.320518 seconds!
+After Step: 21 My Rank: 0 takes 19.843 seconds!
+Timestep # 21: integrating to time: 21
+used 20.1801 seconds!
+Memory usage: current 1860/1860/1860MB, peak 2071/2071/2071MB
+Before Step: 22 My Rank: 0 takes 0.337106 seconds!
+After Step: 22 My Rank: 0 takes 20.2621 seconds!
+Timestep # 22: integrating to time: 22
+used 20.5949 seconds!
+Memory usage: current 1860/1860/1860MB, peak 2071/2071/2071MB
+Before Step: 23 My Rank: 0 takes 0.332816 seconds!
+After Step: 23 My Rank: 0 takes 20.4001 seconds!
+Timestep # 23: integrating to time: 23
+used 20.7375 seconds!
+Memory usage: current 1857/1857/1857MB, peak 2071/2071/2071MB
+Before Step: 24 My Rank: 0 takes 0.337366 seconds!
+After Step: 24 My Rank: 0 takes 20.1736 seconds!
+Timestep # 24: integrating to time: 24
+used 20.5067 seconds!
+Memory usage: current 1857/1857/1857MB, peak 2071/2071/2071MB
+Before Step: 25 My Rank: 0 takes 0.33306 seconds!
+After Step: 25 My Rank: 0 takes 20.0607 seconds!
+Timestep # 25: integrating to time: 25
+used 20.3996 seconds!
+Memory usage: current 2036/2036/2036MB, peak 2071/2071/2071MB
+Before Step: 26 My Rank: 0 takes 0.338883 seconds!
+After Step: 26 My Rank: 0 takes 20.231 seconds!
+Timestep # 26: integrating to time: 26
+used 20.5679 seconds!
+Memory usage: current 1888/1888/1888MB, peak 2071/2071/2071MB
+Before Step: 27 My Rank: 0 takes 0.336846 seconds!
+After Step: 27 My Rank: 0 takes 19.9635 seconds!
+Timestep # 27: integrating to time: 27
+used 20.2927 seconds!
+Memory usage: current 2035/2035/2035MB, peak 2071/2071/2071MB
+Before Step: 28 My Rank: 0 takes 0.329132 seconds!
+After Step: 28 My Rank: 0 takes 19.6026 seconds!
+Timestep # 28: integrating to time: 28
+used 19.9282 seconds!
+Memory usage: current 2035/2035/2035MB, peak 2071/2071/2071MB
+Before Step: 29 My Rank: 0 takes 0.325498 seconds!
+After Step: 29 My Rank: 0 takes 19.4993 seconds!
+Timestep # 29: integrating to time: 29
+used 19.8212 seconds!
+Memory usage: current 1966/1966/1966MB, peak 2071/2071/2071MB
+Before Step: 30 My Rank: 0 takes 0.321801 seconds!
+After Step: 30 My Rank: 0 takes 18.5472 seconds!
+Timestep # 30: integrating to time: 30
+used 18.8505 seconds!
+Memory usage: current 1847/1847/1847MB, peak 2071/2071/2071MB
+Before Step: 31 My Rank: 0 takes 0.303318 seconds!
+After Step: 31 My Rank: 0 takes 18.1152 seconds!
+Timestep # 31: integrating to time: 31
+used 18.4107 seconds!
+Memory usage: current 1847/1847/1847MB, peak 2071/2071/2071MB
+Before Step: 32 My Rank: 0 takes 0.295474 seconds!
+After Step: 32 My Rank: 0 takes 17.3517 seconds!
+Timestep # 32: integrating to time: 32
+used 17.6438 seconds!
+Memory usage: current 1847/1847/1847MB, peak 2071/2071/2071MB
+Before Step: 33 My Rank: 0 takes 0.292051 seconds!
+After Step: 33 My Rank: 0 takes 17.5174 seconds!
+Timestep # 33: integrating to time: 33
+used 17.8105 seconds!
+Memory usage: current 1847/1847/1847MB, peak 2071/2071/2071MB
+Before Step: 34 My Rank: 0 takes 0.293073 seconds!
+After Step: 34 My Rank: 0 takes 17.4668 seconds!
+Timestep # 34: integrating to time: 34
+used 17.7604 seconds!
+Memory usage: current 1832/1832/1832MB, peak 2071/2071/2071MB
+Before Step: 35 My Rank: 0 takes 0.293504 seconds!
+After Step: 35 My Rank: 0 takes 18.3285 seconds!
+Timestep # 35: integrating to time: 35
+used 18.639 seconds!
+Memory usage: current 1956/1956/1956MB, peak 2071/2071/2071MB
+Before Step: 36 My Rank: 0 takes 0.310464 seconds!
+After Step: 36 My Rank: 0 takes 19.3182 seconds!
+Timestep # 36: integrating to time: 36
+used 19.6489 seconds!
+Memory usage: current 1832/1832/1832MB, peak 2071/2071/2071MB
+Before Step: 37 My Rank: 0 takes 0.330715 seconds!
+After Step: 37 My Rank: 0 takes 19.0502 seconds!
+Timestep # 37: integrating to time: 37
+used 19.3809 seconds!
+Memory usage: current 1859/1859/1859MB, peak 2071/2071/2071MB
+Before Step: 38 My Rank: 0 takes 0.330721 seconds!
+After Step: 38 My Rank: 0 takes 18.8212 seconds!
+Timestep # 38: integrating to time: 38
+used 19.1329 seconds!
+Memory usage: current 1860/1860/1860MB, peak 2071/2071/2071MB
+Before Step: 39 My Rank: 0 takes 0.311686 seconds!
+After Step: 39 My Rank: 0 takes 18.7472 seconds!
+Timestep # 39: integrating to time: 39
+used 19.0502 seconds!
+Memory usage: current 1860/1860/1860MB, peak 2071/2071/2071MB
+Before Step: 40 My Rank: 0 takes 0.302905 seconds!
+After Step: 40 My Rank: 0 takes 18.2131 seconds!
+Timestep # 40: integrating to time: 40
+used 18.5157 seconds!
+Memory usage: current 1895/1895/1895MB, peak 2071/2071/2071MB
+Before Step: 41 My Rank: 0 takes 0.302634 seconds!
+After Step: 41 My Rank: 0 takes 18.6538 seconds!
+Timestep # 41: integrating to time: 41
+used 18.9616 seconds!
+Memory usage: current 1831/1831/1831MB, peak 2071/2071/2071MB
+Before Step: 42 My Rank: 0 takes 0.30777 seconds!
+After Step: 42 My Rank: 0 takes 19.0538 seconds!
+Timestep # 42: integrating to time: 42
+used 19.3645 seconds!
+Memory usage: current 1832/1832/1832MB, peak 2071/2071/2071MB
+Before Step: 43 My Rank: 0 takes 0.310709 seconds!
+After Step: 43 My Rank: 0 takes 19.47 seconds!
+Timestep # 43: integrating to time: 43
+used 19.7786 seconds!
+Memory usage: current 1832/1832/1832MB, peak 2071/2071/2071MB
+Before Step: 44 My Rank: 0 takes 0.308625 seconds!
+After Step: 44 My Rank: 0 takes 19.7358 seconds!
+Timestep # 44: integrating to time: 44
+used 20.0499 seconds!
+Memory usage: current 1837/1837/1837MB, peak 2071/2071/2071MB
+Before Step: 45 My Rank: 0 takes 0.314001 seconds!
+After Step: 45 My Rank: 0 takes 19.6097 seconds!
+Timestep # 45: integrating to time: 45
+used 19.9212 seconds!
+Memory usage: current 1837/1837/1837MB, peak 2071/2071/2071MB
+Before Step: 46 My Rank: 0 takes 0.311555 seconds!
+After Step: 46 My Rank: 0 takes 20.1094 seconds!
+Timestep # 46: integrating to time: 46
+used 20.4269 seconds!
+Memory usage: current 1842/1842/1842MB, peak 2071/2071/2071MB
+Before Step: 47 My Rank: 0 takes 0.317423 seconds!
+After Step: 47 My Rank: 0 takes 19.6712 seconds!
+Timestep # 47: integrating to time: 47
+used 19.9893 seconds!
+Memory usage: current 1842/1842/1842MB, peak 2071/2071/2071MB
+Before Step: 48 My Rank: 0 takes 0.317994 seconds!
+After Step: 48 My Rank: 0 takes 19.955 seconds!
+Timestep # 48: integrating to time: 48
+used 20.2637 seconds!
+Memory usage: current 1889/1889/1889MB, peak 2071/2071/2071MB
+Before Step: 49 My Rank: 0 takes 0.308642 seconds!
+After Step: 49 My Rank: 0 takes 18.4812 seconds!
+Timestep # 49: integrating to time: 49
+used 18.7914 seconds!
+Memory usage: current 1887/1887/1887MB, peak 2071/2071/2071MB
+Before Step: 50 My Rank: 0 takes 0.310201 seconds!
+After Step: 50 My Rank: 0 takes 18.8157 seconds!
+Timestep # 50: integrating to time: 50
+used 19.1191 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 51 My Rank: 0 takes 0.303357 seconds!
+After Step: 51 My Rank: 0 takes 18.3727 seconds!
+Timestep # 51: integrating to time: 51
+used 18.68 seconds!
+Memory usage: current 1879/1879/1879MB, peak 2071/2071/2071MB
+Before Step: 52 My Rank: 0 takes 0.307248 seconds!
+After Step: 52 My Rank: 0 takes 17.853 seconds!
+Timestep # 52: integrating to time: 52
+used 18.1601 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 53 My Rank: 0 takes 0.307137 seconds!
+After Step: 53 My Rank: 0 takes 17.4655 seconds!
+Timestep # 53: integrating to time: 53
+used 17.7641 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 54 My Rank: 0 takes 0.298647 seconds!
+After Step: 54 My Rank: 0 takes 17.2573 seconds!
+Timestep # 54: integrating to time: 54
+used 17.5507 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 55 My Rank: 0 takes 0.293379 seconds!
+After Step: 55 My Rank: 0 takes 17.1834 seconds!
+Timestep # 55: integrating to time: 55
+used 17.4769 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 56 My Rank: 0 takes 0.293423 seconds!
+After Step: 56 My Rank: 0 takes 17.4317 seconds!
+Timestep # 56: integrating to time: 56
+used 17.7337 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 57 My Rank: 0 takes 0.301973 seconds!
+After Step: 57 My Rank: 0 takes 17.952 seconds!
+Timestep # 57: integrating to time: 57
+used 18.2593 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 58 My Rank: 0 takes 0.30724 seconds!
+After Step: 58 My Rank: 0 takes 17.8169 seconds!
+Timestep # 58: integrating to time: 58
+used 18.1188 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 59 My Rank: 0 takes 0.301874 seconds!
+After Step: 59 My Rank: 0 takes 18.2507 seconds!
+Timestep # 59: integrating to time: 59
+used 18.5577 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 60 My Rank: 0 takes 0.307002 seconds!
+After Step: 60 My Rank: 0 takes 18.2446 seconds!
+Timestep # 60: integrating to time: 60
+used 18.565 seconds!
+Memory usage: current 1836/1836/1836MB, peak 2071/2071/2071MB
+Before Step: 61 My Rank: 0 takes 0.32041 seconds!
+After Step: 61 My Rank: 0 takes 19.694 seconds!
+Timestep # 61: integrating to time: 61
+used 20.0314 seconds!
+Memory usage: current 1844/1844/1844MB, peak 2071/2071/2071MB
+Before Step: 62 My Rank: 0 takes 0.337312 seconds!
+After Step: 62 My Rank: 0 takes 19.1868 seconds!
+Timestep # 62: integrating to time: 62
+used 19.524 seconds!
+Memory usage: current 1844/1844/1844MB, peak 2071/2071/2071MB
+Before Step: 63 My Rank: 0 takes 0.337183 seconds!
+After Step: 63 My Rank: 0 takes 20.1877 seconds!
+Timestep # 63: integrating to time: 63
+used 20.5269 seconds!
+Memory usage: current 1842/1842/1842MB, peak 2071/2071/2071MB
+Before Step: 64 My Rank: 0 takes 0.339183 seconds!
+After Step: 64 My Rank: 0 takes 19.9268 seconds!
+Timestep # 64: integrating to time: 64
+used 20.2445 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 65 My Rank: 0 takes 0.317667 seconds!
+After Step: 65 My Rank: 0 takes 20.3979 seconds!
+Timestep # 65: integrating to time: 65
+used 20.7364 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 66 My Rank: 0 takes 0.338549 seconds!
+After Step: 66 My Rank: 0 takes 19.1729 seconds!
+Timestep # 66: integrating to time: 66
+used 19.4899 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 67 My Rank: 0 takes 0.316947 seconds!
+After Step: 67 My Rank: 0 takes 18.8489 seconds!
+Timestep # 67: integrating to time: 67
+used 19.1605 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 68 My Rank: 0 takes 0.311632 seconds!
+After Step: 68 My Rank: 0 takes 18.9329 seconds!
+Timestep # 68: integrating to time: 68
+used 19.2419 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 69 My Rank: 0 takes 0.309058 seconds!
+After Step: 69 My Rank: 0 takes 18.6644 seconds!
+Timestep # 69: integrating to time: 69
+used 18.9681 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 70 My Rank: 0 takes 0.303651 seconds!
+After Step: 70 My Rank: 0 takes 18.2954 seconds!
+Timestep # 70: integrating to time: 70
+used 18.6014 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 71 My Rank: 0 takes 0.305938 seconds!
+After Step: 71 My Rank: 0 takes 17.8066 seconds!
+Timestep # 71: integrating to time: 71
+used 18.1071 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 72 My Rank: 0 takes 0.300464 seconds!
+After Step: 72 My Rank: 0 takes 17.8115 seconds!
+Timestep # 72: integrating to time: 72
+used 18.1111 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 73 My Rank: 0 takes 0.29963 seconds!
+After Step: 73 My Rank: 0 takes 17.9243 seconds!
+Timestep # 73: integrating to time: 73
+used 18.22 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 74 My Rank: 0 takes 0.295636 seconds!
+After Step: 74 My Rank: 0 takes 18.0594 seconds!
+Timestep # 74: integrating to time: 74
+used 18.3579 seconds!
+Memory usage: current 1841/1841/1841MB, peak 2071/2071/2071MB
+Before Step: 75 My Rank: 0 takes 0.298499 seconds!
+After Step: 75 My Rank: 0 takes 18.4039 seconds!
+Timestep # 75: integrating to time: 75
+used 18.7136 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 76 My Rank: 0 takes 0.309702 seconds!
+After Step: 76 My Rank: 0 takes 18.8414 seconds!
+Timestep # 76: integrating to time: 76
+used 19.1458 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 77 My Rank: 0 takes 0.304304 seconds!
+After Step: 77 My Rank: 0 takes 18.3366 seconds!
+Timestep # 77: integrating to time: 77
+used 18.6385 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 78 My Rank: 0 takes 0.301872 seconds!
+After Step: 78 My Rank: 0 takes 17.9426 seconds!
+Timestep # 78: integrating to time: 78
+used 18.2406 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 79 My Rank: 0 takes 0.29793 seconds!
+After Step: 79 My Rank: 0 takes 18.4327 seconds!
+Timestep # 79: integrating to time: 79
+used 18.738 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 80 My Rank: 0 takes 0.305275 seconds!
+After Step: 80 My Rank: 0 takes 18.2564 seconds!
+Timestep # 80: integrating to time: 80
+used 18.5576 seconds!
+Memory usage: current 1835/1835/1835MB, peak 2071/2071/2071MB
+Before Step: 81 My Rank: 0 takes 0.301244 seconds!
+After Step: 81 My Rank: 0 takes 17.2309 seconds!
+Timestep # 81: integrating to time: 81
+used 17.5267 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 82 My Rank: 0 takes 0.295763 seconds!
+After Step: 82 My Rank: 0 takes 16.0936 seconds!
+Timestep # 82: integrating to time: 82
+used 16.3722 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 83 My Rank: 0 takes 0.278545 seconds!
+After Step: 83 My Rank: 0 takes 14.7325 seconds!
+Timestep # 83: integrating to time: 83
+used 15.001 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 84 My Rank: 0 takes 0.268565 seconds!
+After Step: 84 My Rank: 0 takes 14.101 seconds!
+Timestep # 84: integrating to time: 84
+used 14.372 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 85 My Rank: 0 takes 0.270941 seconds!
+After Step: 85 My Rank: 0 takes 14.2878 seconds!
+Timestep # 85: integrating to time: 85
+used 14.5522 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 86 My Rank: 0 takes 0.264417 seconds!
+After Step: 86 My Rank: 0 takes 14.3575 seconds!
+Timestep # 86: integrating to time: 86
+used 14.6165 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 87 My Rank: 0 takes 0.258998 seconds!
+After Step: 87 My Rank: 0 takes 13.6281 seconds!
+Timestep # 87: integrating to time: 87
+used 13.89 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 88 My Rank: 0 takes 0.261888 seconds!
+After Step: 88 My Rank: 0 takes 13.7227 seconds!
+Timestep # 88: integrating to time: 88
+used 13.9796 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 89 My Rank: 0 takes 0.256877 seconds!
+After Step: 89 My Rank: 0 takes 13.0261 seconds!
+Timestep # 89: integrating to time: 89
+used 13.2765 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 90 My Rank: 0 takes 0.250428 seconds!
+After Step: 90 My Rank: 0 takes 11.9874 seconds!
+Timestep # 90: integrating to time: 90
+used 12.229 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 91 My Rank: 0 takes 0.241496 seconds!
+After Step: 91 My Rank: 0 takes 11.5841 seconds!
+Timestep # 91: integrating to time: 91
+used 11.8279 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 92 My Rank: 0 takes 0.243807 seconds!
+After Step: 92 My Rank: 0 takes 11.5539 seconds!
+Timestep # 92: integrating to time: 92
+used 11.795 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 93 My Rank: 0 takes 0.241151 seconds!
+After Step: 93 My Rank: 0 takes 11.1331 seconds!
+Timestep # 93: integrating to time: 93
+used 11.3737 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 94 My Rank: 0 takes 0.240613 seconds!
+After Step: 94 My Rank: 0 takes 10.6941 seconds!
+Timestep # 94: integrating to time: 94
+used 10.9364 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 95 My Rank: 0 takes 0.242321 seconds!
+After Step: 95 My Rank: 0 takes 10.6833 seconds!
+Timestep # 95: integrating to time: 95
+used 10.9236 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 96 My Rank: 0 takes 0.240249 seconds!
+After Step: 96 My Rank: 0 takes 10.7043 seconds!
+Timestep # 96: integrating to time: 96
+used 10.9449 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 97 My Rank: 0 takes 0.240587 seconds!
+After Step: 97 My Rank: 0 takes 10.7576 seconds!
+Timestep # 97: integrating to time: 97
+used 10.9968 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 98 My Rank: 0 takes 0.239201 seconds!
+After Step: 98 My Rank: 0 takes 10.7116 seconds!
+Timestep # 98: integrating to time: 98
+used 10.9565 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 99 My Rank: 0 takes 0.244845 seconds!
+After Step: 99 My Rank: 0 takes 10.7117 seconds!
+Timestep # 99: integrating to time: 99
+used 10.9519 seconds!
+Memory usage: current 1838/1838/1838MB, peak 2071/2071/2071MB
+Before Step: 100 My Rank: 0 takes 0.240213 seconds!
+After Step: 100 My Rank: 0 takes 10.7 seconds!
+Timestep # 100: integrating to time: 100
+used 10.9411 seconds!
+
+ Total Evolve Time: 1789.11 seconds!
+ Total Running Time: 1792.56 seconds!
+
+
+ =============================================================== 
+ Simulation is successfully done!! 
+ =============================================================== 
+
+ This run used 1792.63 seconds! 
+
+/home/h3240104505/HPC101_lab/lab4-gpu/scripts/plot_xiaoqu.py:207: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  plt.legend( loc='upper right'                                       )
+/home/h3240104505/HPC101_lab/lab4-gpu/scripts/plot_xiaoqu.py:235: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  plt.legend( loc='upper right'                                       )
+/home/h3240104505/HPC101_lab/lab4-gpu/scripts/plot_xiaoqu.py:263: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  plt.legend( loc='upper right'                                       )
+/home/h3240104505/HPC101_lab/lab4-gpu/scripts/plot_xiaoqu.py:387: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  plt.legend( loc='upper right'                          )
+==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
+==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-gpu/twopuncture_cache
+ Output directory has been generated
+
+------------------------------------------------------------------------------------------
+
+ Printing the basic parameter and setting in the AMSS-NCKU simulation 
+
+ The number of MPI processes in the AMSS-NCKU simulation =  1
+
+ The form of computational equation  =  BSSN
+ The initial data in this simulation =  Ansorg-TwoPuncture
+
+ Starting evolution time   =  0.0
+ Final evolution time      =  100.0
+ Maximal iteration number  =  10000000
+ Courant factor            =  0.5
+ Strength of dissipation   =  0.15
+ Symmetry of system        =  equatorial-symmetry
+ The Runge-Kutta scheme in the time evolution   =  runge-kutta-45
+ The finite-difference scheme in the simulation =  4th-order
+
+ The static AMR grid type =  Linear
+ The moving AMR grid type =  Linear
+
+ The number of static AMR grid levels =  5
+ The number of moving AMR grid levels =  4
+ The number of total  AMR grid levels =  9
+
+ The grid number of each static AMR grid level =  40
+ The grid number of each moving AMR grid level =  48
+
+ The scale for largest  static AMR grid in X direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Y direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Z direction =  [-320.  320.]
+ The scale for smallest static AMR grid in X direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Y direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Z direction =  [-20.  20.]
+
+ The scale for largest  moving AMR grid =  [-12.  12.]
+ The scale for smallest moving AMR grid =  [-1.5  1.5]
+
+ The coarest resolution for static AMR grid =  16.0
+ The finest  resolution for static AMR grid =  1.0
+ The coarest resolution for moving AMR grid =  0.5
+ The finest  resolution for moving AMR grid =  0.0625
+
+ The time refinement starts from AMR grid level =  4
+ The time interval in each step for coarest AMR grid during time evaluation =  1.0
+
+ This simulation uses the Patch AMR grid structure 
+
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+ Printing the puncture information 
+
+ The information for 1 puncture 
+ Mass(1) =   0.598837,  Charge(1) =   0.000000,  a(1)  =   0.000000
+ X(1)    =   0.000000,  Y(1)      =   2.406977,  Z(1)  =   0.000000
+ Px(1)   =  -0.127500,  Py(1)     =  -0.005141,  Pz(1) =   0.000000
+ Jx(1)   =   0.000000,  Jy(1)     =   0.000000,  Jz(1) =   0.000000
+
+ The information for 2 puncture 
+ Mass(2) =   0.401163,  Charge(2) =   0.000000,  a(2)  =   0.000000
+ X(2)    =   0.000000,  Y(2)      =  -3.593023,  Z(2)  =   0.000000
+ Px(2)   =   0.127500,  Py(2)     =   0.005141,  Pz(2) =   0.000000
+ Jx(2)   =   0.000000,  Jy(2)     =   0.000000,  Jz(2) =   0.000000
+
+------------------------------------------------------------------------------------------
+
+ Generating the AMSS-NCKU input parfile for the ABE executable.
+
+
+ Setting Puncture's position and momentum 
+
+
+ Wirte Down The Grid Information 
+
+ Number of Total Grid Level =  9
+ Number of Static Grid Level =  5
+ Number of Moving Grid Level =  4
+
+
+ Setting the demanded numerical grid 
+
+ adjusting the static gird points, making the original point (0,0,0) to the static gird points 
+
+
+ adjusting the moving gird points, ensuring the alliance of moving grids points and static grids points 
+
+ adjust_puncture[5,0,0] = 0.0 
+ adjust_puncture[5,0,1] = 2.5 
+ adjust_puncture[5,0,2] = 0.0 
+ adjust_puncture[5,1,0] = 0.0 
+ adjust_puncture[5,1,1] = -3.5 
+ adjust_puncture[5,1,2] = 0.0 
+ adjust_puncture[6,0,0] = 0.0 
+ adjust_puncture[6,0,1] = 2.5 
+ adjust_puncture[6,0,2] = 0.0 
+ adjust_puncture[6,1,0] = 0.0 
+ adjust_puncture[6,1,1] = -3.5 
+ adjust_puncture[6,1,2] = 0.0 
+ adjust_puncture[7,0,0] = 0.0 
+ adjust_puncture[7,0,1] = 2.375 
+ adjust_puncture[7,0,2] = 0.0 
+ adjust_puncture[7,1,0] = 0.0 
+ adjust_puncture[7,1,1] = -3.625 
+ adjust_puncture[7,1,2] = 0.0 
+ adjust_puncture[8,0,0] = 0.0 
+ adjust_puncture[8,0,1] = 2.4375 
+ adjust_puncture[8,0,2] = 0.0 
+ adjust_puncture[8,1,0] = 0.0 
+ adjust_puncture[8,1,1] = -3.5625 
+ adjust_puncture[8,1,2] = 0.0 
+
+ The moving grid puncture position adjustment is done 
+
+
+ Initial data method: Ansorg-TwoPuncture
+
+ TwoPuncture cache hit (912e370b84cec7cb); reusing cached initial data
+
+ Running ./ABEGPU with 1 MPI ranks and OMP_NUM_THREADS=1
+
+
+ The ./ABEGPU simulation is finished
+
+
+ Plotting the AMSS-NCKU simulation results
+
+
+ Plotting the black holes' trajectory (2D plot)
+
+ Corresponding data file =  /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118/AMSS_NCKU_output/binary_output/bssn_BH.dat
+
+ Black holes' trajectory plot has been finished (2D plot)
+
+
+ Plotting the black holes' trajectory (3D plot) 
+
+ Corresponding data file =  /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118/AMSS_NCKU_output/binary_output/bssn_BH.dat
+
+ Black holes' trajectory plot has been finished (3D plot)
+
+
+ Plotting the black hole relative distance 
+
+ Corresponding data file =  /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118/AMSS_NCKU_output/binary_output/bssn_BH.dat
+
+ black hole relative distance plot has been finished 
+
+
+ Plotting the Weyl conformal component Psi4 
+
+ corresponding data file =  /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118/AMSS_NCKU_output/binary_output/bssn_psi4.dat
+
+ Begin the Weyl conformal Psi4 plot for detector number =  0
+ The Weyl Conformal component Psi4 plot has been finished   detector number  0
+
+
+Plotting the gravitational-wave strain amplitude h
+
+The corresponding data file is /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118/AMSS_NCKU_output/binary_output/bssn_psi4.dat
+
+
+Plotting gravitational-wave data for detector no. 0
+Gravitational-wave plot for detector no. 0 finished.
+
+ Begin the Weyl conformal Psi4 plot for detector number =  1
+ The Weyl Conformal component Psi4 plot has been finished   detector number  1
+
+
+Plotting gravitational-wave data for detector no. 1
+Gravitational-wave plot for detector no. 1 finished.
+
+ Begin the Weyl conformal Psi4 plot for detector number =  2
+ The Weyl Conformal component Psi4 plot has been finished   detector number  2
+
+
+Plotting gravitational-wave data for detector no. 2
+Gravitational-wave plot for detector no. 2 finished.
+
+ Begin the Weyl conformal Psi4 plot for detector number =  3
+ The Weyl Conformal component Psi4 plot has been finished   detector number  3
+
+
+Plotting gravitational-wave data for detector no. 3
+Gravitational-wave plot for detector no. 3 finished.
+
+ Begin the Weyl conformal Psi4 plot for detector number =  4
+ The Weyl Conformal component Psi4 plot has been finished   detector number  4
+
+
+Plotting gravitational-wave data for detector no. 4
+Gravitational-wave plot for detector no. 4 finished.
+
+ Begin the Weyl conformal Psi4 plot for detector number =  5
+ The Weyl Conformal component Psi4 plot has been finished   detector number  5
+
+
+Plotting gravitational-wave data for detector no. 5
+Gravitational-wave plot for detector no. 5 finished.
+
+ Begin the Weyl conformal Psi4 plot for detector number =  6
+ The Weyl Conformal component Psi4 plot has been finished   detector number  6
+
+
+Plotting gravitational-wave data for detector no. 6
+Gravitational-wave plot for detector no. 6 finished.
+
+ Begin the Weyl conformal Psi4 plot for detector number =  7
+ The Weyl Conformal component Psi4 plot has been finished   detector number  7
+
+
+ The Weyl conformal component Psi4 plots have been finished 
+
+
+Plotting gravitational-wave data for detector no. 7
+Gravitational-wave plot for detector no. 7 finished.
+
+All gravitational-wave strain amplitude plots finished.
+
+
+ Plotting the ADM mass and angular momentum 
+
+ corresponding data file =  /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118/AMSS_NCKU_output/binary_output/bssn_ADMQs.dat
+
+ Begin the ADM momentum plot for detector number =   0
+ ADM momentum plot has been finished, detector number =   0
+
+ Begin the ADM momentum plot for detector number =  /home/h3240104505/HPC101_lab/lab4-gpu/scripts/plot_xiaoqu.py:699: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`). Consider using `matplotlib.pyplot.close()`.
+  plt.figure( figsize=(8,8) )
+ 1
+ ADM momentum plot has been finished, detector number =   1
+
+ Begin the ADM momentum plot for detector number =   2
+ ADM momentum plot has been finished, detector number =   2
+
+ Begin the ADM momentum plot for detector number =   3
+ ADM momentum plot has been finished, detector number =   3
+
+ Begin the ADM momentum plot for detector number =   4
+ ADM momentum plot has been finished, detector number =   4
+
+ Begin the ADM momentum plot for detector number =   5
+ ADM momentum plot has been finished, detector number =   5
+
+ Begin the ADM momentum plot for detector number =   6
+ ADM momentum plot has been finished, detector number =   6
+
+ Begin the ADM momentum plot for detector number =   7
+ ADM momentum plot has been finished, detector number =   7
+
+ The ADM mass and augular momentum plots have been finished 
+
+
+ Plotting the constraint violation for each grid level
+
+ corresponding data file =  /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118/AMSS_NCKU_output/binary_output/bssn_constraint.dat
+
+ Begin the constraint violation plot for grid level number =   0
+ Constraint violation plot has been finished, grid level number =  0
+
+ Begin the constraint violation plot for grid level number =   1
+ Constraint violation plot has been finished, grid level number =  1
+
+ Begin the constraint violation plot for grid level number =   2
+ Constraint violation plot has been finished, grid level number =  2
+
+ Begin the constraint violation plot for grid level number =   3
+ Constraint violation plot has been finished, grid level number =  3
+
+ Begin the constraint violation plot for grid level number =   4
+ Constraint violation plot has been finished, grid level number =  4
+
+ Begin the constraint violation plot for grid level number =   5
+ Constraint violation plot has been finished, grid level number =  5
+
+ Begin the constraint violation plot for grid level number =   6
+ Constraint violation plot has been finished, grid level number =  6
+
+ Begin the constraint violation plot for grid level number =   7
+ Constraint violation plot has been finished, grid level number =  7
+
+ Begin the constraint violation plot for grid level number =   8
+ Constraint violation plot has been finished, grid level number =  8
+
+ Constraint violation plot has been finished 
+
+
+ This Program Cost = 1793.158130645752 Seconds
+
+ The AMSS-NCKU-Python simulation is successfully finished.
+

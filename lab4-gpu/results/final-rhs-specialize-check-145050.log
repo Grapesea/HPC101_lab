@@ -1,0 +1,9 @@
+Golden: /home/h3240104505/HPC101_lab/lab4-gpu/golden
+Result: /home/h3240104505/HPC101_lab/lab4-gpu/final_rhs_specialize_output/GW250118/AMSS_NCKU_output
+Trajectory: matched times 100/100, effective terms 596
+Trajectory RMS: 5.40436485e-05 (0.005404%)
+Trajectory: PASS - RMS <= 0.001 (0.100000%)
+Constraints: 100 time groups, 9 levels per group
+Constraint maxima (level 0): Ham=0.28974818, Px=0.039343255, Py=0.047298113, Pz=0.044686546
+Constraints: PASS - all maxima <= 2
+FINAL: PASS

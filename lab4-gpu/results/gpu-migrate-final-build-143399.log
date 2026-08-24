@@ -1,0 +1,25 @@
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-gpu" -B "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_omp16" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DAMSS_ENABLE_GPU=ON -DCMAKE_CUDA_ARCHITECTURES=80 -DAMSS_ENABLE_OPENMP=ON -DAMSS_MPI_CUDA_AWARE=0 -DAMSS_OPT=-O3 -DAMSS_ARCH_FLAGS=-march=native 
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : ON, CUDA=/usr/local/cuda/bin/nvcc, arch=80
+-- AMSS_OPT=-O3 ARCH_FLAGS=-march=native OPENMP=ON MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (10.6s)
+-- Generating done (0.1s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_omp16
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_omp16" -j 16
+[  1%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctureABE.C.o
+[  2%] Building CXX object CMakeFiles/TwoPunctureABE.dir/src/TwoPunctures.C.o
+[ 38%] Built target ABE
+[ 98%] Built target ABEGPU
+/home/h3240104505/HPC101_lab/lab4-gpu/src/TwoPunctureABE.C: In function ‘int main(int, char**)’:
+/home/h3240104505/HPC101_lab/lab4-gpu/src/TwoPunctureABE.C:213:13: warning: ISO C++ forbids converting a string constant to ‘char*’ [-Wwrite-strings]
+  213 |   ADM->Save("Ansorg.psid");
+      |             ^~~~~~~~~~~~~
+[100%] Linking CXX executable TwoPunctureABE
+[100%] Built target TwoPunctureABE
+==> Built executables:
+-rwxr-xr-x 1 root root 1.2M Aug 23 05:23 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_omp16/ABE
+-rwxr-xr-x 1 root root 181K Aug 23 05:26 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_omp16/TwoPunctureABE
+-rwxr-xr-x 1 root root 3.9M Aug 23 05:25 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_omp16/ABEGPU

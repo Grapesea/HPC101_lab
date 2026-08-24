@@ -1,0 +1,7 @@
+Golden: /home/h3240104505/HPC101_lab/lab4-gpu/golden
+Result: /home/h3240104505/HPC101_lab/lab4-gpu/twop_cold_omp_output/GW250118/AMSS_NCKU_output
+Trajectory: FAIL - time coverage incomplete: matched 1/100; no unused target time within 1e-08 of reference time 1
+Constraints: 1 time groups, 9 levels per group
+Constraint maxima (level 0): Ham=0.19611147, Px=0.0072621593, Py=0.00321809, Pz=0.0032643355
+Constraints: PASS - all maxima <= 2
+FINAL: FAIL

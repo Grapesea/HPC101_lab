@@ -1,0 +1,18 @@
+=== NODE ===
+j149707-blrvm
+GPU 0: NVIDIA A100 80GB PCIe (UUID: GPU-9ca16191-ea9a-c551-7f38-0ca7a9e55dce)
+  MIG 1g.10gb     Device  0: (UUID: MIG-eb79b8f5-ad3c-5b3e-8014-979e42d2e930)
+cpus=16
+=== _mpiexec_argv on disk (OJ sees this) ===
+def _mpiexec_argv():
+    """Resolve the MPI launcher, stripping OJ-injected rank mapping for the
+    single-rank GPU job.
+
+AMSS_MPIEXEC=mpiexec --bind-to core --map-by slot:pe=16 (OJ injection)
+=== RUN ./run.sh --twop-cache ===
+==> MPI exec : mpiexec --bind-to core --map-by slot:pe=16
+ Running ./ABEGPU with 1 MPI ranks and OMP_NUM_THREADS=16
+ The ./ABEGPU simulation is finished
+ This Program Cost = 6.597913980484009 Seconds
+=== run.sh exit: 0 ===
+RESULT: PASS - OJ path works (mapper crossed, ABEGPU finished)

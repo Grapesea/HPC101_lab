@@ -1,0 +1,121 @@
+==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_fast
+==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/ncu_rhs_output
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-gpu/twopuncture_cache
+==> MPI exec : mpiexec
+==PROF== Connected to process 410 (/home/h3240104505/HPC101_lab/lab4-gpu/ncu_rhs_output/GW250118/AMSS_NCKU_output/ABEGPU)
+
+ /////////////////////////////////////////////////////////////// 
+ AMSS-NCKU Begin !!! 
+ /////////////////////////////////////////////////////////////// 
+
+                                 new run
+   simulation with cpu numbers = 1
+               simulation time = (0, 1)
+ simulation steps for this run = 1
+                Courant number = 0.5
+            Initial Data Type: Numerical Ansorg TwoPuncture
+             Symmetry setting: Equatorial
+ Courant = 0.5
+ artificial dissipation for shell patches = 0.15
+ artificial dissipation for fixed levels = 0.15
+ artificial dissipation for moving levels = 0.15
+ Dumpt Time = 1000
+ Check Time = 1000
+ Analysis Time = 0.1
+ Analysis level = 0
+ checkfile = bssn.chk
+ fourth order finite difference is used
+///////////////////////////////////////////////////////////////
+-----------------------------------------------------------------------
+ spherical integration for wave form extraction with Gauss method      
+ N_phi   = 384
+ N_theta = 192
+-----------------------------------------------------------------------
+chitiny = 1e-05
+time refinement start from level #3
+ checkpoint class created 
+you have setted 167 grid functions.
+
+ cgh has levels: 9
+
+ level #0 has boxes: 1
+ #0 box is  (-320:320,-320:320,0:320).
+ level #1 has boxes: 1
+ #0 box is  (-160:160,-160:160,0:160).
+ level #2 has boxes: 1
+ #0 box is  (-80:80,-80:80,0:80).
+ level #3 has boxes: 1
+ #0 box is  (-40:40,-40:40,0:40).
+ level #4 has boxes: 1
+ #0 box is  (-20:20,-20:20,0:20).
+ level #5 has boxes: 2
+ #0 box is  (-12:12,-9.5:14.5,0:12).
+ #1 box is  (-12:12,-15.5:8.5,0:12).
+ level #6 has boxes: 2
+ #0 box is  (-6:6,-3.5:8.5,0:6).
+ #1 box is  (-6:6,-9.5:2.5,0:6).
+ level #7 has boxes: 2
+ #0 box is  (-3:3,-0.625:5.375,0:3).
+ #1 box is  (-3:3,-6.625:-0.625,0:3).
+ level #8 has boxes: 2
+ #0 box is  (-1.5:1.5,0.9375:3.9375,0:1.5).
+ #1 box is  (-1.5:1.5,-5.0625:-2.0625,0:1.5).
+
+ moving levels are lev #5--8
+
+ belong to level 0
+ shape: [40,40,20] resolution: [16,16,16]
+ range:(-320:320,-320:320,0:320)
+ belong to level 1
+ shape: [40,40,20] resolution: [8,8,8]
+ range:(-160:160,-160:160,0:160)
+ belong to level 2
+ shape: [40,40,20] resolution: [4,4,4]
+ range:(-80:80,-80:80,0:80)
+ belong to level 3
+ shape: [40,40,20] resolution: [2,2,2]
+ range:(-40:40,-40:40,0:40)
+ belong to level 4
+ shape: [40,40,20] resolution: [1,1,1]
+ range:(-20:20,-20:20,0:20)
+ belong to level 5
+ shape: [48,60,24] resolution: [0.5,0.5,0.5]
+ range:(-12:12,-15.5:14.5,0:12)
+ belong to level 6
+ shape: [48,72,24] resolution: [0.25,0.25,0.25]
+ range:(-6:6,-9.5:8.5,0:6)
+ belong to level 7
+ shape: [48,96,24] resolution: [0.125,0.125,0.125]
+ range:(-3:3,-6.625:5.375,0:3)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,0.9375:3.9375,0:1.5)
+ belong to level 8
+ shape: [48,48,24] resolution: [0.0625,0.0625,0.0625]
+ range:(-1.5:1.5,-5.0625:-2.0625,0:1.5)
+initial information of 2 Black Hole(s)
+            Mass               x               y               z              Px              Py              Pz              Sx              Sy              Sz
+        0.576976               0         2.40698               0         -0.1275     -0.00514081               0               0               0               0
+        0.378578               0        -3.59302               0          0.1275      0.00514081               0               0               0               0
+Read initial data from Ansorg's solver, please be sure the input parameters for black holes are puncture parameters!!
+  reading data from Ansorg.psid
+  found data with dimensions 50 x 50 x 26 = 65000
+  bhx1 = 0
+  bhy1 = 2.40698
+  bhz1 = 0
+  bhx2 = 0
+  bhy2 = -3.59302
+  bhz2 = 0
+  read 65000 data lines
+
+==WARNING== Unable to access the following 8 metrics: pcie__read_bytes.avg.per_second, pcie__read_bytes.max.per_second, pcie__read_bytes.min.per_second, pcie__read_bytes.sum.per_second, pcie__write_bytes.avg.per_second, pcie__write_bytes.max.per_second, pcie__write_bytes.min.per_second, pcie__write_bytes.sum.per_second.
+ If profiling on a MIG instance, it is not possible to collect metrics from GPU units that are shared with other MIG instances.
+
+==PROF== Profiling "rhs_kernel": 0%
+==ERROR== An error was reported by the driver:
+==ERROR== For more information, see /tmp/nsight-compute-87fa-2c6b.log
+==ERROR== Cannot lock GPU clock frequencies on MIG! Try locking the clocks externally (e.g. using 'nvidia-smi --lock-gpu-clocks=tdp,tdp') or profile without fixed frequencies (see '--clock-control').
+==ERROR== For more information, see /tmp/nsight-compute-87fa-2c6b.log
+==ERROR== Failed to profile "rhs_kernel" in process 410
+==PROF== Trying to shutdown target application
+==ERROR== The application returned an error code (9).

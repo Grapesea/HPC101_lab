@@ -1,0 +1,14 @@
+=== NODE ===
+j148337-kxcb6
+GPU 0: NVIDIA A100 80GB PCIe (UUID: GPU-9ca16191-ea9a-c551-7f38-0ca7a9e55dce)
+  MIG 1g.10gb     Device  0: (UUID: MIG-df535f0c-3d71-50eb-959b-e10b9b87a35b)
+cpus=16
+Final_Evolution_Time=1.0, Evolution_Step_Number=1 (smoke test)
+AMSS_MPIEXEC=mpiexec --bind-to core --map-by slot:pe=16 (OJ injection, will be stripped by the patch)
+=== RUN (twop-cache hit -> straight to ABEGPU) ===
+==> Build    : /workspace/lab4/build
+==> Output   : /workspace/lab4
+==> Cache    : /workspace/lab4/twopuncture_cache
+==> MPI exec : mpiexec --bind-to core --map-by slot:pe=16
+ Missing executable: /workspace/lab4/build/ABEGPU
+ Build first:  cmake -B build -S .  &&  cmake --build build -j

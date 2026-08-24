@@ -1,0 +1,20 @@
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-gpu" -B "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_lto80" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DAMSS_ENABLE_GPU=ON -DCMAKE_CUDA_ARCHITECTURES=80 -DAMSS_ENABLE_OPENMP=ON -DAMSS_MPI_CUDA_AWARE=0 -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-march=native 
+-- ==================== AMSS-NCKU Lab 4 ====================
+-- CXX      : /usr/bin/c++
+-- Fortran  : /usr/bin/gfortran
+-- GPU      : ON, CUDA=/usr/local/cuda/bin/nvcc, arch=80
+-- AMSS_OPT=-Ofast -ffast-math ARCH_FLAGS=-march=native OPENMP=ON MPI_CUDA_AWARE=0
+-- ==========================================================
+-- Configuring done (10.5s)
+-- Generating done (1.5s)
+-- Build files have been written to: /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_lto80
+==> Build: cmake --build "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_lto80" -j 16
+[  3%] Built target TwoPunctureABE
+[ 39%] Built target ABE
+[ 40%] Linking CUDA device code CMakeFiles/ABEGPU.dir/cmake_device_link.o
+[ 42%] Linking CXX executable ABEGPU
+[100%] Built target ABEGPU
+==> Built executables:
+-rwxr-xr-x 1 root root 1.2M Aug 23 07:02 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_lto80/ABE
+-rwxr-xr-x 1 root root 189K Aug 23 07:02 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_lto80/TwoPunctureABE
+-rwxr-xr-x 1 root root 2.6M Aug 23 07:02 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_lto80/ABEGPU

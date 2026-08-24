@@ -1,0 +1,62 @@
+=== NODE ===
+j148344-75vzk
+GPU 0: NVIDIA A100 80GB PCIe (UUID: GPU-846ad3af-1130-d346-13bb-e3d8d9b8378b)
+  MIG 1g.10gb     Device  0: (UUID: MIG-1db3b639-e5bb-5c17-ab83-bf092ffd2916)
+cpus=16
+Final_Evolution_Time=1.0, Evolution_Step_Number=1 (smoke test)
+-rwxr-xr-x 1 root root 11444640 Aug 23 16:14 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100/ABEGPU
+-rwxr-xr-x 1 root root   196304 Aug 23 16:11 /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100/TwoPunctureABE
+AMSS_MPIEXEC=mpiexec --bind-to core --map-by slot:pe=16 (OJ injection -- patched driver must strip it)
+=== RUN (twop-cache hit -> straight to ABEGPU) ===
+ adjust_puncture[5,0,1] = 2.5 
+ adjust_puncture[5,0,2] = 0.0 
+ adjust_puncture[5,1,0] = 0.0 
+ adjust_puncture[5,1,1] = -3.5 
+ adjust_puncture[5,1,2] = 0.0 
+ adjust_puncture[6,0,0] = 0.0 
+ adjust_puncture[6,0,1] = 2.5 
+ adjust_puncture[6,0,2] = 0.0 
+ adjust_puncture[6,1,0] = 0.0 
+ adjust_puncture[6,1,1] = -3.5 
+ adjust_puncture[6,1,2] = 0.0 
+ adjust_puncture[7,0,0] = 0.0 
+ adjust_puncture[7,0,1] = 2.375 
+ adjust_puncture[7,0,2] = 0.0 
+ adjust_puncture[7,1,0] = 0.0 
+ adjust_puncture[7,1,1] = -3.625 
+ adjust_puncture[7,1,2] = 0.0 
+ adjust_puncture[8,0,0] = 0.0 
+ adjust_puncture[8,0,1] = 2.4375 
+ adjust_puncture[8,0,2] = 0.0 
+ adjust_puncture[8,1,0] = 0.0 
+ adjust_puncture[8,1,1] = -3.5625 
+ adjust_puncture[8,1,2] = 0.0 
+
+ The moving grid puncture position adjustment is done 
+
+
+ Initial data method: Ansorg-TwoPuncture
+
+ TwoPuncture cache hit (912e370b84cec7cb); reusing cached initial data
+
+ Running ./ABEGPU with 1 MPI ranks and OMP_NUM_THREADS=16
+
+
+ The ./ABEGPU simulation is finished
+
+
+ Plotting the AMSS-NCKU simulation results
+
+
+ Plotting the black holes' trajectory (2D plot)
+
+ Corresponding data file =  /home/h3240104505/HPC101_lab/lab4-gpu/verify_evolve_output/GW250118/AMSS_NCKU_output/binary_output/bssn_BH.dat
+ WARNING: plotting failed (IndexError: too many indices for array: array is 1-dimensional, but 2 were indexed)
+ The simulation result files are still available under /home/h3240104505/HPC101_lab/lab4-gpu/verify_evolve_output/GW250118/AMSS_NCKU_output
+
+ This Program Cost = 7.159861087799072 Seconds
+
+ The AMSS-NCKU-Python simulation is successfully finished.
+
+=== run.sh exit code: 0 ===
+RESULT: PASS - ABEGPU launched past the mapper and ran
