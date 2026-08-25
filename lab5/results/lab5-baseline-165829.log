@@ -1,0 +1,15 @@
+Using Python 3.13.5 environment at: /opt/lab5-venv
+Resolved 1 package in 2ms
+   Building lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+      Built lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+Prepared 1 package in 2.15s
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 2ms
+ + lab5==0.1.0 (from file:///home/h3240104505/HPC101_lab/lab5)
+quantized 328 Linear modules into /results/quantized-gemma-4-v2
+Reusing existing quality result: results/gptq-public-quality.json
+generation:   0%|          | 0/10 [00:00<?, ?request/s]generation:  10%|█         | 1/10 [01:00<09:06, 60.72s/request]generation:  20%|██        | 2/10 [01:41<06:29, 48.70s/request]generation:  30%|███       | 3/10 [02:01<04:10, 35.82s/request]generation:  40%|████      | 4/10 [03:02<04:34, 45.67s/request]generation:  50%|█████     | 5/10 [03:43<03:40, 44.13s/request]generation:  60%|██████    | 6/10 [04:25<02:52, 43.19s/request]generation:  70%|███████   | 7/10 [05:27<02:28, 49.47s/request]generation:  80%|████████  | 8/10 [05:49<01:21, 40.62s/request][W825 22:56:39.929783293 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 257949696 bytes (free: 195035136, total: 10468982784).
+generation:  90%|█████████ | 9/10 [06:32<00:41, 41.34s/request]generation: 100%|██████████| 10/10 [06:54<00:00, 35.51s/request]generation: 100%|██████████| 10/10 [06:54<00:00, 41.45s/request]
+{"requests": 10, "generated_tokens": 320, "elapsed_s": 414.48560976199224, "requests_per_s": 0.024126289947055686, "generated_tokens_per_s": 0.772041278305782, "batch_size": 1}

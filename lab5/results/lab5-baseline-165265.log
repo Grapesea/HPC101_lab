@@ -1,0 +1,137 @@
+Using Python 3.13.5 environment at: /opt/lab5-venv
+Resolved 1 package in 3ms
+   Building lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+      Built lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+Prepared 1 package in 2.14s
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 3ms
+ + lab5==0.1.0 (from file:///home/h3240104505/HPC101_lab/lab5)
+layer 0 module mlp.down_proj quantization loss (MSE): 1.599556e-01
+layer 0 module mlp.gate_proj quantization loss (MSE): 3.192990e-02
+layer 0 module mlp.up_proj quantization loss (MSE): 2.684199e-02
+layer 0 module self_attn.k_proj quantization loss (MSE): 1.885252e+00
+layer 0 module self_attn.o_proj quantization loss (MSE): 2.317075e-04
+layer 0 module self_attn.q_proj quantization loss (MSE): 2.083245e+00
+layer 0 module self_attn.v_proj quantization loss (MSE): 2.797619e+00
+layer 0 quantization loss (MSE): 3.082670e-02
+layer 1 module mlp.down_proj quantization loss (MSE): 8.298812e-02
+layer 1 module mlp.gate_proj quantization loss (MSE): 2.256137e-02
+layer 1 module mlp.up_proj quantization loss (MSE): 1.798636e-02
+layer 1 module self_attn.k_proj quantization loss (MSE): 7.546866e-03
+layer 1 module self_attn.o_proj quantization loss (MSE): 3.480152e-04
+layer 1 module self_attn.q_proj quantization loss (MSE): 7.910444e-03
+layer 1 module self_attn.v_proj quantization loss (MSE): 8.927874e-03
+layer 1 quantization loss (MSE): 5.523368e-03
+layer 2 module mlp.down_proj quantization loss (MSE): 6.408170e-05
+layer 2 module mlp.gate_proj quantization loss (MSE): 6.502623e-04
+layer 2 module mlp.up_proj quantization loss (MSE): 6.832658e-04
+layer 2 module self_attn.k_proj quantization loss (MSE): 2.623324e-04
+layer 2 module self_attn.o_proj quantization loss (MSE): 1.329844e-04
+layer 2 module self_attn.q_proj quantization loss (MSE): 2.471754e-04
+layer 2 module self_attn.v_proj quantization loss (MSE): 2.455938e-04
+layer 2 quantization loss (MSE): 7.984801e-04
+layer 3 module mlp.down_proj quantization loss (MSE): 3.165865e-04
+layer 3 module mlp.gate_proj quantization loss (MSE): 6.402148e-04
+layer 3 module mlp.up_proj quantization loss (MSE): 7.344694e-04
+layer 3 module self_attn.k_proj quantization loss (MSE): 1.530794e-03
+layer 3 module self_attn.o_proj quantization loss (MSE): 5.814506e-05
+layer 3 module self_attn.q_proj quantization loss (MSE): 1.338566e-03
+layer 3 module self_attn.v_proj quantization loss (MSE): 1.320505e-03
+layer 3 quantization loss (MSE): 1.062609e-03
+layer 4 module mlp.down_proj quantization loss (MSE): 6.490500e-05
+layer 4 module mlp.gate_proj quantization loss (MSE): 4.084981e-04
+layer 4 module mlp.up_proj quantization loss (MSE): 4.054215e-04
+layer 4 module self_attn.k_proj quantization loss (MSE): 2.419399e-03
+layer 4 module self_attn.o_proj quantization loss (MSE): 1.482264e-04
+layer 4 module self_attn.q_proj quantization loss (MSE): 2.065694e-03
+layer 4 module self_attn.v_proj quantization loss (MSE): 2.062304e-03
+layer 4 quantization loss (MSE): 7.599992e-04
+layer 5 module mlp.down_proj quantization loss (MSE): 5.478274e-05
+layer 5 module mlp.gate_proj quantization loss (MSE): 3.626655e-04
+layer 5 module mlp.up_proj quantization loss (MSE): 3.613495e-04
+layer 5 module self_attn.k_proj quantization loss (MSE): 1.292785e-02
+layer 5 module self_attn.o_proj quantization loss (MSE): 5.144121e-05
+layer 5 module self_attn.q_proj quantization loss (MSE): 1.188555e-02
+layer 5 quantization loss (MSE): 3.397157e-03
+layer 6 module mlp.down_proj quantization loss (MSE): 6.182175e-05
+layer 6 module mlp.gate_proj quantization loss (MSE): 3.576001e-04
+layer 6 module mlp.up_proj quantization loss (MSE): 3.475462e-04
+layer 6 module self_attn.k_proj quantization loss (MSE): 7.116964e-04
+layer 6 module self_attn.o_proj quantization loss (MSE): 1.129957e-04
+layer 6 module self_attn.q_proj quantization loss (MSE): 6.449374e-04
+layer 6 module self_attn.v_proj quantization loss (MSE): 5.802443e-04
+layer 6 quantization loss (MSE): 2.525854e-03
+layer 7 module mlp.down_proj quantization loss (MSE): 6.937161e-05
+layer 7 module mlp.gate_proj quantization loss (MSE): 3.775354e-04
+layer 7 module mlp.up_proj quantization loss (MSE): 3.700849e-04
+layer 7 module self_attn.k_proj quantization loss (MSE): 1.619804e-04
+layer 7 module self_attn.o_proj quantization loss (MSE): 1.873791e-04
+layer 7 module self_attn.q_proj quantization loss (MSE): 1.404426e-04
+layer 7 module self_attn.v_proj quantization loss (MSE): 1.377656e-04
+layer 7 quantization loss (MSE): 2.280088e-03
+layer 8 module mlp.down_proj quantization loss (MSE): 7.552810e-05
+layer 8 module mlp.gate_proj quantization loss (MSE): 2.357524e-04
+layer 8 module mlp.up_proj quantization loss (MSE): 2.392766e-04
+layer 8 module self_attn.k_proj quantization loss (MSE): 1.481300e-04
+layer 8 module self_attn.o_proj quantization loss (MSE): 1.634411e-04
+layer 8 module self_attn.q_proj quantization loss (MSE): 1.380104e-04
+layer 8 module self_attn.v_proj quantization loss (MSE): 1.405120e-04
+layer 8 quantization loss (MSE): 7.704778e-03
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/methods/gptq.py", line 151, in quantize_weight_gptq
+    hessian_cholesky = torch.linalg.cholesky(hessian)
+torch._C._LinAlgError: linalg.cholesky: The factorization could not be completed because the input is not positive-definite (the leading minor of order 15216 is not positive-definite).
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/methods/gptq.py", line 342, in quantize_layer
+    weights[name], module_metadata[name] = quantize_weight_gptq(
+                                           ~~~~~~~~~~~~~~~~~~~~^
+        module.weight,
+        ^^^^^^^^^^^^^^
+    ...<5 lines>...
+        scale_dtype=scale_dtype,
+        ^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/methods/gptq.py", line 155, in quantize_weight_gptq
+    raise RuntimeError(
+        "Hessian Cholesky factorization failed; try increasing damp_percent"
+    ) from error
+RuntimeError: Hessian Cholesky factorization failed; try increasing damp_percent
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/quantize.py", line 9, in <module>
+    main()
+    ~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/cli.py", line 302, in main
+    manifest = quantize_checkpoint(
+        args.model,
+    ...<7 lines>...
+        print_layer_loss=args.verbose,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/__init__.py", line 13, in quantize_checkpoint
+    return run(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/pipeline.py", line 599, in quantize_checkpoint
+    ).run()
+      ~~~^^
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/pipeline.py", line 180, in run
+    calibration_store = self._quantize_layer(
+        writer,
+    ...<2 lines>...
+        calibration_store,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/pipeline.py", line 421, in _quantize_layer
+    result = self._run_method(context)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/pipeline.py", line 520, in _run_method
+    result = self.method.quantize_layer(context, state)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/methods/gptq.py", line 352, in quantize_layer
+    raise RuntimeError(
+    ...<2 lines>...
+    ) from error
+RuntimeError: GPTQ failed for layer 9 module mlp.down_proj with 4096 calibration tokens: Hessian Cholesky factorization failed; try increasing damp_percent

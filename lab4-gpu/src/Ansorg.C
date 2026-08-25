@@ -300,8 +300,12 @@ double Ansorg::interpolate_tri_bar(double x, double y, double z,
                                    double *x1, double *x2, double *x3, double *yp)
 {
   double u;
-  double *w, *omega;
-  double **v;
+  // Read_Ansorg fixes order=6.  The old code performed nine heap allocations
+  // and nine frees for every grid point, which perf exposes as malloc/free
+  // hotspots during initial-data interpolation.  Keep the same row-pointer
+  // layout and arithmetic, backed by one contiguous stack buffer.
+  double w[6], omega[6], v_storage[6 * 6];
+  double *v[6];
 
   int i, j, k, ijk;
   int i1, i2, i3;
@@ -310,11 +314,14 @@ double Ansorg::interpolate_tri_bar(double x, double y, double z,
   int order2 = order > n2 ? n2 : order;
   int order3 = order > n3 ? n3 : order;
 
-  w = new double[order];
-  omega = new double[order];
-  v = new double *[order];
+  if (order > 6)
+  {
+    if (myrank == 0)
+      cout << "Ansorg interpolation order exceeds fixed workspace" << endl;
+    MPI_Abort(MPI_COMM_WORLD, 1);
+  }
   for (int i = 0; i < order; i++)
-    v[i] = new double[order];
+    v[i] = v_storage + i * 6;
 
   i1 = find_point_bisection(x, n1, x1, order1 / 2);
   i2 = find_point_bisection(y, n2, x2, order2 / 2);
@@ -349,13 +356,6 @@ double Ansorg::interpolate_tri_bar(double x, double y, double z,
     cout << "find NaN in Ansorg::interpolate_tri_bar at (" << x << "," << y << "," << z << ")" << endl;
     MPI_Abort(MPI_COMM_WORLD, 1);
   }
-
-  for (i = 0; i < order; i++)
-    delete[] v[i];
-
-  delete[] w;
-  delete[] omega;
-  delete[] v;
 
   return u;
 }

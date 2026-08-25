@@ -4,7 +4,8 @@ engine:
   max_batch_size: 1
   scheduler_batch_size: 1
   max_sequence_length: 2048
-  linear_backend: bf16
+  # Baseline：量化 checkpoint 使用参考 INT4 Linear（forward 时临时反量化）。
+  linear_backend: int4_reference
   scheduler_backend: static_batch
   seed: 42
   synchronize_metrics: true
@@ -28,7 +29,7 @@ quantization:
   calibration:
     gptq:
       block_size: 128
-      damp_percent: 0.01
+      damp_percent: 0.1
   propagate_quantized: true
 
 calibration:

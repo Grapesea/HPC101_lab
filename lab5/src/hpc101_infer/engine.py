@@ -108,9 +108,15 @@ class InferenceEngine:
             mode="prefill",
         )
         with measure_operation(self.device, self.config.synchronize_metrics) as metrics:
-            logits = self.model(model_input, self.cache)
-        batch_indices = torch.arange(batch_size, device=self.device)
-        next_logits = logits[batch_indices, sequence_lengths - 1]
+            # 生成只需要各 prompt 最后一个有效位置的 next-token logits。
+            # 在 LM head 之前选取 hidden state，避免物化
+            # [batch, prompt_length, vocab_size]（长 prompt 可超过 1 GiB）。
+            logits = self.model(
+                model_input,
+                self.cache,
+                logits_to_keep=sequence_lengths - 1,
+            )
+        next_logits = logits[:, 0]
         return PrefillOutput(
             next_logits,
             sequence_lengths.clone(),

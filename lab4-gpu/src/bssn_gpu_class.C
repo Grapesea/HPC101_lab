@@ -1386,6 +1386,11 @@ void bssn_class::Read_Ansorg()
                     Block *cg = BL->data;
                     if (myrank == cg->rank)
                     {
+                        // Each spectral interpolation reads immutable Ansorg
+                        // tables and writes one distinct cell.  Parallelize
+                        // the outer grid traversal after removing the former
+                        // per-point heap allocations in interpolate_tri_bar.
+#pragma omp parallel for collapse(3) schedule(static)
                         for (int k = 0; k < cg->shape[2]; k++)
                             for (int j = 0; j < cg->shape[1]; j++)
                                 for (int i = 0; i < cg->shape[0]; i++)

@@ -60,6 +60,15 @@ export MODEL_DIR=/checkpoints/gemma-4-12b
 export QUANT_DIR=/path/to/quantized-gemma-4   # 你可以自行指定输出目录
 ```
 
+也可以从登录节点提交完整的 baseline 流程（量化、精度评测和性能评测）：
+
+```bash
+./submit.sh "$MODEL_DIR" "$QUANT_DIR"
+```
+
+作业日志写入 `results/lab5-baseline-<job-id>.log`。`submit.sh` 使用
+`hpc submit -p lab5` 申请一张 Lab5 GPU；实际作业入口为 `run_baseline.sh`。
+
 你可以通过 `nvidia-smi` 查看当前可用的 GPU 设备和显存使用情况，正常情况下你应当能看到一个 10 GiB 显存的 MIG 实例（1/7 张 H800）。如果需要指定具体的 GPU，可通过 `CUDA_VISIBLE_DEVICES` 指定分配到的 GPU，MIG 实例的 UUID 可以通过 `nvidia-smi -L` 查询：
 
 ```bash

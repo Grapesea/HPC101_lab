@@ -16,7 +16,7 @@ trap 'cp "$input_backup" AMSS_NCKU_Input.py; rm -f "$input_backup"' EXIT
 sed -i '/^[[:space:]]*Final_Evolution_Time[[:space:]]*=/c\Final_Evolution_Time = 100.0' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*Evolution_Step_Number[[:space:]]*=/c\Evolution_Step_Number = 10000000' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*MPI_processes[[:space:]]*=/c\MPI_processes = 1' AMSS_NCKU_Input.py
-sed -i '/^[[:space:]]*OMP_threads[[:space:]]*=/c\OMP_threads = 1' AMSS_NCKU_Input.py
+sed -i '/^[[:space:]]*OMP_threads[[:space:]]*=/c\OMP_threads = 16' AMSS_NCKU_Input.py
 sed -i '/^[[:space:]]*GPU_Calculation[[:space:]]*=/c\GPU_Calculation = "yes"' AMSS_NCKU_Input.py
 
 # 4g.sh always means the one-GPU baseline. Keep the source configuration and
@@ -24,7 +24,7 @@ sed -i '/^[[:space:]]*GPU_Calculation[[:space:]]*=/c\GPU_Calculation = "yes"' AM
 export AMSS_GPU_CALCULATION=yes
 unset AMSS_FINAL_EVOLUTION_TIME AMSS_EVOLUTION_STEPS
 export AMSS_MPI_PROCESSES=1
-export AMSS_OMP_THREADS=1
+export AMSS_OMP_THREADS=16
 export AMSS_ENABLE_GPU=ON
 export AMSS_ENABLE_OPENMP=OFF
 export AMSS_CUDA_ARCHITECTURES=80

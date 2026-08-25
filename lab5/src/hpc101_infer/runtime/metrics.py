@@ -36,4 +36,5 @@ def measure_operation(device: torch.device, synchronize_cuda: bool):
         else:
             metrics.peak_allocated_bytes = 0
             metrics.peak_reserved_bytes = 0
-        return metrics
+        # contextmanager 通过 yield 暴露 metrics。finally 中 return 会吞掉
+        # with 块里的异常，并让调用方继续使用未赋值的输出。

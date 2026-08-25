@@ -108,517 +108,517 @@ Read initial data from Ansorg's solver, please be sure the input parameters for 
   read 65000 data lines
 
 
- Before Evolve, it takes 3.15117 seconds
+ Before Evolve, it takes 2.19154 seconds
 
-Before Step: 1 My Rank: 0 takes 0.050332 seconds!
-After Step: 1 My Rank: 0 takes 3.15326 seconds!
+Before Step: 1 My Rank: 0 takes 0.0499802 seconds!
+After Step: 1 My Rank: 0 takes 3.1272 seconds!
 Timestep # 1: integrating to time: 1
-used 3.26252 seconds!
-Memory usage: current 1444/1444/1444MB, peak 1444/1444/1444MB
-Before Step: 2 My Rank: 0 takes 0.0589433 seconds!
-After Step: 2 My Rank: 0 takes 3.33 seconds!
+used 3.23638 seconds!
+Memory usage: current 1445/1445/1445MB, peak 1445/1445/1445MB
+Before Step: 2 My Rank: 0 takes 0.0592133 seconds!
+After Step: 2 My Rank: 0 takes 3.29324 seconds!
 Timestep # 2: integrating to time: 2
-used 3.3892 seconds!
-Memory usage: current 1719/1719/1719MB, peak 1719/1719/1719MB
-Before Step: 3 My Rank: 0 takes 0.0591726 seconds!
-After Step: 3 My Rank: 0 takes 3.51955 seconds!
+used 3.35166 seconds!
+Memory usage: current 1720/1720/1720MB, peak 1720/1720/1720MB
+Before Step: 3 My Rank: 0 takes 0.0584013 seconds!
+After Step: 3 My Rank: 0 takes 3.49654 seconds!
 Timestep # 3: integrating to time: 3
-used 3.57873 seconds!
-Memory usage: current 1854/1854/1854MB, peak 1854/1854/1854MB
-Before Step: 4 My Rank: 0 takes 0.0591701 seconds!
-After Step: 4 My Rank: 0 takes 3.68773 seconds!
+used 3.55542 seconds!
+Memory usage: current 1853/1853/1853MB, peak 1853/1853/1853MB
+Before Step: 4 My Rank: 0 takes 0.0588635 seconds!
+After Step: 4 My Rank: 0 takes 3.75777 seconds!
 Timestep # 4: integrating to time: 4
-used 3.7477 seconds!
-Memory usage: current 1844/1844/1844MB, peak 1854/1854/1854MB
-Before Step: 5 My Rank: 0 takes 0.0599465 seconds!
-After Step: 5 My Rank: 0 takes 3.30984 seconds!
+used 3.81707 seconds!
+Memory usage: current 1843/1843/1843MB, peak 1853/1853/1853MB
+Before Step: 5 My Rank: 0 takes 0.0592934 seconds!
+After Step: 5 My Rank: 0 takes 3.30304 seconds!
 Timestep # 5: integrating to time: 5
-used 3.36876 seconds!
-Memory usage: current 1844/1844/1844MB, peak 1854/1854/1854MB
-Before Step: 6 My Rank: 0 takes 0.0588963 seconds!
-After Step: 6 My Rank: 0 takes 3.56045 seconds!
+used 3.36151 seconds!
+Memory usage: current 1843/1843/1843MB, peak 1853/1853/1853MB
+Before Step: 6 My Rank: 0 takes 0.0584359 seconds!
+After Step: 6 My Rank: 0 takes 3.63932 seconds!
 Timestep # 6: integrating to time: 6
-used 3.61908 seconds!
+used 3.69762 seconds!
 Memory usage: current 1861/1861/1861MB, peak 1861/1861/1861MB
-Before Step: 7 My Rank: 0 takes 0.0586028 seconds!
-After Step: 7 My Rank: 0 takes 3.66889 seconds!
+Before Step: 7 My Rank: 0 takes 0.0582818 seconds!
+After Step: 7 My Rank: 0 takes 3.62934 seconds!
 Timestep # 7: integrating to time: 7
-used 3.72847 seconds!
-Memory usage: current 1998/1998/1998MB, peak 1998/1998/1998MB
-Before Step: 8 My Rank: 0 takes 0.0595522 seconds!
-After Step: 8 My Rank: 0 takes 3.57775 seconds!
+used 3.68886 seconds!
+Memory usage: current 1996/1996/1996MB, peak 1996/1996/1996MB
+Before Step: 8 My Rank: 0 takes 0.0594931 seconds!
+After Step: 8 My Rank: 0 takes 3.55663 seconds!
 Timestep # 8: integrating to time: 8
-used 3.63681 seconds!
-Memory usage: current 1916/1916/1916MB, peak 1998/1998/1998MB
-Before Step: 9 My Rank: 0 takes 0.0590372 seconds!
-After Step: 9 My Rank: 0 takes 3.53866 seconds!
+used 3.61632 seconds!
+Memory usage: current 1914/1914/1914MB, peak 1996/1996/1996MB
+Before Step: 9 My Rank: 0 takes 0.0596804 seconds!
+After Step: 9 My Rank: 0 takes 3.51304 seconds!
 Timestep # 9: integrating to time: 9
-used 3.59817 seconds!
+used 3.57261 seconds!
 Memory usage: current 2056/2056/2056MB, peak 2056/2056/2056MB
-Before Step: 10 My Rank: 0 takes 0.059499 seconds!
-After Step: 10 My Rank: 0 takes 3.41543 seconds!
+Before Step: 10 My Rank: 0 takes 0.0595248 seconds!
+After Step: 10 My Rank: 0 takes 3.43857 seconds!
 Timestep # 10: integrating to time: 10
-used 3.47451 seconds!
-Memory usage: current 1923/1923/1923MB, peak 2056/2056/2056MB
-Before Step: 11 My Rank: 0 takes 0.0590626 seconds!
-After Step: 11 My Rank: 0 takes 3.66273 seconds!
+used 3.49737 seconds!
+Memory usage: current 1913/1913/1913MB, peak 2056/2056/2056MB
+Before Step: 11 My Rank: 0 takes 0.0587909 seconds!
+After Step: 11 My Rank: 0 takes 3.64116 seconds!
 Timestep # 11: integrating to time: 11
-used 3.72147 seconds!
-Memory usage: current 1923/1923/1923MB, peak 2056/2056/2056MB
-Before Step: 12 My Rank: 0 takes 0.0587201 seconds!
-After Step: 12 My Rank: 0 takes 3.49376 seconds!
+used 3.70021 seconds!
+Memory usage: current 1913/1913/1913MB, peak 2056/2056/2056MB
+Before Step: 12 My Rank: 0 takes 0.0590141 seconds!
+After Step: 12 My Rank: 0 takes 3.49946 seconds!
 Timestep # 12: integrating to time: 12
-used 3.55259 seconds!
-Memory usage: current 1923/1923/1923MB, peak 2056/2056/2056MB
-Before Step: 13 My Rank: 0 takes 0.0588052 seconds!
-After Step: 13 My Rank: 0 takes 3.5837 seconds!
+used 3.55879 seconds!
+Memory usage: current 1913/1913/1913MB, peak 2056/2056/2056MB
+Before Step: 13 My Rank: 0 takes 0.0593005 seconds!
+After Step: 13 My Rank: 0 takes 3.63918 seconds!
 Timestep # 13: integrating to time: 13
-used 3.64282 seconds!
-Memory usage: current 1860/1860/1860MB, peak 2056/2056/2056MB
-Before Step: 14 My Rank: 0 takes 0.0591028 seconds!
-After Step: 14 My Rank: 0 takes 3.546 seconds!
-Timestep # 14: integrating to time: 14
-used 3.60543 seconds!
-Memory usage: current 1880/1880/1880MB, peak 2056/2056/2056MB
-Before Step: 15 My Rank: 0 takes 0.0594211 seconds!
-After Step: 15 My Rank: 0 takes 3.65698 seconds!
-Timestep # 15: integrating to time: 15
-used 3.71593 seconds!
-Memory usage: current 1860/1860/1860MB, peak 2056/2056/2056MB
-Before Step: 16 My Rank: 0 takes 0.0589288 seconds!
-After Step: 16 My Rank: 0 takes 3.48819 seconds!
-Timestep # 16: integrating to time: 16
-used 3.54729 seconds!
+used 3.69867 seconds!
 Memory usage: current 1859/1859/1859MB, peak 2056/2056/2056MB
-Before Step: 17 My Rank: 0 takes 0.0590714 seconds!
-After Step: 17 My Rank: 0 takes 3.57838 seconds!
+Before Step: 14 My Rank: 0 takes 0.0594764 seconds!
+After Step: 14 My Rank: 0 takes 3.58648 seconds!
+Timestep # 14: integrating to time: 14
+used 3.64613 seconds!
+Memory usage: current 1878/1878/1878MB, peak 2056/2056/2056MB
+Before Step: 15 My Rank: 0 takes 0.0596169 seconds!
+After Step: 15 My Rank: 0 takes 3.60832 seconds!
+Timestep # 15: integrating to time: 15
+used 3.66779 seconds!
+Memory usage: current 1859/1859/1859MB, peak 2056/2056/2056MB
+Before Step: 16 My Rank: 0 takes 0.0594537 seconds!
+After Step: 16 My Rank: 0 takes 3.47741 seconds!
+Timestep # 16: integrating to time: 16
+used 3.53608 seconds!
+Memory usage: current 1865/1865/1865MB, peak 2056/2056/2056MB
+Before Step: 17 My Rank: 0 takes 0.0586597 seconds!
+After Step: 17 My Rank: 0 takes 3.53999 seconds!
 Timestep # 17: integrating to time: 17
-used 3.6382 seconds!
-Memory usage: current 1868/1868/1868MB, peak 2056/2056/2056MB
-Before Step: 18 My Rank: 0 takes 0.0597948 seconds!
-After Step: 18 My Rank: 0 takes 3.74812 seconds!
-Timestep # 18: integrating to time: 18
-used 3.80833 seconds!
-Memory usage: current 1875/1875/1875MB, peak 2056/2056/2056MB
-Before Step: 19 My Rank: 0 takes 0.0601901 seconds!
-After Step: 19 My Rank: 0 takes 3.46955 seconds!
-Timestep # 19: integrating to time: 19
-used 3.52917 seconds!
-Memory usage: current 1875/1875/1875MB, peak 2056/2056/2056MB
-Before Step: 20 My Rank: 0 takes 0.0595999 seconds!
-After Step: 20 My Rank: 0 takes 3.59993 seconds!
-Timestep # 20: integrating to time: 20
-used 3.65908 seconds!
-Memory usage: current 1858/1858/1858MB, peak 2056/2056/2056MB
-Before Step: 21 My Rank: 0 takes 0.0591245 seconds!
-After Step: 21 My Rank: 0 takes 3.52053 seconds!
-Timestep # 21: integrating to time: 21
-used 3.58029 seconds!
-Memory usage: current 1858/1858/1858MB, peak 2056/2056/2056MB
-Before Step: 22 My Rank: 0 takes 0.0597369 seconds!
-After Step: 22 My Rank: 0 takes 3.5308 seconds!
-Timestep # 22: integrating to time: 22
-used 3.58994 seconds!
-Memory usage: current 1858/1858/1858MB, peak 2056/2056/2056MB
-Before Step: 23 My Rank: 0 takes 0.0591185 seconds!
-After Step: 23 My Rank: 0 takes 3.68299 seconds!
-Timestep # 23: integrating to time: 23
-used 3.74206 seconds!
-Memory usage: current 1866/1866/1866MB, peak 2056/2056/2056MB
-Before Step: 24 My Rank: 0 takes 0.0590402 seconds!
-After Step: 24 My Rank: 0 takes 3.55421 seconds!
-Timestep # 24: integrating to time: 24
-used 3.6132 seconds!
-Memory usage: current 1866/1866/1866MB, peak 2056/2056/2056MB
-Before Step: 25 My Rank: 0 takes 0.0589642 seconds!
-After Step: 25 My Rank: 0 takes 3.57562 seconds!
-Timestep # 25: integrating to time: 25
-used 3.63435 seconds!
-Memory usage: current 2035/2035/2035MB, peak 2056/2056/2056MB
-Before Step: 26 My Rank: 0 takes 0.0587144 seconds!
-After Step: 26 My Rank: 0 takes 3.54732 seconds!
-Timestep # 26: integrating to time: 26
-used 3.60551 seconds!
-Memory usage: current 1898/1898/1898MB, peak 2056/2056/2056MB
-Before Step: 27 My Rank: 0 takes 0.058173 seconds!
-After Step: 27 My Rank: 0 takes 3.58744 seconds!
-Timestep # 27: integrating to time: 27
-used 3.65325 seconds!
-Memory usage: current 2047/2047/2047MB, peak 2056/2056/2056MB
-Before Step: 28 My Rank: 0 takes 0.0658085 seconds!
-After Step: 28 My Rank: 0 takes 3.38532 seconds!
-Timestep # 28: integrating to time: 28
-used 3.44247 seconds!
-Memory usage: current 2047/2047/2047MB, peak 2056/2056/2056MB
-Before Step: 29 My Rank: 0 takes 0.0571056 seconds!
-After Step: 29 My Rank: 0 takes 3.46039 seconds!
-Timestep # 29: integrating to time: 29
-used 3.51712 seconds!
-Memory usage: current 1986/1986/1986MB, peak 2056/2056/2056MB
-Before Step: 30 My Rank: 0 takes 0.0567091 seconds!
-After Step: 30 My Rank: 0 takes 3.29556 seconds!
-Timestep # 30: integrating to time: 30
-used 3.3519 seconds!
-Memory usage: current 1865/1865/1865MB, peak 2056/2056/2056MB
-Before Step: 31 My Rank: 0 takes 0.0563206 seconds!
-After Step: 31 My Rank: 0 takes 3.47281 seconds!
-Timestep # 31: integrating to time: 31
-used 3.52904 seconds!
-Memory usage: current 1865/1865/1865MB, peak 2056/2056/2056MB
-Before Step: 32 My Rank: 0 takes 0.0561976 seconds!
-After Step: 32 My Rank: 0 takes 3.18735 seconds!
-Timestep # 32: integrating to time: 32
-used 3.24284 seconds!
-Memory usage: current 1865/1865/1865MB, peak 2056/2056/2056MB
-Before Step: 33 My Rank: 0 takes 0.0554771 seconds!
-After Step: 33 My Rank: 0 takes 3.30473 seconds!
-Timestep # 33: integrating to time: 33
-used 3.3605 seconds!
-Memory usage: current 1865/1865/1865MB, peak 2056/2056/2056MB
-Before Step: 34 My Rank: 0 takes 0.0557366 seconds!
-After Step: 34 My Rank: 0 takes 3.26622 seconds!
-Timestep # 34: integrating to time: 34
-used 3.32198 seconds!
-Memory usage: current 1796/1796/1796MB, peak 2056/2056/2056MB
-Before Step: 35 My Rank: 0 takes 0.0557465 seconds!
-After Step: 35 My Rank: 0 takes 3.41699 seconds!
-Timestep # 35: integrating to time: 35
-used 3.47427 seconds!
-Memory usage: current 1962/1962/1962MB, peak 2056/2056/2056MB
-Before Step: 36 My Rank: 0 takes 0.0572574 seconds!
-After Step: 36 My Rank: 0 takes 3.38486 seconds!
-Timestep # 36: integrating to time: 36
-used 3.44235 seconds!
-Memory usage: current 1761/1761/1761MB, peak 2056/2056/2056MB
-Before Step: 37 My Rank: 0 takes 0.0574577 seconds!
-After Step: 37 My Rank: 0 takes 3.51779 seconds!
-Timestep # 37: integrating to time: 37
-used 3.57527 seconds!
-Memory usage: current 1863/1863/1863MB, peak 2056/2056/2056MB
-Before Step: 38 My Rank: 0 takes 0.0574665 seconds!
-After Step: 38 My Rank: 0 takes 3.47574 seconds!
-Timestep # 38: integrating to time: 38
-used 3.53286 seconds!
-Memory usage: current 1861/1861/1861MB, peak 2056/2056/2056MB
-Before Step: 39 My Rank: 0 takes 0.0571065 seconds!
-After Step: 39 My Rank: 0 takes 3.55394 seconds!
-Timestep # 39: integrating to time: 39
-used 3.61191 seconds!
-Memory usage: current 1892/1892/1892MB, peak 2056/2056/2056MB
-Before Step: 40 My Rank: 0 takes 0.0579466 seconds!
-After Step: 40 My Rank: 0 takes 3.50718 seconds!
-Timestep # 40: integrating to time: 40
-used 3.56498 seconds!
-Memory usage: current 1912/1912/1912MB, peak 2056/2056/2056MB
-Before Step: 41 My Rank: 0 takes 0.0577762 seconds!
-After Step: 41 My Rank: 0 takes 3.61971 seconds!
-Timestep # 41: integrating to time: 41
-used 3.67889 seconds!
+used 3.5996 seconds!
 Memory usage: current 1872/1872/1872MB, peak 2056/2056/2056MB
-Before Step: 42 My Rank: 0 takes 0.0591549 seconds!
-After Step: 42 My Rank: 0 takes 3.76435 seconds!
-Timestep # 42: integrating to time: 42
-used 3.82454 seconds!
-Memory usage: current 1830/1830/1830MB, peak 2056/2056/2056MB
-Before Step: 43 My Rank: 0 takes 0.0601833 seconds!
-After Step: 43 My Rank: 0 takes 3.69642 seconds!
-Timestep # 43: integrating to time: 43
-used 3.75571 seconds!
-Memory usage: current 1827/1827/1827MB, peak 2056/2056/2056MB
-Before Step: 44 My Rank: 0 takes 0.0592596 seconds!
-After Step: 44 My Rank: 0 takes 3.85651 seconds!
-Timestep # 44: integrating to time: 44
-used 3.916 seconds!
-Memory usage: current 1831/1831/1831MB, peak 2056/2056/2056MB
-Before Step: 45 My Rank: 0 takes 0.0594841 seconds!
-After Step: 45 My Rank: 0 takes 3.62824 seconds!
-Timestep # 45: integrating to time: 45
-used 3.68753 seconds!
-Memory usage: current 1834/1834/1834MB, peak 2056/2056/2056MB
-Before Step: 46 My Rank: 0 takes 0.0592588 seconds!
-After Step: 46 My Rank: 0 takes 3.84917 seconds!
-Timestep # 46: integrating to time: 46
-used 3.90873 seconds!
-Memory usage: current 1832/1832/1832MB, peak 2056/2056/2056MB
-Before Step: 47 My Rank: 0 takes 0.0595449 seconds!
-After Step: 47 My Rank: 0 takes 3.58827 seconds!
-Timestep # 47: integrating to time: 47
-used 3.64752 seconds!
-Memory usage: current 1832/1832/1832MB, peak 2056/2056/2056MB
-Before Step: 48 My Rank: 0 takes 0.0592338 seconds!
-After Step: 48 My Rank: 0 takes 3.74663 seconds!
-Timestep # 48: integrating to time: 48
-used 3.80466 seconds!
-Memory usage: current 1895/1895/1895MB, peak 2056/2056/2056MB
-Before Step: 49 My Rank: 0 takes 0.0580176 seconds!
-After Step: 49 My Rank: 0 takes 3.4008 seconds!
-Timestep # 49: integrating to time: 49
-used 3.45948 seconds!
-Memory usage: current 1873/1873/1873MB, peak 2056/2056/2056MB
-Before Step: 50 My Rank: 0 takes 0.0586509 seconds!
-After Step: 50 My Rank: 0 takes 3.63767 seconds!
-Timestep # 50: integrating to time: 50
-used 3.69516 seconds!
-Memory usage: current 1880/1880/1880MB, peak 2056/2056/2056MB
-Before Step: 51 My Rank: 0 takes 0.0574789 seconds!
-After Step: 51 My Rank: 0 takes 3.46858 seconds!
-Timestep # 51: integrating to time: 51
-used 3.52716 seconds!
+Before Step: 18 My Rank: 0 takes 0.0595874 seconds!
+After Step: 18 My Rank: 0 takes 3.71972 seconds!
+Timestep # 18: integrating to time: 18
+used 3.77956 seconds!
 Memory usage: current 1875/1875/1875MB, peak 2056/2056/2056MB
-Before Step: 52 My Rank: 0 takes 0.0585585 seconds!
-After Step: 52 My Rank: 0 takes 3.39644 seconds!
-Timestep # 52: integrating to time: 52
-used 3.45286 seconds!
-Memory usage: current 1825/1825/1825MB, peak 2056/2056/2056MB
-Before Step: 53 My Rank: 0 takes 0.0563953 seconds!
-After Step: 53 My Rank: 0 takes 3.24725 seconds!
-Timestep # 53: integrating to time: 53
-used 3.30343 seconds!
-Memory usage: current 1825/1825/1825MB, peak 2056/2056/2056MB
-Before Step: 54 My Rank: 0 takes 0.056151 seconds!
-After Step: 54 My Rank: 0 takes 3.27973 seconds!
-Timestep # 54: integrating to time: 54
-used 3.33499 seconds!
-Memory usage: current 1804/1804/1804MB, peak 2056/2056/2056MB
-Before Step: 55 My Rank: 0 takes 0.055244 seconds!
-After Step: 55 My Rank: 0 takes 3.24374 seconds!
-Timestep # 55: integrating to time: 55
-used 3.29912 seconds!
-Memory usage: current 1804/1804/1804MB, peak 2056/2056/2056MB
-Before Step: 56 My Rank: 0 takes 0.0553685 seconds!
-After Step: 56 My Rank: 0 takes 3.16087 seconds!
-Timestep # 56: integrating to time: 56
-used 3.21661 seconds!
-Memory usage: current 1795/1795/1795MB, peak 2056/2056/2056MB
-Before Step: 57 My Rank: 0 takes 0.0557056 seconds!
-After Step: 57 My Rank: 0 takes 3.25247 seconds!
-Timestep # 57: integrating to time: 57
-used 3.30874 seconds!
-Memory usage: current 1795/1795/1795MB, peak 2056/2056/2056MB
-Before Step: 58 My Rank: 0 takes 0.0562568 seconds!
-After Step: 58 My Rank: 0 takes 3.25382 seconds!
-Timestep # 58: integrating to time: 58
-used 3.31001 seconds!
-Memory usage: current 1796/1796/1796MB, peak 2056/2056/2056MB
-Before Step: 59 My Rank: 0 takes 0.0561618 seconds!
-After Step: 59 My Rank: 0 takes 3.36363 seconds!
-Timestep # 59: integrating to time: 59
-used 3.42051 seconds!
-Memory usage: current 1795/1795/1795MB, peak 2056/2056/2056MB
-Before Step: 60 My Rank: 0 takes 0.0568603 seconds!
-After Step: 60 My Rank: 0 takes 3.36494 seconds!
-Timestep # 60: integrating to time: 60
-used 3.42189 seconds!
-Memory usage: current 1815/1815/1815MB, peak 2056/2056/2056MB
-Before Step: 61 My Rank: 0 takes 0.056933 seconds!
-After Step: 61 My Rank: 0 takes 3.50717 seconds!
-Timestep # 61: integrating to time: 61
-used 3.56482 seconds!
-Memory usage: current 1853/1853/1853MB, peak 2056/2056/2056MB
-Before Step: 62 My Rank: 0 takes 0.0576262 seconds!
-After Step: 62 My Rank: 0 takes 3.23853 seconds!
-Timestep # 62: integrating to time: 62
-used 3.29572 seconds!
+Before Step: 19 My Rank: 0 takes 0.0598268 seconds!
+After Step: 19 My Rank: 0 takes 3.43881 seconds!
+Timestep # 19: integrating to time: 19
+used 3.49776 seconds!
+Memory usage: current 1875/1875/1875MB, peak 2056/2056/2056MB
+Before Step: 20 My Rank: 0 takes 0.0589267 seconds!
+After Step: 20 My Rank: 0 takes 3.57075 seconds!
+Timestep # 20: integrating to time: 20
+used 3.62949 seconds!
+Memory usage: current 1875/1875/1875MB, peak 2056/2056/2056MB
+Before Step: 21 My Rank: 0 takes 0.0587152 seconds!
+After Step: 21 My Rank: 0 takes 3.53262 seconds!
+Timestep # 21: integrating to time: 21
+used 3.59178 seconds!
+Memory usage: current 1862/1862/1862MB, peak 2056/2056/2056MB
+Before Step: 22 My Rank: 0 takes 0.0591431 seconds!
+After Step: 22 My Rank: 0 takes 3.5145 seconds!
+Timestep # 22: integrating to time: 22
+used 3.57378 seconds!
+Memory usage: current 1870/1870/1870MB, peak 2056/2056/2056MB
+Before Step: 23 My Rank: 0 takes 0.0592589 seconds!
+After Step: 23 My Rank: 0 takes 3.641 seconds!
+Timestep # 23: integrating to time: 23
+used 3.69997 seconds!
+Memory usage: current 1864/1864/1864MB, peak 2056/2056/2056MB
+Before Step: 24 My Rank: 0 takes 0.0589596 seconds!
+After Step: 24 My Rank: 0 takes 3.54841 seconds!
+Timestep # 24: integrating to time: 24
+used 3.60773 seconds!
+Memory usage: current 1864/1864/1864MB, peak 2056/2056/2056MB
+Before Step: 25 My Rank: 0 takes 0.0593005 seconds!
+After Step: 25 My Rank: 0 takes 3.48613 seconds!
+Timestep # 25: integrating to time: 25
+used 3.54489 seconds!
+Memory usage: current 2037/2037/2037MB, peak 2056/2056/2056MB
+Before Step: 26 My Rank: 0 takes 0.0587258 seconds!
+After Step: 26 My Rank: 0 takes 3.51755 seconds!
+Timestep # 26: integrating to time: 26
+used 3.57588 seconds!
+Memory usage: current 1898/1898/1898MB, peak 2056/2056/2056MB
+Before Step: 27 My Rank: 0 takes 0.0583186 seconds!
+After Step: 27 My Rank: 0 takes 3.44669 seconds!
+Timestep # 27: integrating to time: 27
+used 3.50425 seconds!
+Memory usage: current 2047/2047/2047MB, peak 2056/2056/2056MB
+Before Step: 28 My Rank: 0 takes 0.0575513 seconds!
+After Step: 28 My Rank: 0 takes 3.30715 seconds!
+Timestep # 28: integrating to time: 28
+used 3.36427 seconds!
+Memory usage: current 2047/2047/2047MB, peak 2056/2056/2056MB
+Before Step: 29 My Rank: 0 takes 0.0571009 seconds!
+After Step: 29 My Rank: 0 takes 3.38207 seconds!
+Timestep # 29: integrating to time: 29
+used 3.43873 seconds!
+Memory usage: current 1984/1984/1984MB, peak 2056/2056/2056MB
+Before Step: 30 My Rank: 0 takes 0.0566275 seconds!
+After Step: 30 My Rank: 0 takes 3.25581 seconds!
+Timestep # 30: integrating to time: 30
+used 3.31205 seconds!
+Memory usage: current 1859/1859/1859MB, peak 2056/2056/2056MB
+Before Step: 31 My Rank: 0 takes 0.0562268 seconds!
+After Step: 31 My Rank: 0 takes 3.42464 seconds!
+Timestep # 31: integrating to time: 31
+used 3.48059 seconds!
 Memory usage: current 1857/1857/1857MB, peak 2056/2056/2056MB
-Before Step: 63 My Rank: 0 takes 0.0571706 seconds!
-After Step: 63 My Rank: 0 takes 3.49673 seconds!
-Timestep # 63: integrating to time: 63
-used 3.55372 seconds!
-Memory usage: current 1881/1881/1881MB, peak 2056/2056/2056MB
-Before Step: 64 My Rank: 0 takes 0.0569709 seconds!
-After Step: 64 My Rank: 0 takes 3.58749 seconds!
-Timestep # 64: integrating to time: 64
-used 3.64539 seconds!
-Memory usage: current 1881/1881/1881MB, peak 2056/2056/2056MB
-Before Step: 65 My Rank: 0 takes 0.057877 seconds!
-After Step: 65 My Rank: 0 takes 3.73452 seconds!
-Timestep # 65: integrating to time: 65
-used 3.79234 seconds!
-Memory usage: current 1887/1887/1887MB, peak 2056/2056/2056MB
-Before Step: 66 My Rank: 0 takes 0.057793 seconds!
-After Step: 66 My Rank: 0 takes 3.49109 seconds!
-Timestep # 66: integrating to time: 66
-used 3.54835 seconds!
-Memory usage: current 1890/1890/1890MB, peak 2056/2056/2056MB
-Before Step: 67 My Rank: 0 takes 0.0572443 seconds!
-After Step: 67 My Rank: 0 takes 3.46972 seconds!
-Timestep # 67: integrating to time: 67
-used 3.52659 seconds!
-Memory usage: current 1866/1866/1866MB, peak 2056/2056/2056MB
-Before Step: 68 My Rank: 0 takes 0.0568528 seconds!
-After Step: 68 My Rank: 0 takes 3.35674 seconds!
-Timestep # 68: integrating to time: 68
-used 3.41258 seconds!
+Before Step: 32 My Rank: 0 takes 0.0559331 seconds!
+After Step: 32 My Rank: 0 takes 3.14569 seconds!
+Timestep # 32: integrating to time: 32
+used 3.20179 seconds!
+Memory usage: current 1857/1857/1857MB, peak 2056/2056/2056MB
+Before Step: 33 My Rank: 0 takes 0.0560888 seconds!
+After Step: 33 My Rank: 0 takes 3.27762 seconds!
+Timestep # 33: integrating to time: 33
+used 3.3327 seconds!
+Memory usage: current 1856/1856/1856MB, peak 2056/2056/2056MB
+Before Step: 34 My Rank: 0 takes 0.0550503 seconds!
+After Step: 34 My Rank: 0 takes 3.21124 seconds!
+Timestep # 34: integrating to time: 34
+used 3.26709 seconds!
+Memory usage: current 1834/1834/1834MB, peak 2056/2056/2056MB
+Before Step: 35 My Rank: 0 takes 0.0558324 seconds!
+After Step: 35 My Rank: 0 takes 3.36397 seconds!
+Timestep # 35: integrating to time: 35
+used 3.42055 seconds!
+Memory usage: current 1963/1963/1963MB, peak 2056/2056/2056MB
+Before Step: 36 My Rank: 0 takes 0.0565611 seconds!
+After Step: 36 My Rank: 0 takes 3.33401 seconds!
+Timestep # 36: integrating to time: 36
+used 3.3916 seconds!
+Memory usage: current 1793/1793/1793MB, peak 2056/2056/2056MB
+Before Step: 37 My Rank: 0 takes 0.0575747 seconds!
+After Step: 37 My Rank: 0 takes 3.40192 seconds!
+Timestep # 37: integrating to time: 37
+used 3.45934 seconds!
+Memory usage: current 1859/1859/1859MB, peak 2056/2056/2056MB
+Before Step: 38 My Rank: 0 takes 0.0573946 seconds!
+After Step: 38 My Rank: 0 takes 3.42535 seconds!
+Timestep # 38: integrating to time: 38
+used 3.48239 seconds!
+Memory usage: current 1862/1862/1862MB, peak 2056/2056/2056MB
+Before Step: 39 My Rank: 0 takes 0.0570321 seconds!
+After Step: 39 My Rank: 0 takes 3.5223 seconds!
+Timestep # 39: integrating to time: 39
+used 3.58036 seconds!
+Memory usage: current 1888/1888/1888MB, peak 2056/2056/2056MB
+Before Step: 40 My Rank: 0 takes 0.0580299 seconds!
+After Step: 40 My Rank: 0 takes 3.47879 seconds!
+Timestep # 40: integrating to time: 40
+used 3.53607 seconds!
+Memory usage: current 1910/1910/1910MB, peak 2056/2056/2056MB
+Before Step: 41 My Rank: 0 takes 0.0572597 seconds!
+After Step: 41 My Rank: 0 takes 3.59015 seconds!
+Timestep # 41: integrating to time: 41
+used 3.64896 seconds!
+Memory usage: current 1873/1873/1873MB, peak 2056/2056/2056MB
+Before Step: 42 My Rank: 0 takes 0.0587939 seconds!
+After Step: 42 My Rank: 0 takes 3.73082 seconds!
+Timestep # 42: integrating to time: 42
+used 3.78946 seconds!
+Memory usage: current 1829/1829/1829MB, peak 2056/2056/2056MB
+Before Step: 43 My Rank: 0 takes 0.0586166 seconds!
+After Step: 43 My Rank: 0 takes 3.6541 seconds!
+Timestep # 43: integrating to time: 43
+used 3.71288 seconds!
+Memory usage: current 1827/1827/1827MB, peak 2056/2056/2056MB
+Before Step: 44 My Rank: 0 takes 0.0587576 seconds!
+After Step: 44 My Rank: 0 takes 3.75413 seconds!
+Timestep # 44: integrating to time: 44
+used 3.81341 seconds!
+Memory usage: current 1826/1826/1826MB, peak 2056/2056/2056MB
+Before Step: 45 My Rank: 0 takes 0.059261 seconds!
+After Step: 45 My Rank: 0 takes 3.60009 seconds!
+Timestep # 45: integrating to time: 45
+used 3.65935 seconds!
+Memory usage: current 1834/1834/1834MB, peak 2056/2056/2056MB
+Before Step: 46 My Rank: 0 takes 0.0592398 seconds!
+After Step: 46 My Rank: 0 takes 3.82339 seconds!
+Timestep # 46: integrating to time: 46
+used 3.88232 seconds!
+Memory usage: current 1839/1839/1839MB, peak 2056/2056/2056MB
+Before Step: 47 My Rank: 0 takes 0.0589118 seconds!
+After Step: 47 My Rank: 0 takes 3.5602 seconds!
+Timestep # 47: integrating to time: 47
+used 3.6188 seconds!
+Memory usage: current 1828/1828/1828MB, peak 2056/2056/2056MB
+Before Step: 48 My Rank: 0 takes 0.0585823 seconds!
+After Step: 48 My Rank: 0 takes 3.72025 seconds!
+Timestep # 48: integrating to time: 48
+used 3.77822 seconds!
+Memory usage: current 1892/1892/1892MB, peak 2056/2056/2056MB
+Before Step: 49 My Rank: 0 takes 0.0579519 seconds!
+After Step: 49 My Rank: 0 takes 3.37371 seconds!
+Timestep # 49: integrating to time: 49
+used 3.43226 seconds!
+Memory usage: current 1884/1884/1884MB, peak 2056/2056/2056MB
+Before Step: 50 My Rank: 0 takes 0.058531 seconds!
+After Step: 50 My Rank: 0 takes 3.63055 seconds!
+Timestep # 50: integrating to time: 50
+used 3.68829 seconds!
+Memory usage: current 1886/1886/1886MB, peak 2056/2056/2056MB
+Before Step: 51 My Rank: 0 takes 0.0577168 seconds!
+After Step: 51 My Rank: 0 takes 3.45055 seconds!
+Timestep # 51: integrating to time: 51
+used 3.5082 seconds!
+Memory usage: current 1883/1883/1883MB, peak 2056/2056/2056MB
+Before Step: 52 My Rank: 0 takes 0.0576379 seconds!
+After Step: 52 My Rank: 0 takes 3.38356 seconds!
+Timestep # 52: integrating to time: 52
+used 3.44013 seconds!
+Memory usage: current 1821/1821/1821MB, peak 2056/2056/2056MB
+Before Step: 53 My Rank: 0 takes 0.056558 seconds!
+After Step: 53 My Rank: 0 takes 3.23856 seconds!
+Timestep # 53: integrating to time: 53
+used 3.29485 seconds!
+Memory usage: current 1821/1821/1821MB, peak 2056/2056/2056MB
+Before Step: 54 My Rank: 0 takes 0.0562675 seconds!
+After Step: 54 My Rank: 0 takes 3.27483 seconds!
+Timestep # 54: integrating to time: 54
+used 3.3303 seconds!
+Memory usage: current 1808/1808/1808MB, peak 2056/2056/2056MB
+Before Step: 55 My Rank: 0 takes 0.055451 seconds!
+After Step: 55 My Rank: 0 takes 3.23186 seconds!
+Timestep # 55: integrating to time: 55
+used 3.28725 seconds!
+Memory usage: current 1808/1808/1808MB, peak 2056/2056/2056MB
+Before Step: 56 My Rank: 0 takes 0.0553644 seconds!
+After Step: 56 My Rank: 0 takes 3.23905 seconds!
+Timestep # 56: integrating to time: 56
+used 3.29521 seconds!
+Memory usage: current 1798/1798/1798MB, peak 2056/2056/2056MB
+Before Step: 57 My Rank: 0 takes 0.0561192 seconds!
+After Step: 57 My Rank: 0 takes 3.23914 seconds!
+Timestep # 57: integrating to time: 57
+used 3.29557 seconds!
+Memory usage: current 1784/1784/1784MB, peak 2056/2056/2056MB
+Before Step: 58 My Rank: 0 takes 0.0564298 seconds!
+After Step: 58 My Rank: 0 takes 3.23182 seconds!
+Timestep # 58: integrating to time: 58
+used 3.28826 seconds!
+Memory usage: current 1786/1786/1786MB, peak 2056/2056/2056MB
+Before Step: 59 My Rank: 0 takes 0.0564202 seconds!
+After Step: 59 My Rank: 0 takes 3.36989 seconds!
+Timestep # 59: integrating to time: 59
+used 3.42659 seconds!
+Memory usage: current 1789/1789/1789MB, peak 2056/2056/2056MB
+Before Step: 60 My Rank: 0 takes 0.0566599 seconds!
+After Step: 60 My Rank: 0 takes 3.3472 seconds!
+Timestep # 60: integrating to time: 60
+used 3.40447 seconds!
+Memory usage: current 1824/1824/1824MB, peak 2056/2056/2056MB
+Before Step: 61 My Rank: 0 takes 0.0572579 seconds!
+After Step: 61 My Rank: 0 takes 3.47766 seconds!
+Timestep # 61: integrating to time: 61
+used 3.53541 seconds!
 Memory usage: current 1823/1823/1823MB, peak 2056/2056/2056MB
-Before Step: 69 My Rank: 0 takes 0.0558229 seconds!
-After Step: 69 My Rank: 0 takes 3.47361 seconds!
+Before Step: 62 My Rank: 0 takes 0.0577386 seconds!
+After Step: 62 My Rank: 0 takes 3.21068 seconds!
+Timestep # 62: integrating to time: 62
+used 3.26772 seconds!
+Memory usage: current 1823/1823/1823MB, peak 2056/2056/2056MB
+Before Step: 63 My Rank: 0 takes 0.0569934 seconds!
+After Step: 63 My Rank: 0 takes 3.47502 seconds!
+Timestep # 63: integrating to time: 63
+used 3.53214 seconds!
+Memory usage: current 1845/1845/1845MB, peak 2056/2056/2056MB
+Before Step: 64 My Rank: 0 takes 0.0571131 seconds!
+After Step: 64 My Rank: 0 takes 3.58812 seconds!
+Timestep # 64: integrating to time: 64
+used 3.6456 seconds!
+Memory usage: current 1871/1871/1871MB, peak 2056/2056/2056MB
+Before Step: 65 My Rank: 0 takes 0.0574397 seconds!
+After Step: 65 My Rank: 0 takes 3.70302 seconds!
+Timestep # 65: integrating to time: 65
+used 3.76102 seconds!
+Memory usage: current 1870/1870/1870MB, peak 2056/2056/2056MB
+Before Step: 66 My Rank: 0 takes 0.0580033 seconds!
+After Step: 66 My Rank: 0 takes 3.47396 seconds!
+Timestep # 66: integrating to time: 66
+used 3.53164 seconds!
+Memory usage: current 1869/1869/1869MB, peak 2056/2056/2056MB
+Before Step: 67 My Rank: 0 takes 0.0576509 seconds!
+After Step: 67 My Rank: 0 takes 3.43188 seconds!
+Timestep # 67: integrating to time: 67
+used 3.48849 seconds!
+Memory usage: current 1856/1856/1856MB, peak 2056/2056/2056MB
+Before Step: 68 My Rank: 0 takes 0.056594 seconds!
+After Step: 68 My Rank: 0 takes 3.30918 seconds!
+Timestep # 68: integrating to time: 68
+used 3.36506 seconds!
+Memory usage: current 1826/1826/1826MB, peak 2056/2056/2056MB
+Before Step: 69 My Rank: 0 takes 0.0558659 seconds!
+After Step: 69 My Rank: 0 takes 3.40468 seconds!
 Timestep # 69: integrating to time: 69
-used 3.5297 seconds!
-Memory usage: current 1807/1807/1807MB, peak 2056/2056/2056MB
-Before Step: 70 My Rank: 0 takes 0.0560579 seconds!
-After Step: 70 My Rank: 0 takes 3.31147 seconds!
+used 3.46073 seconds!
+Memory usage: current 1816/1816/1816MB, peak 2056/2056/2056MB
+Before Step: 70 My Rank: 0 takes 0.0560147 seconds!
+After Step: 70 My Rank: 0 takes 3.25885 seconds!
 Timestep # 70: integrating to time: 70
-used 3.36667 seconds!
-Memory usage: current 1785/1785/1785MB, peak 2056/2056/2056MB
-Before Step: 71 My Rank: 0 takes 0.0551798 seconds!
-After Step: 71 My Rank: 0 takes 3.16916 seconds!
+used 3.31405 seconds!
+Memory usage: current 1803/1803/1803MB, peak 2056/2056/2056MB
+Before Step: 71 My Rank: 0 takes 0.0551834 seconds!
+After Step: 71 My Rank: 0 takes 3.12193 seconds!
 Timestep # 71: integrating to time: 71
-used 3.22406 seconds!
-Memory usage: current 1785/1785/1785MB, peak 2056/2056/2056MB
-Before Step: 72 My Rank: 0 takes 0.0548879 seconds!
-After Step: 72 My Rank: 0 takes 3.23904 seconds!
+used 3.17678 seconds!
+Memory usage: current 1782/1782/1782MB, peak 2056/2056/2056MB
+Before Step: 72 My Rank: 0 takes 0.0548263 seconds!
+After Step: 72 My Rank: 0 takes 3.18927 seconds!
 Timestep # 72: integrating to time: 72
-used 3.29321 seconds!
-Memory usage: current 1785/1785/1785MB, peak 2056/2056/2056MB
-Before Step: 73 My Rank: 0 takes 0.0541561 seconds!
-After Step: 73 My Rank: 0 takes 3.20667 seconds!
+used 3.24445 seconds!
+Memory usage: current 1782/1782/1782MB, peak 2056/2056/2056MB
+Before Step: 73 My Rank: 0 takes 0.0551781 seconds!
+After Step: 73 My Rank: 0 takes 3.22364 seconds!
 Timestep # 73: integrating to time: 73
-used 3.26086 seconds!
-Memory usage: current 1785/1785/1785MB, peak 2056/2056/2056MB
-Before Step: 74 My Rank: 0 takes 0.0541847 seconds!
-After Step: 74 My Rank: 0 takes 3.32917 seconds!
+used 3.27835 seconds!
+Memory usage: current 1782/1782/1782MB, peak 2056/2056/2056MB
+Before Step: 74 My Rank: 0 takes 0.0546645 seconds!
+After Step: 74 My Rank: 0 takes 3.29771 seconds!
 Timestep # 74: integrating to time: 74
-used 3.38389 seconds!
-Memory usage: current 1775/1775/1775MB, peak 2056/2056/2056MB
-Before Step: 75 My Rank: 0 takes 0.0546879 seconds!
-After Step: 75 My Rank: 0 takes 3.40037 seconds!
+used 3.35244 seconds!
+Memory usage: current 1771/1771/1771MB, peak 2056/2056/2056MB
+Before Step: 75 My Rank: 0 takes 0.0547212 seconds!
+After Step: 75 My Rank: 0 takes 3.37247 seconds!
 Timestep # 75: integrating to time: 75
-used 3.45609 seconds!
-Memory usage: current 1767/1767/1767MB, peak 2056/2056/2056MB
-Before Step: 76 My Rank: 0 takes 0.0557036 seconds!
-After Step: 76 My Rank: 0 takes 3.60582 seconds!
+used 3.42833 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 76 My Rank: 0 takes 0.0558207 seconds!
+After Step: 76 My Rank: 0 takes 3.57778 seconds!
 Timestep # 76: integrating to time: 76
-used 3.66084 seconds!
-Memory usage: current 1767/1767/1767MB, peak 2056/2056/2056MB
-Before Step: 77 My Rank: 0 takes 0.05498 seconds!
-After Step: 77 My Rank: 0 takes 3.49013 seconds!
+used 3.63251 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 77 My Rank: 0 takes 0.0547075 seconds!
+After Step: 77 My Rank: 0 takes 3.45163 seconds!
 Timestep # 77: integrating to time: 77
-used 3.54453 seconds!
-Memory usage: current 1767/1767/1767MB, peak 2056/2056/2056MB
-Before Step: 78 My Rank: 0 takes 0.0543883 seconds!
-After Step: 78 My Rank: 0 takes 3.36516 seconds!
+used 3.50637 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 78 My Rank: 0 takes 0.0547268 seconds!
+After Step: 78 My Rank: 0 takes 3.33534 seconds!
 Timestep # 78: integrating to time: 78
-used 3.42021 seconds!
-Memory usage: current 1767/1767/1767MB, peak 2056/2056/2056MB
-Before Step: 79 My Rank: 0 takes 0.0550276 seconds!
-After Step: 79 My Rank: 0 takes 3.56516 seconds!
+used 3.39052 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 79 My Rank: 0 takes 0.0551662 seconds!
+After Step: 79 My Rank: 0 takes 3.44957 seconds!
 Timestep # 79: integrating to time: 79
-used 3.6203 seconds!
-Memory usage: current 1767/1767/1767MB, peak 2056/2056/2056MB
-Before Step: 80 My Rank: 0 takes 0.0551065 seconds!
-After Step: 80 My Rank: 0 takes 3.49263 seconds!
+used 3.50462 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 80 My Rank: 0 takes 0.0550199 seconds!
+After Step: 80 My Rank: 0 takes 3.45423 seconds!
 Timestep # 80: integrating to time: 80
-used 3.54722 seconds!
-Memory usage: current 1767/1767/1767MB, peak 2056/2056/2056MB
-Before Step: 81 My Rank: 0 takes 0.054584 seconds!
-After Step: 81 My Rank: 0 takes 3.15737 seconds!
+used 3.50872 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 81 My Rank: 0 takes 0.0544694 seconds!
+After Step: 81 My Rank: 0 takes 3.12997 seconds!
 Timestep # 81: integrating to time: 81
-used 3.21068 seconds!
-Memory usage: current 1776/1776/1776MB, peak 2056/2056/2056MB
-Before Step: 82 My Rank: 0 takes 0.0532882 seconds!
-After Step: 82 My Rank: 0 takes 2.9491 seconds!
+used 3.18298 seconds!
+Memory usage: current 1779/1779/1779MB, peak 2056/2056/2056MB
+Before Step: 82 My Rank: 0 takes 0.0529821 seconds!
+After Step: 82 My Rank: 0 takes 2.91466 seconds!
 Timestep # 82: integrating to time: 82
-used 3.00126 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 83 My Rank: 0 takes 0.0521282 seconds!
-After Step: 83 My Rank: 0 takes 2.78123 seconds!
+used 2.96651 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 83 My Rank: 0 takes 0.0518239 seconds!
+After Step: 83 My Rank: 0 takes 2.75081 seconds!
 Timestep # 83: integrating to time: 83
-used 2.83173 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 84 My Rank: 0 takes 0.0504818 seconds!
-After Step: 84 My Rank: 0 takes 2.64475 seconds!
+used 2.80089 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 84 My Rank: 0 takes 0.0500797 seconds!
+After Step: 84 My Rank: 0 takes 2.61159 seconds!
 Timestep # 84: integrating to time: 84
-used 2.69489 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 85 My Rank: 0 takes 0.0501075 seconds!
-After Step: 85 My Rank: 0 takes 2.91464 seconds!
+used 2.66194 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 85 My Rank: 0 takes 0.0503271 seconds!
+After Step: 85 My Rank: 0 takes 2.79423 seconds!
 Timestep # 85: integrating to time: 85
-used 2.96487 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 86 My Rank: 0 takes 0.050214 seconds!
-After Step: 86 My Rank: 0 takes 2.88746 seconds!
+used 2.84483 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 86 My Rank: 0 takes 0.0505684 seconds!
+After Step: 86 My Rank: 0 takes 2.84384 seconds!
 Timestep # 86: integrating to time: 86
-used 2.93832 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 87 My Rank: 0 takes 0.0508314 seconds!
-After Step: 87 My Rank: 0 takes 2.65638 seconds!
+used 2.89446 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 87 My Rank: 0 takes 0.0506238 seconds!
+After Step: 87 My Rank: 0 takes 2.60232 seconds!
 Timestep # 87: integrating to time: 87
-used 2.70685 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 88 My Rank: 0 takes 0.0504572 seconds!
-After Step: 88 My Rank: 0 takes 2.6045 seconds!
+used 2.65275 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 88 My Rank: 0 takes 0.0504072 seconds!
+After Step: 88 My Rank: 0 takes 2.54957 seconds!
 Timestep # 88: integrating to time: 88
-used 2.65429 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 89 My Rank: 0 takes 0.0497734 seconds!
-After Step: 89 My Rank: 0 takes 2.46494 seconds!
+used 2.59914 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 89 My Rank: 0 takes 0.0495376 seconds!
+After Step: 89 My Rank: 0 takes 2.38116 seconds!
 Timestep # 89: integrating to time: 89
-used 2.51301 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 90 My Rank: 0 takes 0.048051 seconds!
-After Step: 90 My Rank: 0 takes 2.16973 seconds!
+used 2.4292 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 90 My Rank: 0 takes 0.0480155 seconds!
+After Step: 90 My Rank: 0 takes 2.13903 seconds!
 Timestep # 90: integrating to time: 90
-used 2.21709 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 91 My Rank: 0 takes 0.0473409 seconds!
-After Step: 91 My Rank: 0 takes 2.0738 seconds!
+used 2.18562 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 91 My Rank: 0 takes 0.0465707 seconds!
+After Step: 91 My Rank: 0 takes 2.05292 seconds!
 Timestep # 91: integrating to time: 91
-used 2.12073 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 92 My Rank: 0 takes 0.0469067 seconds!
-After Step: 92 My Rank: 0 takes 2.07624 seconds!
+used 2.10076 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 92 My Rank: 0 takes 0.0478291 seconds!
+After Step: 92 My Rank: 0 takes 2.05741 seconds!
 Timestep # 92: integrating to time: 92
-used 2.12229 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 93 My Rank: 0 takes 0.0460251 seconds!
-After Step: 93 My Rank: 0 takes 2.02996 seconds!
+used 2.10351 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 93 My Rank: 0 takes 0.0460565 seconds!
+After Step: 93 My Rank: 0 takes 1.99555 seconds!
 Timestep # 93: integrating to time: 93
-used 2.07556 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 94 My Rank: 0 takes 0.0455845 seconds!
-After Step: 94 My Rank: 0 takes 1.85477 seconds!
+used 2.04123 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 94 My Rank: 0 takes 0.0456501 seconds!
+After Step: 94 My Rank: 0 takes 1.81237 seconds!
 Timestep # 94: integrating to time: 94
-used 1.90027 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 95 My Rank: 0 takes 0.045481 seconds!
-After Step: 95 My Rank: 0 takes 1.84775 seconds!
+used 1.85768 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 95 My Rank: 0 takes 0.0452945 seconds!
+After Step: 95 My Rank: 0 takes 1.82093 seconds!
 Timestep # 95: integrating to time: 95
-used 1.89373 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 96 My Rank: 0 takes 0.0459548 seconds!
-After Step: 96 My Rank: 0 takes 1.84748 seconds!
+used 1.86647 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 96 My Rank: 0 takes 0.0455277 seconds!
+After Step: 96 My Rank: 0 takes 1.81048 seconds!
 Timestep # 96: integrating to time: 96
-used 1.89298 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 97 My Rank: 0 takes 0.0454853 seconds!
-After Step: 97 My Rank: 0 takes 1.87889 seconds!
+used 1.85551 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 97 My Rank: 0 takes 0.0450104 seconds!
+After Step: 97 My Rank: 0 takes 1.83598 seconds!
 Timestep # 97: integrating to time: 97
-used 1.92435 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 98 My Rank: 0 takes 0.045437 seconds!
-After Step: 98 My Rank: 0 takes 1.85223 seconds!
+used 1.88139 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 98 My Rank: 0 takes 0.04539 seconds!
+After Step: 98 My Rank: 0 takes 1.81603 seconds!
 Timestep # 98: integrating to time: 98
-used 1.89776 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 99 My Rank: 0 takes 0.0455114 seconds!
-After Step: 99 My Rank: 0 takes 1.84865 seconds!
+used 1.86134 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 99 My Rank: 0 takes 0.0452918 seconds!
+After Step: 99 My Rank: 0 takes 1.81912 seconds!
 Timestep # 99: integrating to time: 99
-used 1.89413 seconds!
-Memory usage: current 1759/1759/1759MB, peak 2056/2056/2056MB
-Before Step: 100 My Rank: 0 takes 0.0454626 seconds!
-After Step: 100 My Rank: 0 takes 1.84809 seconds!
+used 1.86486 seconds!
+Memory usage: current 1762/1762/1762MB, peak 2056/2056/2056MB
+Before Step: 100 My Rank: 0 takes 0.0457144 seconds!
+After Step: 100 My Rank: 0 takes 1.82275 seconds!
 Timestep # 100: integrating to time: 100
-used 1.89372 seconds!
+used 1.86826 seconds!
 
- Total Evolve Time: 330.179 seconds!
- Total Running Time: 333.331 seconds!
+ Total Evolve Time: 327.114 seconds!
+ Total Running Time: 329.305 seconds!
 
 
  =============================================================== 
  Simulation is successfully done!! 
  =============================================================== 
 
- This run used 333.4 seconds! 
+ This run used 329.374 seconds! 
 
 ==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
 ==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118
@@ -745,7 +745,7 @@ used 1.89372 seconds!
 
  TwoPuncture cache hit (912e370b84cec7cb); reusing cached initial data
 
- Running ./ABEGPU with 1 MPI ranks and OMP_NUM_THREADS=1
+ Running ./ABEGPU with 1 MPI ranks and OMP_NUM_THREADS=16
 
 
  The ./ABEGPU simulation is finished
@@ -755,7 +755,7 @@ used 1.89372 seconds!
 
  Plot generation skipped; numerical result files are retained
 
- This Program Cost = 333.86560559272766 Seconds
+ This Program Cost = 329.9279315471649 Seconds
 
  The AMSS-NCKU-Python simulation is successfully finished.
 

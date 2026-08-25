@@ -775,3 +775,43 @@ interior octet 占比不足；为每个 octet 建立 shared 中间量和同步�
 geometry/core 两核需要把 18 个 Christoffel 和 6 个 Ricci 中间场写回已有 scratch arrays；这会额外
 产生每点 24 次全局写和 24 次全局读。在 warp separable 已显示小 patch 对中间存储十分敏感后，不能
 在没有逐阶段正确性基准的情况下把这项高风险半成品留在正式路径。
+
+### 29. perf：Ansorg 每点分配与初值插值并行
+
+重新用 `perf stat -d` 和 `perf record -F 5` 覆盖 Python driver、缓存初值读取和一整个 GPU step。
+162082 的主机计数为 IPC=2.14、L1 miss=1.33%、branch miss=0.55%，说明 CPU 并没有普遍的 cache 或
+分支问题。符号采样却同时命中 `Ansorg::interpolate_tri_bar`、`xyz_to_ABp`、`malloc` 和
+`_int_malloc`。源码确认每个网格点的六阶插值都执行 9 次 `new[]` 与 9 次 `delete[]`。
+
+本题 `Read_Ansorg` 固定 `order=6`，因此把 `w/omega/v` 改成栈上的连续固定工作区，保留原 row pointer
+和全部累加顺序。修改后的 perf 中 `_int_malloc` 已从热点表消失，`malloc@plt` 只剩约 0.9%；短跑
+`Before Evolve` 从 3.499 s 降到 3.356 s。随后确认每个点只读同一个 Ansorg 谱表、只写自己的 cell，
+在三重网格循环加入 `omp parallel for collapse(3) schedule(static)`，并让正式单 rank 配置使用 16 个
+OpenMP threads。相邻短跑得到：
+
+```text
+                                  Before Evolve   Program Cost
+原版本 162082                         3.499 s         8.077 s
+栈工作区 162114                       3.356 s         8.038 s
+栈工作区 + OMP16 162125               2.517 s         6.866 s
+```
+
+OMP16 的 perf page faults 也从约 59.4 万降到 37.1 万。完整 t=100 作业 162139 输出为：
+
+```text
+Before Evolve:       2.19154 s
+Total Evolve Time: 327.114 s
+Total Running Time:329.305 s
+Program Cost:       329.927932 s
+Trajectory RMS:      0
+Constraint maxima: Ham=0.28974817, Px=0.039343259,
+                    Py=0.047298107, Pz=0.044686547
+FINAL: PASS
+```
+
+这刷新了本地完整最好结果。相对 vacuum 版本 333.865606 s，端到端再少 3.938 s；其中约 1 s 是
+perf 直接定位并消除的初值阶段开销，其余差值属于整段 evolution 的 MIG 波动。
+
+还尝试按离散 interpolation window 预计算三方向 barycentric omega。162201 的 `Before Evolve` 反而
+回升到 2.959 s，插值函数在 perf 中由 13.37% 增到 16.30%。六点现算容易留在寄存器中，共享 cache
+则增加随机窗口访问和多线程 cache 竞争，故该缓存已撤回。

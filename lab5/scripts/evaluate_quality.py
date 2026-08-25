@@ -12,6 +12,10 @@ from typing import Any
 import torch
 from tqdm.auto import tqdm
 
+from _bootstrap import add_local_src_to_path
+
+add_local_src_to_path()
+
 from hpc101_infer import EngineConfig, InferenceEngine
 from hpc101_infer.evaluation import evaluate_nll, load_quality_token_ids
 

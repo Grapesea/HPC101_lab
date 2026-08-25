@@ -3,42 +3,44 @@
 #
 # Total Lost Samples: 0
 #
-# Samples: 35  of event 'cycles:Pu'
-# Event count (approx.): 16947737614
+# Samples: 44  of event 'cycles:Pu'
+# Event count (approx.): 20157044278
 #
-# Overhead  Command  Shared Object                                      Symbol                                                                                                    
-# ........  .......  .................................................  ..........................................................................................................
+# Overhead  Command  Shared Object         Symbol                                                                                                    
+# ........  .......  ....................  ..........................................................................................................
 #
-    14.83%  ABEGPU   ABEGPU                                             [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
-     6.44%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000035c089
-     3.51%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000001eb3d0
-     3.27%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000458814
-     3.27%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000000f4c84
-     3.27%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x000000000010235b
-     3.27%  python3  python3.13                                         [.] PyMem_Calloc
-     3.27%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000001334603
-     3.27%  ABEGPU   libcuda.so.610.43.02                               [.] 0x00000000004589ab
-     3.26%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000045881d
-     3.26%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000000fe5dd
-     3.26%  ABEGPU   libcuda.so.610.43.02                               [.] 0x00000000002870c6
-     3.26%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000041ad15
-     3.22%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000041afd5
-     3.21%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x0000000000138a73
-     3.21%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000287080
-     3.16%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000417f3d
-     3.15%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x000000000013a9b9
-     3.09%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000299459
-     3.04%  python3  python3.13                                         [.] 0x000000000016d860
-     3.01%  python3  etree.cpython-313-x86_64-linux-gnu.so              [.] 0x0000000000033ffa
-     2.84%  ABEGPU   [vdso]                                             [.] __vdso_clock_gettime
-     2.72%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000133464b
-     2.61%  ABEGPU   libc.so.6                                          [.] __memset_evex_unaligned_erms
-     2.47%  ABEGPU   ABEGPU                                             [.] bssn_class::Read_Ansorg()
-     2.37%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000273964
-     2.24%  python3  python3.13                                         [.] 0x00000000001257a3
-     2.19%  python3  python3.13                                         [.] 0x000000000020b739
+    16.30%  ABEGPU   ABEGPU                [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
+    10.93%  ABEGPU   [vdso]                [.] __vdso_clock_gettime
+     4.08%  ABEGPU   ABEGPU                [.] Ansorg::find_point_bisection(double, int, double*, int)
+     3.67%  python3  python3.13            [.] _PyEval_EvalFrameDefault
+     2.76%  ABEGPU   libcuda.so.610.43.02  [.] 0x0000000000458879
+     2.75%  python3  libc.so.6             [.] __strcmp_evex
+     2.75%  ABEGPU   libcuda.so.610.43.02  [.] 0x00000000004589af
+     2.74%  ABEGPU   libcuda.so.610.43.02  [.] 0x000000000133461b
+     2.74%  python3  python3.13            [.] 0x000000000012ed09
+     2.73%  python3  python3.13            [.] _PyObject_GenericGetAttrWithDict
+     2.73%  ABEGPU   libcuda.so.610.43.02  [.] 0x0000000001334518
+     2.71%  ABEGPU   libcuda.so.610.43.02  [.] 0x00000000004589a2
+     2.71%  ABEGPU   [vdso]                [.] __vdso_time
+     2.70%  ABEGPU   libcuda.so.610.43.02  [.] 0x000000000045881d
+     2.70%  python3  python3.13            [.] PyObject_GetIter
+     2.68%  ABEGPU   libcuda.so.610.43.02  [.] 0x000000000041ae39
+     2.67%  python3  python3.13            [.] _PyEval_FrameClearAndPop
+     2.65%  python3  python3.13            [.] 0x00000000002261a9
+     2.64%  python3  python3.13            [.] 0x0000000000196e75
+     2.50%  ABEGPU   libcuda.so.610.43.02  [.] 0x000000000133463e
+     2.49%  python3  python3.13            [.] 0x0000000000172cc4
+     2.47%  ABEGPU   libcuda.so.610.43.02  [.] 0x00000000002994b8
+     2.45%  ABEGPU   libcuda.so.610.43.02  [.] 0x000000000027398b
+     2.44%  ABEGPU   libc.so.6             [.] __memset_evex_unaligned_erms
+     2.40%  python3  python3.13            [.] 0x000000000017270c
+     2.26%  ABEGPU   libcuda.so.610.43.02  [.] 0x00000000002870c6
+     2.09%  ABEGPU   ABEGPU                [.] get_ansorg_nbhs_
+     1.82%  ABEGPU   libcuda.so.610.43.02  [.] 0x000000000045886e
+     1.75%  python3  python3.13            [.] 0x00000000001432e6
+     1.71%  python3  libc.so.6             [.] __memset_evex_unaligned_erms
 
 
 #
-# (Tip: Compare performance results with: perf diff [<old file> <new file>])
+# (Tip: Use --symfs <dir> if your symbol files are in non-standard locations)
 #
