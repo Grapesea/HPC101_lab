@@ -1,0 +1,156 @@
+==> Configure: cmake -S "/home/h3240104505/HPC101_lab/lab4-gpu" -B "/home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100" -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DAMSS_ENABLE_GPU=ON -DCMAKE_CUDA_ARCHITECTURES=80 -DAMSS_ENABLE_OPENMP=ON -DAMSS_MPI_CUDA_AWARE=0 -DAMSS_OPT=-Ofast -ffast-math -DAMSS_ARCH_FLAGS=-march=native 
+-- Could NOT find MPI_CXX (missing: MPI_CXX_WORKS) 
+CMake Error at /usr/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:233 (message):
+  Could NOT find MPI (missing: MPI_CXX_FOUND CXX)
+Call Stack (most recent call first):
+  /usr/share/cmake-3.31/Modules/FindPackageHandleStandardArgs.cmake:603 (_FPHSA_FAILURE_MESSAGE)
+  /usr/share/cmake-3.31/Modules/FindMPI.cmake:1842 (find_package_handle_standard_args)
+  CMakeLists.txt:39 (find_package)
+
+
+-- Configuring incomplete, errors occurred!
+==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
+==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-gpu/twopuncture_cache
+==> MPI exec : mpiexec --allow-run-as-root
+[mpiexec@j159658-w52b7] match_arg (../../../../../src/pm/i_hydra/libhydra/arg/hydra_arg.c:82): unrecognized argument allow-run-as-root
+[mpiexec@j159658-w52b7] HYD_arg_parse_array (../../../../../src/pm/i_hydra/libhydra/arg/hydra_arg.c:106): argument matching returned error
+[mpiexec@j159658-w52b7] mpiexec_get_parameters (../../../../../src/pm/i_hydra/mpiexec/mpiexec_params.c:1211): error parsing input array
+[mpiexec@j159658-w52b7] main (../../../../../src/pm/i_hydra/mpiexec/mpiexec.c:1745): error parsing parameters
+==> Build    : /home/h3240104505/HPC101_lab/lab4-gpu/build_gpu_a100
+==> Output   : /home/h3240104505/HPC101_lab/lab4-gpu/gpu_output/GW250118
+==> Cache    : /home/h3240104505/HPC101_lab/lab4-gpu/twopuncture_cache
+ Output directory has been generated
+
+------------------------------------------------------------------------------------------
+
+ Printing the basic parameter and setting in the AMSS-NCKU simulation 
+
+ The number of MPI processes in the AMSS-NCKU simulation =  1
+
+ The form of computational equation  =  BSSN
+ The initial data in this simulation =  Ansorg-TwoPuncture
+
+ Starting evolution time   =  0.0
+ Final evolution time      =  100.0
+ Maximal iteration number  =  10000000
+ Courant factor            =  0.5
+ Strength of dissipation   =  0.15
+ Symmetry of system        =  equatorial-symmetry
+ The Runge-Kutta scheme in the time evolution   =  runge-kutta-45
+ The finite-difference scheme in the simulation =  4th-order
+
+ The static AMR grid type =  Linear
+ The moving AMR grid type =  Linear
+
+ The number of static AMR grid levels =  5
+ The number of moving AMR grid levels =  4
+ The number of total  AMR grid levels =  9
+
+ The grid number of each static AMR grid level =  40
+ The grid number of each moving AMR grid level =  48
+
+ The scale for largest  static AMR grid in X direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Y direction =  [-320.  320.]
+ The scale for largest  static AMR grid in Z direction =  [-320.  320.]
+ The scale for smallest static AMR grid in X direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Y direction =  [-20.  20.]
+ The scale for smallest static AMR grid in Z direction =  [-20.  20.]
+
+ The scale for largest  moving AMR grid =  [-12.  12.]
+ The scale for smallest moving AMR grid =  [-1.5  1.5]
+
+ The coarest resolution for static AMR grid =  16.0
+ The finest  resolution for static AMR grid =  1.0
+ The coarest resolution for moving AMR grid =  0.5
+ The finest  resolution for moving AMR grid =  0.0625
+
+ The time refinement starts from AMR grid level =  4
+ The time interval in each step for coarest AMR grid during time evaluation =  1.0
+
+ This simulation uses the Patch AMR grid structure 
+
+------------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------------
+
+ Printing the puncture information 
+
+ The information for 1 puncture 
+ Mass(1) =   0.598837,  Charge(1) =   0.000000,  a(1)  =   0.000000
+ X(1)    =   0.000000,  Y(1)      =   2.406977,  Z(1)  =   0.000000
+ Px(1)   =  -0.127500,  Py(1)     =  -0.005141,  Pz(1) =   0.000000
+ Jx(1)   =   0.000000,  Jy(1)     =   0.000000,  Jz(1) =   0.000000
+
+ The information for 2 puncture 
+ Mass(2) =   0.401163,  Charge(2) =   0.000000,  a(2)  =   0.000000
+ X(2)    =   0.000000,  Y(2)      =  -3.593023,  Z(2)  =   0.000000
+ Px(2)   =   0.127500,  Py(2)     =   0.005141,  Pz(2) =   0.000000
+ Jx(2)   =   0.000000,  Jy(2)     =   0.000000,  Jz(2) =   0.000000
+
+------------------------------------------------------------------------------------------
+
+ Generating the AMSS-NCKU input parfile for the ABE executable.
+
+
+ Setting Puncture's position and momentum 
+
+
+ Wirte Down The Grid Information 
+
+ Number of Total Grid Level =  9
+ Number of Static Grid Level =  5
+ Number of Moving Grid Level =  4
+
+
+ Setting the demanded numerical grid 
+
+ adjusting the static gird points, making the original point (0,0,0) to the static gird points 
+
+
+ adjusting the moving gird points, ensuring the alliance of moving grids points and static grids points 
+
+ adjust_puncture[5,0,0] = 0.0 
+ adjust_puncture[5,0,1] = 2.5 
+ adjust_puncture[5,0,2] = 0.0 
+ adjust_puncture[5,1,0] = 0.0 
+ adjust_puncture[5,1,1] = -3.5 
+ adjust_puncture[5,1,2] = 0.0 
+ adjust_puncture[6,0,0] = 0.0 
+ adjust_puncture[6,0,1] = 2.5 
+ adjust_puncture[6,0,2] = 0.0 
+ adjust_puncture[6,1,0] = 0.0 
+ adjust_puncture[6,1,1] = -3.5 
+ adjust_puncture[6,1,2] = 0.0 
+ adjust_puncture[7,0,0] = 0.0 
+ adjust_puncture[7,0,1] = 2.375 
+ adjust_puncture[7,0,2] = 0.0 
+ adjust_puncture[7,1,0] = 0.0 
+ adjust_puncture[7,1,1] = -3.625 
+ adjust_puncture[7,1,2] = 0.0 
+ adjust_puncture[8,0,0] = 0.0 
+ adjust_puncture[8,0,1] = 2.4375 
+ adjust_puncture[8,0,2] = 0.0 
+ adjust_puncture[8,1,0] = 0.0 
+ adjust_puncture[8,1,1] = -3.5625 
+ adjust_puncture[8,1,2] = 0.0 
+
+ The moving grid puncture position adjustment is done 
+
+
+ Initial data method: Ansorg-TwoPuncture
+
+ TwoPuncture cache hit (912e370b84cec7cb); reusing cached initial data
+
+ Running ./ABEGPU with 1 MPI ranks and OMP_NUM_THREADS=16
+
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab4-gpu/AMSS_NCKU_Program.py", line 242, in <module>
+    makefile_and_run.run_ABE()
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab4-gpu/scripts/makefile_and_run.py", line 101, in run_ABE
+    _run_and_tee(cmd, log)
+    ~~~~~~~~~~~~^^^^^^^^^^
+  File "/home/h3240104505/HPC101_lab/lab4-gpu/scripts/makefile_and_run.py", line 29, in _run_and_tee
+    raise subprocess.CalledProcessError(rc, cmd)
+subprocess.CalledProcessError: Command 'mpiexec --allow-run-as-root -n 1 env OMP_NUM_THREADS=16 OMP_DYNAMIC=FALSE OMP_PROC_BIND=close OMP_PLACES=threads OMP_STACKSIZE=1G OPENBLAS_NUM_THREADS=1 LD_LIBRARY_PATH=/opt/intel/oneapi/tcm/1.4/lib:/opt/intel/oneapi/umf/1.0/lib:/opt/intel/oneapi/tbb/2022.3/env/../lib/intel64/gcc4.8:/opt/intel/oneapi/mpi/2021.18/opt/mpi/libfabric/lib:/opt/intel/oneapi/mpi/2021.18/lib:/opt/intel/oneapi/debugger/2025.3/opt/debugger/lib:/opt/intel/oneapi/compiler/2025.3/opt/compiler/lib:/opt/intel/oneapi/compiler/2025.3/lib:/opt/hpcx/nccl_spectrum-x_plugin/lib:/opt/hpcx/nccl_rdma_sharp_plugin/lib:/opt/hpcx/ucc/lib/ucc:/opt/hpcx/ucc/lib:/opt/hpcx/ucx/lib/ucx:/opt/hpcx/ucx/lib:/opt/hpcx/sharp/lib:/opt/hpcx/hcoll/lib:/opt/hpcx/ompi5/lib:/usr/local/cuda/lib64: ./ABEGPU < /dev/null' returned non-zero exit status 255.

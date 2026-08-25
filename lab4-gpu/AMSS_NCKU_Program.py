@@ -261,6 +261,9 @@ for name in ("bssn_BH.dat", "bssn_ADMQs.dat", "bssn_psi4.dat", "bssn_constraint.
 
 print("\n Plotting the AMSS-NCKU simulation results\n")
 try:
+    if os.environ.get("AMSS_ENABLE_PLOTS", "0") != "1":
+        print(" Plot generation skipped; numerical result files are retained")
+        raise StopIteration
     from scripts import plot_xiaoqu
     from scripts import plot_GW_strain_amplitude_xiaoqu
 
@@ -280,6 +283,8 @@ try:
     for i in range(input_data.grid_level):
         plot_xiaoqu.generate_constraint_check_plot(binary_results_directory, figure_directory, i)
 
+except StopIteration:
+    pass
 except Exception as exc:                                  # noqa: BLE001
     print(f" WARNING: plotting failed ({type(exc).__name__}: {exc})")
     print(" The simulation result files are still available under "

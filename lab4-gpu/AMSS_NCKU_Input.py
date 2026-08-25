@@ -18,8 +18,8 @@ import numpy
 File_directory   = "GW250118"                    ## output file directory
 Output_directory = "binary_output"               ## binary data file directory
                                                  ## The file directory name should not be too long
-MPI_processes    = 1   ## one A100 MIG instance: one GPU-owning MPI rank
-OMP_threads      = 16  ## CPU threads used by the TwoPuncture stage
+MPI_processes = 1
+OMP_threads = 16
 
 GPU_Calculation  = "yes"
                                                  ## (prefer "no" in the current version, because the GPU part may have bugs when integrated in this Python interface)

@@ -3,40 +3,42 @@
 #
 # Total Lost Samples: 0
 #
-# Samples: 36  of event 'cycles:Pu'
-# Event count (approx.): 17159134749
+# Samples: 35  of event 'cycles:Pu'
+# Event count (approx.): 16947737614
 #
 # Overhead  Command  Shared Object                                      Symbol                                                                                                    
 # ........  .......  .................................................  ..........................................................................................................
 #
-    21.55%  ABEGPU   [vdso]                                             [.] __vdso_clock_gettime
-     9.12%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000035c089
-     6.13%  ABEGPU   ABEGPU                                             [.] Ansorg::find_point_bisection(double, int, double*, int)
-     4.81%  ABEGPU   libcuda.so.610.43.02                               [.] 0x00000000004589b0
-     3.23%  python3  python3.13                                         [.] PyErr_Occurred
-     3.23%  python3  python3.13                                         [.] PyObject_GenericHash
-     3.23%  python3  python3.13                                         [.] PyObject_IsTrue
-     3.23%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000000e2bf0
-     3.23%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000000e2c90
-     3.21%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000001e7320
-     3.20%  ABEGPU   libcuda.so.610.43.02                               [.] 0x00000000004589a2
-     3.20%  ABEGPU   libcuda.so.610.43.02                               [.] 0x00000000002710ee
-     3.19%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000035c091
-     3.18%  ABEGPU   libc.so.6                                          [.] malloc
-     3.14%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000001334673
-     3.07%  ABEGPU   ABEGPU                                             [.] Ansorg::xyz_to_ABp(double, double, double, double*, double*, double*)
-     3.05%  python3  python3.13                                         [.] _PyEval_EvalFrameDefault
-     3.04%  python3  _backend_agg.cpython-313-x86_64-linux-gnu.so       [.] 0x00000000000519b6
-     2.80%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000458867
-     2.08%  python3  python3.13                                         [.] 0x0000000000131644
-     2.04%  python3  python3.13                                         [.] 0x000000000017117e
-     2.02%  python3  ld-linux-x86-64.so.2                               [.] do_lookup_x
-     1.84%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000045881d
-     1.25%  ABEGPU   ABEGPU                                             [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
-     0.96%  ABEGPU   libc.so.6                                          [.] __memset_evex_unaligned_erms
-     0.96%  ABEGPU   libc.so.6                                          [.] pthread_mutex_init@@GLIBC_2.2.5
+    14.83%  ABEGPU   ABEGPU                                             [.] Ansorg::interpolate_tri_bar(double, double, double, int, int, int, double*, double*, double*, double*)
+     6.44%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000035c089
+     3.51%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000001eb3d0
+     3.27%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000458814
+     3.27%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000000f4c84
+     3.27%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x000000000010235b
+     3.27%  python3  python3.13                                         [.] PyMem_Calloc
+     3.27%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000001334603
+     3.27%  ABEGPU   libcuda.so.610.43.02                               [.] 0x00000000004589ab
+     3.26%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000045881d
+     3.26%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x00000000000fe5dd
+     3.26%  ABEGPU   libcuda.so.610.43.02                               [.] 0x00000000002870c6
+     3.26%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000041ad15
+     3.22%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000041afd5
+     3.21%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x0000000000138a73
+     3.21%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000287080
+     3.16%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000417f3d
+     3.15%  python3  _multiarray_umath.cpython-313-x86_64-linux-gnu.so  [.] 0x000000000013a9b9
+     3.09%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000299459
+     3.04%  python3  python3.13                                         [.] 0x000000000016d860
+     3.01%  python3  etree.cpython-313-x86_64-linux-gnu.so              [.] 0x0000000000033ffa
+     2.84%  ABEGPU   [vdso]                                             [.] __vdso_clock_gettime
+     2.72%  ABEGPU   libcuda.so.610.43.02                               [.] 0x000000000133464b
+     2.61%  ABEGPU   libc.so.6                                          [.] __memset_evex_unaligned_erms
+     2.47%  ABEGPU   ABEGPU                                             [.] bssn_class::Read_Ansorg()
+     2.37%  ABEGPU   libcuda.so.610.43.02                               [.] 0x0000000000273964
+     2.24%  python3  python3.13                                         [.] 0x00000000001257a3
+     2.19%  python3  python3.13                                         [.] 0x000000000020b739
 
 
 #
-# (Tip: List events using substring match: perf list <keyword>)
+# (Tip: Compare performance results with: perf diff [<old file> <new file>])
 #

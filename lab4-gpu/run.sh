@@ -15,8 +15,8 @@ ulimit -s unlimited
 # TwoPuncture initial-data stage, so keep its workers on the 16 allocated CPU
 # cores and give each worker enough stack for the spectral solver.
 export OMP_DYNAMIC=FALSE
-export OMP_PROC_BIND=close
-export OMP_PLACES=threads
+export OMP_PROC_BIND=spread
+export OMP_PLACES=cores
 export OMP_STACKSIZE="${OMP_STACKSIZE:-1G}"
 export OPENBLAS_NUM_THREADS=1
 

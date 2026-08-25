@@ -69,7 +69,8 @@ void gpu_compute_rhs_bssn_launch( // launch kernel with device pointers
     double* d_Ryy, double* d_Ryz, double* d_Rzz,
     double* d_ham_Res, double* d_movx_Res, double* d_movy_Res, double* d_movz_Res,
     double* d_Gmx_Res, double* d_Gmy_Res, double* d_Gmz_Res,
-    int symmetry, int lev, double eps, int co
+    int symmetry, int lev, double eps, int co,
+    double** d_adv_fields, double** d_adv_rhs
 );
 #endif
 

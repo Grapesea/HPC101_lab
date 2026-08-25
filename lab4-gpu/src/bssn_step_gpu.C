@@ -129,7 +129,8 @@ void bssn_class::Step_GPU(int lev, int YN) {
 					cg->d_fgfs[Cons_Ham->sgfn],
 					cg->d_fgfs[Cons_Px->sgfn], cg->d_fgfs[Cons_Py->sgfn], cg->d_fgfs[Cons_Pz->sgfn],
 					cg->d_fgfs[Cons_Gx->sgfn], cg->d_fgfs[Cons_Gy->sgfn], cg->d_fgfs[Cons_Gz->sgfn],
-					Symmetry, lev, ndeps, pre
+					Symmetry, lev, ndeps, pre,
+					cg->d_batch_src, cg->d_batch_rhs
 				);
 
 				MyList<var> *varl0 = StateList, *varl = SynchList_pre, *varlrhs = RHSList;
@@ -266,7 +267,8 @@ void bssn_class::Step_GPU(int lev, int YN) {
 						cg->d_fgfs[Cons_Ham->sgfn],
 						cg->d_fgfs[Cons_Px->sgfn], cg->d_fgfs[Cons_Py->sgfn], cg->d_fgfs[Cons_Pz->sgfn],
 						cg->d_fgfs[Cons_Gx->sgfn], cg->d_fgfs[Cons_Gy->sgfn], cg->d_fgfs[Cons_Gz->sgfn],
-						Symmetry, lev, ndeps, cor
+						Symmetry, lev, ndeps, cor,
+						cg->d_batch_src, cg->d_batch_rhs
 					);
 
 					MyList<var> *varl0 = StateList, *varl = SynchList_pre, *varl1 = SynchList_cor, *varlrhs = RHSList;

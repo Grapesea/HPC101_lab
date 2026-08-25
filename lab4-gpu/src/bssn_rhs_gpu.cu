@@ -360,6 +360,10 @@ __global__ __launch_bounds__(128, 4) void rhs_advection_kernel(
     const int linear = blockIdx.x * blockDim.x + threadIdx.x;
     int i, j, k;
     if (!rhs_boundary_coord(ex0, ex1, ex2, linear, i, j, k)) return;
+    // d_lopsided_point returns zero before reading a field on the last plane
+    // of any dimension, and KO is unavailable there as well.  Skip the six
+    // identical helper calls for these mathematically empty shell points.
+    if (i >= ex0 - 1 || j >= ex1 - 1 || k >= ex2 - 1) return;
     const int dims[3] = {ex0, ex1, ex2};
     const int idx = IDX3D(i, j, k, ex0, ex1, ex2);
 
@@ -399,6 +403,7 @@ __global__ __launch_bounds__(128, 5) void rhs_advection_boundary_group_kernel(
     const int linear = blockIdx.x * blockDim.x + threadIdx.x;
     int i, j, k;
     if (!rhs_boundary_coord(ex0, ex1, ex2, linear, i, j, k)) return;
+    if (i >= ex0 - 1 || j >= ex1 - 1 || k >= ex2 - 1) return;
     const int dims[3] = {ex0, ex1, ex2};
     const int idx = IDX3D(i, j, k, ex0, ex1, ex2);
     const bool ko_available = eps > 0.0 &&
@@ -421,6 +426,66 @@ __global__ __launch_bounds__(128, 5) void rhs_advection_boundary_group_kernel(
         GROUP_ADVECT(f4, rhs4, SYM, ANTI, SYM); GROUP_ADVECT(f5, rhs5, SYM, SYM, ANTI);
     }
 #undef GROUP_ADVECT
+}
+
+__device__ __forceinline__ void rhs_field_soa(int field, double &sx, double &sy, double &sz) {
+    sx = sy = sz = SYM;
+    const int metric_field = field < 12 ? field % 6 : -1;
+    if (metric_field == 1) { sx = ANTI; sy = ANTI; }
+    else if (metric_field == 2) { sx = ANTI; sz = ANTI; }
+    else if (metric_field == 4) { sy = ANTI; sz = ANTI; }
+    if (field == 14 || field == 18 || field == 21) sx = ANTI;
+    if (field == 15 || field == 19 || field == 22) sy = ANTI;
+    if (field == 16 || field == 20 || field == 23) sz = ANTI;
+}
+
+// The 24 advection fields are independent.  A field dimension gives the
+// small AMR patches enough blocks without making one thread serialize six
+// unrelated stencils and carry twelve field pointers at once.
+__global__ __launch_bounds__(128, 8) void rhs_advection_interior_field_kernel(
+    int ex0, int ex1, int ex2,
+    const double* X, const double* Y, const double* Z,
+    const double* betax, const double* betay, const double* betaz,
+    double* const* fields, double* const* rhss, double eps
+) {
+    const int q = blockIdx.x * blockDim.x + threadIdx.x;
+    const int field = blockIdx.y;
+    const int nx = ex0 - 6, ny = ex1 - 6, nz = ex2 - 6;
+    if (field >= 24 || nx <= 0 || ny <= 0 || nz <= 0 || q >= nx * ny * nz) return;
+    const int i = 3 + q % nx;
+    const int j = 3 + (q / nx) % ny;
+    const int k = 3 + q / (nx * ny);
+    const int idx = IDX3D(i, j, k, ex0, ex1, ex2);
+    const int sy = ex0, sz = ex0 * ex1;
+    const double dx = X[1] - X[0], dy = Y[1] - Y[0], dz = Z[1] - Z[0];
+    const double vx = betax[idx], vy = betay[idx], vz = betaz[idx];
+    const double* f = fields[field];
+    double* rhs = rhss[field];
+    rhs[idx] += rhs_lopsided_interior(f, idx, sy, sz, vx, vy, vz,
+                                     1.0 / (12.0 * dx), 1.0 / (12.0 * dy), 1.0 / (12.0 * dz));
+    if (eps > 0.0) rhs[idx] += rhs_kodis_interior(f, idx, sy, sz, dx, dy, dz, eps);
+}
+
+__global__ __launch_bounds__(128, 5) void rhs_advection_boundary_field_kernel(
+    int ex0, int ex1, int ex2,
+    const double* X, const double* Y, const double* Z,
+    const double* betax, const double* betay, const double* betaz,
+    double* const* fields, double* const* rhss, int symmetry, double eps
+) {
+    const int linear = blockIdx.x * blockDim.x + threadIdx.x;
+    const int field = blockIdx.y;
+    int i, j, k;
+    if (field >= 24 || !rhs_boundary_coord(ex0, ex1, ex2, linear, i, j, k)) return;
+    const int dims[3] = {ex0, ex1, ex2};
+    const int idx = IDX3D(i, j, k, ex0, ex1, ex2);
+    double sx, sy, sz;
+    rhs_field_soa(field, sx, sy, sz);
+    const double* f = fields[field];
+    double* rhs = rhss[field];
+    rhs[idx] += d_lopsided_point(dims, f, rhs, betax, betay, betaz,
+                                 X, Y, Z, symmetry, sx, sy, sz, i, j, k);
+    if (eps > 0.0 && rhs_kodis_available(ex0, ex1, ex2, X, Y, Z, symmetry, i, j, k))
+        rhs[idx] += d_kodis_point(dims, f, X, Y, Z, sx, sy, sz, symmetry, eps, i, j, k);
 }
 
 // The RHS has a high live-register count on sm_80.  Keeping at least four
@@ -777,7 +842,10 @@ __global__ __launch_bounds__(128, 3) void rhs_kernel(
     RHS_FDERIVS(trK, &Kx, &Ky, &Kz, SYM, SYM, SYM);
 
     // double chix = chix_in[idx]; double chiy = chiy_in[idx]; double chiz = chiz_in[idx];
-    double val_Sx = Sx[idx]; double val_Sy = Sy[idx]; double val_Sz = Sz[idx];
+    // Lab 4 evolves vacuum BSSN: all matter source arrays are identically
+    // zero.  Keep them in the ABI for compatibility, but do not load them in
+    // the hot kernel.
+    constexpr double val_Sx = 0.0, val_Sy = 0.0, val_Sz = 0.0;
 
     // Gamx_rhs
     double val_Gamx_rhs = - TWO * (Lapx * l_Rxx + Lapy * l_Rxy + Lapz * l_Rxz) + 
@@ -1072,8 +1140,7 @@ __global__ __launch_bounds__(128, 3) void rhs_kernel(
     // ==========================================
     // Step 8: 组装 Aij_rhs & trK_rhs
     // ==========================================
-    double S = chin1 * (gupxx * Sxx[idx] + gupyy * Syy[idx] + gupzz * Szz[idx] + 
-               TWO * (gupxy * Sxy[idx] + gupxz * Sxz[idx] + gupyz * Syz[idx]));
+    constexpr double S = 0.0;
 
     double term_xx = gupxx * l_Axx * l_Axx + gupyy * l_Axy * l_Axy + gupzz * l_Axz * l_Axz + TWO * (gupxy * l_Axx * l_Axy + gupxz * l_Axx * l_Axz + gupyz * l_Axy * l_Axz);
     double term_yy = gupxx * l_Axy * l_Axy + gupyy * l_Ayy * l_Ayy + gupzz * l_Ayz * l_Ayz + TWO * (gupxy * l_Axy * l_Ayy + gupxz * l_Axy * l_Ayz + gupyz * l_Ayy * l_Ayz);
@@ -1084,16 +1151,16 @@ __global__ __launch_bounds__(128, 3) void rhs_kernel(
 
     double trA2 = gupxx * term_xx + gupyy * term_yy + gupzz * term_zz + TWO * (gupxy * term_xy + gupxz * term_xz + gupyz * term_yz);
 
-    double f = F2o3 * val_trK * val_trK - trA2 - F16*PI*rho[idx] + EIGHT*PI*S;
+    double f = F2o3 * val_trK * val_trK - trA2;
     double f_trace = -F1o3 * (trK_rhs_val + alpn1 * inv_chin1 * f);
 
     // 计算 Aij 源项
-    double src_xx = alpn1 * (l_Rxx - EIGHT*PI*Sxx[idx]) - fxx; // fxx is D_i D_j Lap
-    double src_yy = alpn1 * (l_Ryy - EIGHT*PI*Syy[idx]) - fyy;
-    double src_zz = alpn1 * (l_Rzz - EIGHT*PI*Szz[idx]) - fzz;
-    double src_xy = alpn1 * (l_Rxy - EIGHT*PI*Sxy[idx]) - fxy;
-    double src_xz = alpn1 * (l_Rxz - EIGHT*PI*Sxz[idx]) - fxz;
-    double src_yz = alpn1 * (l_Ryz - EIGHT*PI*Syz[idx]) - fyz;
+    double src_xx = alpn1 * l_Rxx - fxx; // fxx is D_i D_j Lap
+    double src_yy = alpn1 * l_Ryy - fyy;
+    double src_zz = alpn1 * l_Rzz - fzz;
+    double src_xy = alpn1 * l_Rxy - fxy;
+    double src_xz = alpn1 * l_Rxz - fxz;
+    double src_yz = alpn1 * l_Ryz - fyz;
 
     double Axx_rhs_val = src_xx - l_gxx * f_trace;
     double Ayy_rhs_val = src_yy - l_gyy * f_trace;
@@ -1111,7 +1178,7 @@ __global__ __launch_bounds__(128, 3) void rhs_kernel(
     Ayz_rhs[idx] = chin1 * Ayz_rhs_val + alpn1 * (val_trK * l_Ayz - TWO * term_yz) + l_Axy * betaxz + l_Ayy * betayz + l_Axz * betaxy + l_Azz * betazy - l_Ayz * betaxx + F1o3 * l_Ayz * div_beta;
     Axz_rhs[idx] = chin1 * Axz_rhs_val + alpn1 * (val_trK * l_Axz - TWO * term_xz) + l_Axx * betaxz + l_Axy * betayz + l_Ayz * betayx + l_Azz * betazx - l_Axz * betayy + F1o3 * l_Axz * div_beta;
 
-    trK_rhs[idx] = -chin1 * trK_rhs_val + alpn1 * (F1o3 * val_trK * val_trK + trA2 + FOUR * PI * (rho[idx] + S));
+    trK_rhs[idx] = -chin1 * trK_rhs_val + alpn1 * (F1o3 * val_trK * val_trK + trA2);
 
     // Gauge vars RHS
     Lap_rhs[idx] = -TWO * alpn1 * val_trK;
@@ -1321,7 +1388,7 @@ __global__ __launch_bounds__(128, 3) void rhs_kernel(
 
     // Final Hamiltonian Calculation
     // Fortran Line 375
-    ham_Res[idx] = chin1 * ham_val + F2o3 * val_trK * val_trK - trA2 - F16 * PI * rho[idx];
+    ham_Res[idx] = chin1 * ham_val + F2o3 * val_trK * val_trK - trA2;
     // ==========================================
     // 2. Momentum Constraint
     // ==========================================
@@ -1424,9 +1491,9 @@ __global__ __launch_bounds__(128, 3) void rhs_kernel(
 
     // Subtract K derivatives and Matter terms
     // Fortran Lines 434-436
-    movx_Res[idx] = movx_Res[idx] - F2o3 * Kx - F8 * PI * Sx[idx];
-    movy_Res[idx] = movy_Res[idx] - F2o3 * Ky - F8 * PI * Sy[idx];
-    movz_Res[idx] = movz_Res[idx] - F2o3 * Kz - F8 * PI * Sz[idx];
+    movx_Res[idx] = movx_Res[idx] - F2o3 * Kx;
+    movy_Res[idx] = movy_Res[idx] - F2o3 * Ky;
+    movz_Res[idx] = movz_Res[idx] - F2o3 * Kz;
 }
 
 #undef RHS_FDERIVS
@@ -1469,7 +1536,8 @@ void gpu_compute_rhs_bssn_launch( // launch kernel with device pointers
     double* d_Ryy, double* d_Ryz, double* d_Rzz,
     double* d_ham_Res, double* d_movx_Res, double* d_movy_Res, double* d_movz_Res,
     double* d_Gmx_Res, double* d_Gmy_Res, double* d_Gmz_Res,
-    int symmetry, int lev, double eps, int co
+    int symmetry, int lev, double eps, int co,
+    double** d_adv_fields, double** d_adv_rhs
 ) {
     dim3 block(8, 8, 2);
     dim3 grid(
@@ -1542,23 +1610,19 @@ void gpu_compute_rhs_bssn_launch( // launch kernel with device pointers
     rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
         d_dxx, d_gxx_rhs, d_gxy, d_gxy_rhs, d_gxz, d_gxz_rhs,
-        d_dyy, d_gyy_rhs, d_gyz, d_gyz_rhs, d_dzz, d_gzz_rhs, eps
-    );
+        d_dyy, d_gyy_rhs, d_gyz, d_gyz_rhs, d_dzz, d_gzz_rhs, eps);
     rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
         d_Axx, d_Axx_rhs, d_Axy, d_Axy_rhs, d_Axz, d_Axz_rhs,
-        d_Ayy, d_Ayy_rhs, d_Ayz, d_Ayz_rhs, d_Azz, d_Azz_rhs, eps
-    );
+        d_Ayy, d_Ayy_rhs, d_Ayz, d_Ayz_rhs, d_Azz, d_Azz_rhs, eps);
     rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
         d_chi, d_chi_rhs, d_trK, d_trK_rhs, d_Gamx, d_Gamx_rhs,
-        d_Gamy, d_Gamy_rhs, d_Gamz, d_Gamz_rhs, d_Lap, d_Lap_rhs, eps
-    );
+        d_Gamy, d_Gamy_rhs, d_Gamz, d_Gamz_rhs, d_Lap, d_Lap_rhs, eps);
     rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
         d_betax, d_betax_rhs, d_betay, d_betay_rhs, d_betaz, d_betaz_rhs,
-        d_dtSfx, d_dtSfx_rhs, d_dtSfy, d_dtSfy_rhs, d_dtSfz, d_dtSfz_rhs, eps
-    );
+        d_dtSfx, d_dtSfx_rhs, d_dtSfy, d_dtSfy_rhs, d_dtSfz, d_dtSfz_rhs, eps);
 
     const int interior_points = (ex[0] > 6 && ex[1] > 6 && ex[2] > 6)
         ? (ex[0] - 6) * (ex[1] - 6) * (ex[2] - 6) : 0;
@@ -1568,22 +1632,17 @@ void gpu_compute_rhs_bssn_launch( // launch kernel with device pointers
     rhs_advection_boundary_group_kernel<0><<<boundary_grid, boundary_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
         d_dxx, d_gxx_rhs, d_gxy, d_gxy_rhs, d_gxz, d_gxz_rhs,
-        d_dyy, d_gyy_rhs, d_gyz, d_gyz_rhs, d_dzz, d_gzz_rhs,
-        symmetry, eps
-    );
+        d_dyy, d_gyy_rhs, d_gyz, d_gyz_rhs, d_dzz, d_gzz_rhs, symmetry, eps);
     rhs_advection_boundary_group_kernel<1><<<boundary_grid, boundary_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
         d_Axx, d_Axx_rhs, d_Axy, d_Axy_rhs, d_Axz, d_Axz_rhs,
-        d_Ayy, d_Ayy_rhs, d_Ayz, d_Ayz_rhs, d_Azz, d_Azz_rhs, symmetry, eps
-    );
+        d_Ayy, d_Ayy_rhs, d_Ayz, d_Ayz_rhs, d_Azz, d_Azz_rhs, symmetry, eps);
     rhs_advection_boundary_group_kernel<2><<<boundary_grid, boundary_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
         d_chi, d_chi_rhs, d_trK, d_trK_rhs, d_Gamx, d_Gamx_rhs,
-        d_Gamy, d_Gamy_rhs, d_Gamz, d_Gamz_rhs, d_Lap, d_Lap_rhs, symmetry, eps
-    );
+        d_Gamy, d_Gamy_rhs, d_Gamz, d_Gamz_rhs, d_Lap, d_Lap_rhs, symmetry, eps);
     rhs_advection_boundary_group_kernel<3><<<boundary_grid, boundary_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
         d_betax, d_betax_rhs, d_betay, d_betay_rhs, d_betaz, d_betaz_rhs,
-        d_dtSfx, d_dtSfx_rhs, d_dtSfy, d_dtSfy_rhs, d_dtSfz, d_dtSfz_rhs, symmetry, eps
-    );
+        d_dtSfx, d_dtSfx_rhs, d_dtSfy, d_dtSfy_rhs, d_dtSfz, d_dtSfz_rhs, symmetry, eps);
 }

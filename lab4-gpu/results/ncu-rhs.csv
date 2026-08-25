@@ -1,0 +1,9 @@
+==WARNING== Note: Running with unmodified GPU clocks. If not controlled otherwise, profiling results may be inconsistent.
+==PROF== Connected to process 210 (/home/h3240104505/HPC101_lab/lab4-gpu/ncu-output/GW250118/AMSS_NCKU_output/ABEGPU)
+==ERROR== An error was reported by the driver:
+==ERROR== For more information, see /tmp/nsight-compute-019b-2702.log
+==ERROR== Profiling failed because a driver resource was unavailable. Ensure that no other tool (like DCGM) is concurrently collecting profiling data. See https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#faq for more details.
+==ERROR== For more information, see /tmp/nsight-compute-019b-2702.log
+==ERROR== Failed to profile "rhs_kernel" in process 210
+==PROF== Trying to shutdown target application
+==ERROR== The application returned an error code (9).

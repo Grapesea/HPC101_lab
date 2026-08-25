@@ -561,3 +561,217 @@ RHS、boundary/AMR dispatch 和共享初值阶段一起收敛到可验收状态�
 `MPI_processes=1`、`OMP_threads=16`。改动只落在 `CMakeLists.txt`、`compile.sh`、`run.sh` 及
 `src/`，分析日志在本目录，不作为 OJ 提交文件。没有保留 all-skip、LTO illegal access、
 8-stream、过硬 launch-bounds 或任何只在 t=1 好看的试验。
+
+### 20. 340 s 目标下的 launch 与编译器复测
+
+前一版 345.687 s 离 340 s 只差约 1.65%，但这个区间已经和 MIG 波动同量级，所以这一轮仍坚持
+先做相邻 t=1 重复、再看完整运行，不拿单次最低值外推。RHS 的
+`__launch_bounds__(128,3)` 改成 `(128,4)` 后，两次短测为 3.13585/3.17956 s，看起来比原版
+3.19655/3.24391 s 快；但完整运行前 24 步的平均 step 已到 3.50002 s，外推明显超过 350 s，
+故主动停止并回退。`8x4x2` 的 64-thread RHS 同样更慢，首步为 3.34650 s。
+
+RK batch 还试过两种等价整理。第一种把 `fix_boundary` 做成编译期模板，结果 3.18946/3.23737 s，
+与原版完全重合；第二种把高层 `f1=f0` 的物理边界覆盖拆成紧凑六面 kernel，结果反而是
+3.21906/3.27083 s。多一次 launch 抵消了少做体网格判定的收益，两项都撤回。
+
+检查 `flags.make` 后确认 `AMSS_OPT=-Ofast -ffast-math` 只作用于 C++/Fortran，故又分别给 CUDA
+试了 `-O3 --use_fast_math` 和 `--extra-device-vectorization`。前者是 3.19236/3.23958 s，后者是
+3.19503/3.22121 s，均没有超过噪声；既没有速度证据，也没有理由引入额外浮点语义变化，最终
+`CMakeLists.txt` 不保留它们。
+
+### 21. `cudaMalloc/cudaFree` 热点与未通过的显存池
+
+最新版 Nsys 的 CUDA API 汇总显示，t=1 有 2549 次 `cudaMalloc` 和 2541 次 `cudaFree`，两者合计
+约 200 ms；另有 1044 次 `cudaDeviceSynchronize`。先去掉纯 sizing pass 的空同步、并让 RK
+substep 依赖后续真实 pack 的同步，短测仍为 3.202--3.238 s，没有可分辨收益，故恢复原同步点。
+
+随后恢复 `GPUManager` 中原本被注释掉的 exact-size pool，并把插值用的 `int` weight/error 临时区
+按字节容量一起复用。短测确实降到 3.11956/3.15998 s，信号约为 2.4%，理论上足以越过 340 s。
+但无限池在完整作业第 17 步 regrid 时出现：
+
+```text
+CUDA Error: out of memory at src/gpu_manager.cu:51
+```
+
+原因是旧 AMR generation 的数百个同尺寸 field array 全被保留。再把每个尺寸的空闲块限制为 48，
+显存峰值不再立即增长；然而完整运行前 27 步平均 step 为 3.53881 s，外推约 354 s，仍达不到目标。
+这说明短测收益主要来自分配状态和节点波动，不能覆盖完整 regrid 生命周期。该池、`int` 临时区复用、
+本地 transfer cache 和延后同步最终全部撤回。
+
+截至本轮，仍然只有 145654 的 **345.686593 s / FINAL: PASS** 是低于 370 s 且完整可信的最好结果；
+尚未得到小于 340 s 的完整 `PASS`。这里明确记录缺口，而不把短测 3.11956 s 或被取消的完整作业
+写成 120 分结果。
+
+### 22. 220 s 目标：按 field 展开 advection
+
+新的 Nsys 中，四个 interior group 与四个 boundary group 合计约占 GPU kernel 时间的 30%。旧实现
+虽然已经把 24 个变量合为四次 launch，但代价是每个 thread 串行完成六套 stencil，并同时携带十二个
+field/RHS 指针。对本题只有 40--48 个 x 点的 AMR 小块，这种写法进一步压低了可并行 block 数。
+
+这次复用 `Block` 已有的两个 24-pointer device table，将 field 编号放进 `grid.y`：一个 thread 只处理
+一个点的一个变量。interior 用去掉 3 层 ghost 后的紧凑一维点号；boundary 仍按原来的 face/edge/corner
+枚举，并逐 field 保留完全相同的 SoA 奇偶性。新 interior/boundary kernel 分别是 44/68 registers，均无
+local-memory spill。t=1 的 Nsys 对比为：
+
+```text
+old interior groups + boundary groups: 408.840 + 653.607 = 1062.447 ms
+new interior field + boundary field:    340.887 + 369.405 =  710.292 ms
+```
+
+这里约 33.1% 的短测 kernel 降幅看起来很强，不过进入完整运行后稳定段反而约为 3.4--3.6 s/步，
+没有保持 t=1 的优势，故最终 launcher 已恢复为四组 interior + 四组 boundary；field kernel 只作为本轮
+实验代码保留，不在正式路径调用。
+
+### 23. 主 RHS 的 region 与 block 反例
+
+主 `rhs_kernel` 仍是第一热点。先尝试把 evolution 实例拆成纯 interior 和纯 boundary 两个模板，期待
+编译器从 interior 实例中彻底裁掉 symmetry helper。实际 interior 391 次共 1073.975 ms，boundary
+391 次又要 856.432 ms；两者加上 constraint 实例后 RHS 达 2018.483 ms，明显坏于单核约
+1560 ms。边界点比例在这些浅 z 小块上并不低，多一次完整 kernel 也破坏了 cache，故撤回。
+
+线程块也不能只按 x 合并访存判断。`32x2x2` 在完整运行稳定段为 3.3--3.5 s/步，`16x4x2` 的 t=1
+RHS 更从约 1567 增至 1787 ms；y/z stencil 的局部性损失大于 x transaction 的收益，两项均恢复为
+`8x8x2`。全 CUDA `--restrict` 使单步为 3.1898 s，和无该 flag 的 3.1786 s 重合，且全局别名承诺
+风险过大，因此也不保留。
+
+### 24. prolong register cap
+
+`prolong3_batch_kernel` 原来使用 168 registers/thread。给它加 `__launch_bounds__(128,4)` 后，ptxas
+将寄存器压到 128，Nsys 确认 local memory 仍为 0；同一 t=1 workload 从约 470.24 ms 降至
+405.62 ms（13.7%）。这项与 advection field 展开叠加后，短测为：
+
+```text
+After Step: 1 ... 3.06519 s
+Total Evolve Time: 3.17857 s
+```
+
+由于短测不能覆盖 regrid 生命周期，随后提交了 t=100。前 8 步已经稳定在 3.32--3.81 s/步，明显
+不可能达到 220 s，也不优于 145654，故提前停止。`prolong3_batch` 的 cap 与 field-advection 一样只在
+t=1 好看，最终恢复默认寄存器分配。到本轮结束仍没有得到小于 220 s 的完整 `PASS`；可信最好结果
+仍为 145654 的 **345.686593 s / FINAL: PASS**。
+
+### 25. 按 OJ 无缓存日志复测 MPI/OMP
+
+OJ 的真实日志和本地 cache run 有两个重要差异：TwoPuncture cache 被关闭，并且最终计时包含 Python
+绘图。该次结果是 `Total Evolve=337.226 s`、`Program Cost=369.962 s`、外层 wall
+`379.006 s`，所以约 42 s 不在 evolution 内。为避免把 CPU 初值与 GPU 演化混在一起，本轮分别测量。
+
+首先保持总 CPU=16、单 MIG，使用相同 build 和短多步 evolution：
+
+```text
+MPI=1, OMP=16: 约 3.2--3.4 s/step
+MPI=2, OMP=8 : 约 5.4--5.6 s/step
+MPI=4, OMP=4 : 约 7.46 s/step
+```
+
+代码确实会把 Block 轮转分到 MPI rank，但三个配置仍共享同一个 MIG device。评分节点没有让多个 CUDA
+context 并发执行的 MPS 环境，结果是 context 争用再叠加 halo MPI 同步；rank 越多越慢。因此正式配置
+继续使用 `MPI_processes=1`，不能套用 CPU strong-scaling 的直觉。
+
+然后单独重复运行无缓存 `TwoPunctureABE`。固定 `OMP_PROC_BIND=close, OMP_PLACES=cores` 时：
+
+```text
+OMP threads:  1       2       4       8       16
+wall (s):    23.762  15.998  11.703   9.542    9.204
+```
+
+16 线程下再比较 placement：`cores/close=8.632 s`、`threads/close=8.737 s`、
+`cores/spread=8.569 s`；12-thread `cores/close=9.177 s`。最终采用 16 threads、cores、spread。
+这只改善无缓存初值阶段，ABEGPU 本身没有 OpenMP 热区，所以不会谎称它能把 337 s evolution 降到
+220 s。
+
+OJ checker 使用四个数值输出而不是 PNG；原 Python 路径仍会打开二十多个 figure，并在日志中触发
+Matplotlib figure warning。现在默认跳过绘图、保留全部 `.dat` 和 setting/error 文件；需要人工出图时
+可显式设置 `AMSS_ENABLE_PLOTS=1`。两步 smoke test 得到 `Total Evolve=6.74984 s`、`Program
+Cost=10.55155 s`，并正常留下数值结果。该改动减少的是评分 wall 的非计算尾部，不改变演化结果。
+
+### 26. 回看 index：共享缓存与 separable prolongation 反例
+
+重新逐项对照 `index.md` 后，MPI/OMP、kernel batching、RDC/LTO、register/occupancy、stream、显存池、
+CUDA 编译选项和绘图尾部都已经实际测过。仍未真正完成的主要是三类：只读 stencil 的 shared-memory
+复用、prolongation 的 producer-consumer/separable 变换，以及把主 RHS 按数学阶段而非空间 region
+拆分。CUDA-aware MPI 在最终 `MPI=1` 配置下没有传输对象，analysis overlap 也只影响很低频的输出，
+两者不是当前 220 s 缺口的主线。
+
+先给六场一组的 interior advection 加 `16x4x2` shared tile，每个场协作搬入三层 halo，再复用 tile
+计算 upwind 和 KO。tile 只有 14080 bytes，看起来容量不大，但每个场需要两次 block barrier，halo
+比例也很高。160620 的 Nsys 结果是：
+
+```text
+原 interior advection groups: 约 399--440 ms
+shared-tile groups          : 790.258 ms
+单步 Total Evolve           : 3.75671 s
+```
+
+说明这个小块 stencil 原本已经由 L1 承接了大部分邻域复用，显式 shared 反而付出同步和驻留 block
+下降的代价，故完整撤回。
+
+prolongation 又试了一个更激进的算法变换。连续 `2x2x2` 八个 fine 点对应同一个 `6x6x6` coarse
+立方体；让一个 thread 同时产生八点，可把理论 coarse loads 从 1728 降到 216，乘加也能复用 z/y
+中间量。但 160651 中 `prolong3_batch` 从约 470 ms 升到 970.684 ms，单步 3.84847 s。原因是一个
+thread 串行承担八点使可用并行度下降，八个输出 accumulator 还抬高了寄存器压力。这条实现也撤回；
+若继续 separable，只能采用 warp/block 协作并把中间量放在跨线程存储中，不能再做 thread coarsening。
+
+### 27. vacuum RHS 专门化
+
+题目固定使用 vacuum BSSN，但旧主演化 kernel 仍然逐点读取 `rho`、`S_i` 和六个 `S_ij`，再把这些
+恒为零的量代入 `Gamma^i`、`A_ij` 和 `trK` 的 RHS。接口仍保留这些数组以兼容原程序，只在 Lab 4
+热 kernel 内将 matter source 编译为零。这样不是近似，也没有改方程阶数；它利用的是输入中已经固定
+的 vacuum 条件。
+
+160688 的相邻 Nsys 对比为：
+
+```text
+rhs_kernel before: 1563.209 ms
+rhs_kernel vacuum: 1512.030 ms
+prolong/advection/RK: 基本不变
+```
+
+主演化 RHS 降约 3.3%，折合整个短步约 1.5%。此外在 boundary group 入口跳过任一维最后一层的严格
+零贡献点，只减少约 3 ms，说明 boundary 剩余时间主要是有效 stencil，而不是空函数调用。vacuum
+版本随后提交 t=100。160700 的完整结果为：
+
+```text
+Total Evolve Time: 330.179 s
+Total Running Time: 333.331 s
+This Program Cost: 333.865606 s
+Trajectory RMS: 0
+Constraint maxima: Ham=0.28974817, Px=0.039343259,
+                    Py=0.047298107, Pz=0.044686547
+FINAL: PASS
+```
+
+相对上一份本地完整可信的 345.686593 s，端到端减少 11.821 s（3.42%），所以 vacuum 专门化和
+最后平面早退保留。它仍离 220 s 差 113.866 s，不能写成 120 分。按现有 Nsys 分解，继续堆编译参数、
+MPI rank 或 OpenMP thread 已经没有足够上限；下一步必须动主 RHS 的数学阶段分解，或实现保持并行度的
+warp/block separable prolongation，并各自重新跑完整 checker。
+
+### 28. warp/subgroup separable prolongation 大改
+
+上一轮单线程八点失败后，这次真正实现了跨线程三阶段分解。每个 parity-aligned `2x2x2` octet 的
+`6x6x6` coarse cube 先由协作线程完成 72 个 z reduction，再完成 24 个 y reduction，最后由 8 个
+lane 各写一个 x reduction。完整 interior octet 因而只读取一次 216 个 coarse value，不再让八个
+输出各自读取 216 次。
+
+第一版用一个 32-lane warp 负责一个 octet，每个 128-thread block 只覆盖 32 个输出。161039 中
+`prolong3_batch` 达到 3078.554 ms；主要问题不是 interior 公式，而是大量 symmetry/partial octet
+进入旧函数 fallback 时只有 8 个 lane 工作。第二版改成 8-thread subgroup，每块并行 16 个 octet，
+使 fallback 恢复每块 128 个输出。161049 的结果为：
+
+```text
+原 prolong3_batch:              约 470 ms
+32-lane warp/octet:           3078.554 ms
+8-lane subgroup/octet:         930.328 ms
+subgroup 版本 Total Evolve:      3.75214 s
+```
+
+第二版已经排除了单纯 fallback 并行度不足，但仍约为原版两倍。这说明本题 transfer box 太浅，完整
+interior octet 占比不足；为每个 octet 建立 shared 中间量和同步的成本无法被 `6^3` 复用摊薄。两版
+均完整撤回，正式路径回到逐 fine point 的 batch kernel。
+
+同时测试把主 RHS 的 `__launch_bounds__` 从每 SM 至少 3 blocks 放宽为 2 blocks，让编译器可用更多
+寄存器，作为数学 phase 拆分前的占用率上限检查。161057 中 RHS 从 vacuum 版本约 1509 ms 增至
+1551.012 ms，说明当前 3-block 配置不是因为 register cap 过紧而慢，已恢复 `(128,3)`。真正拆成
+geometry/core 两核需要把 18 个 Christoffel 和 6 个 Ricci 中间场写回已有 scratch arrays；这会额外
+产生每点 24 次全局写和 24 次全局读。在 warp separable 已显示小 patch 对中间存储十分敏感后，不能
+在没有逐阶段正确性基准的情况下把这项高风险半成品留在正式路径。

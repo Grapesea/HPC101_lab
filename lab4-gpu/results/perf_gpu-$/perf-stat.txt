@@ -1,28 +1,28 @@
-# started on Mon Aug 24 17:34:10 2026
+# started on Tue Aug 25 03:58:56 2026
 
 
  Performance counter stats for 'perf record -F 5 -m 8 -o /home/h3240104505/HPC101_lab/lab4-gpu/results/perf_gpu-$/perf.data -- ./run.sh --twop-cache':
 
-           9126.24 msec task-clock:u                     #    0.930 CPUs utilized             
+           8538.56 msec task-clock:u                     #    0.921 CPUs utilized             
                  0      context-switches:u               #    0.000 /sec                      
                  0      cpu-migrations:u                 #    0.000 /sec                      
-            649268      page-faults:u                    #   71.143 K/sec                     
-       21516560464      cycles:u                         #    2.358 GHz                         (74.91%)
-       46205005035      instructions:u                   #    2.15  insn per cycle              (83.37%)
-        9343771080      branches:u                       #    1.024 G/sec                       (78.46%)
-          51157233      branch-misses:u                  #    0.55% of all branches             (75.30%)
-                        TopdownL1                 #     14.9 %  tma_backend_bound      
-                                                  #     59.0 %  tma_bad_speculation    
-                                                  #      8.6 %  tma_frontend_bound     
-                                                  #     17.5 %  tma_retiring             (83.60%)
-       13775297354      L1-dcache-loads:u                #    1.509 G/sec                       (83.51%)
-         181661266      L1-dcache-load-misses:u          #    1.32% of all L1-dcache accesses   (83.41%)
-          19541558      LLC-loads:u                      #    2.141 M/sec                       (83.28%)
-           6231282      LLC-load-misses:u                #   31.89% of all LL-cache accesses    (80.10%)
+            613432      page-faults:u                    #   71.843 K/sec                     
+       20280755817      cycles:u                         #    2.375 GHz                         (75.17%)
+       43732422678      instructions:u                   #    2.16  insn per cycle              (83.54%)
+        8763107422      branches:u                       #    1.026 G/sec                       (78.53%)
+          51077277      branch-misses:u                  #    0.58% of all branches             (75.30%)
+                        TopdownL1                 #      4.5 %  tma_backend_bound      
+                                                  #     79.8 %  tma_bad_speculation    
+                                                  #      7.8 %  tma_frontend_bound     
+                                                  #      7.9 %  tma_retiring             (83.56%)
+       13033853640      L1-dcache-loads:u                #    1.526 G/sec                       (83.14%)
+         181310529      L1-dcache-load-misses:u          #    1.39% of all L1-dcache accesses   (83.35%)
+          19415515      LLC-loads:u                      #    2.274 M/sec                       (83.44%)
+           5769265      LLC-load-misses:u                #   29.71% of all LL-cache accesses    (75.17%)
 
-       9.815709531 seconds time elapsed
+       9.275889747 seconds time elapsed
 
-       7.668824000 seconds user
-       1.602602000 seconds sys
+       7.223024000 seconds user
+       1.458994000 seconds sys
 
 
