@@ -8,7 +8,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from hpc101_infer.quantization.packing import dequantize_weight
+from hpc101_infer.quantization.packing import dequantize_weight, pack_int4
 from hpc101_infer.quantization.types import QuantizedModuleManifest, QuantizedWeight
 
 
@@ -62,6 +62,7 @@ class QuantizedLinear(nn.Module):
         bias: bool = False,
         device: torch.device | str | None = None,
         scale_dtype: torch.dtype = torch.float16,
+        backend: str = "int4_reference",
     ) -> None:
         super().__init__()
         if padded_in_features is None:
@@ -75,6 +76,9 @@ class QuantizedLinear(nn.Module):
         self.group_size = group_size
         self.symmetric = symmetric
         self.padded_in_features = padded_in_features
+        if backend not in {"int4_reference", "int4_triton"}:
+            raise ValueError(f"unsupported quantized linear backend: {backend}")
+        self.backend = backend
         self.register_buffer(
             "qweight",
             torch.empty(
@@ -148,8 +152,21 @@ class QuantizedLinear(nn.Module):
         )
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        # 参考实现允许在单次 forward 内生成高精度临时权重，但不会把完整
-        # FP16/BF16 权重持久保存在 module 中。融合 kernel 可替换这一过程。
+        rows = inputs.numel() // inputs.shape[-1]
+        if self.backend == "int4_triton" and rows <= 64:
+            from hpc101_infer.layers.int4_triton import int4_matmul
+
+            return int4_matmul(
+                inputs,
+                self.qweight,
+                self.scales,
+                self.zeros,
+                group_size=self.group_size,
+                out_features=self.out_features,
+                bias=self.bias,
+            )
+        # 大 M 的 prefill 能够用高效 GEMM 摊薄一次反量化；小 M decode
+        # 则走上面的融合 kernel，避免反复物化完整权重。
         weight = dequantize_weight(self.quantized_weight(), dtype=inputs.dtype)
         return F.linear(inputs, weight, self.bias)
 
@@ -160,11 +177,13 @@ class QuantizedLinearFactory:
         manifest: Mapping[str, QuantizedModuleManifest],
         *,
         scale_dtype: torch.dtype = torch.float16,
+        backend: str = "int4_reference",
     ) -> None:
         if scale_dtype not in {torch.float16, torch.bfloat16}:
             raise ValueError("scale_dtype must be float16 or bfloat16")
         self.manifest = dict(manifest)
         self.scale_dtype = scale_dtype
+        self.backend = backend
         self._fallback = BF16LinearFactory()
 
     def create(
@@ -198,4 +217,79 @@ class QuantizedLinearFactory:
             bias=bias,
             device=device,
             scale_dtype=scale_dtype,
+            backend=self.backend,
+        )
+
+
+class QuantizedTiedEmbedding(nn.Module):
+    """INT4 storage shared by token embedding lookup and the output LM head."""
+
+    def __init__(
+        self,
+        qweight: torch.Tensor,
+        scales: torch.Tensor,
+        embedding_dim: int,
+        group_size: int,
+        output_dtype: torch.dtype,
+    ) -> None:
+        super().__init__()
+        self.num_embeddings = qweight.shape[0]
+        self.embedding_dim = embedding_dim
+        self.group_size = group_size
+        self.output_dtype = output_dtype
+        self.register_buffer("qweight", qweight)
+        self.register_buffer("scales", scales)
+
+    @classmethod
+    def from_float_weight(
+        cls,
+        weight: torch.Tensor,
+        device: torch.device,
+        *,
+        group_size: int = 128,
+        chunk_rows: int = 1024,
+    ) -> "QuantizedTiedEmbedding":
+        rows, width = weight.shape
+        if width % group_size or width % 2:
+            raise ValueError("embedding width must align to INT4 group size")
+        packed = torch.empty((rows, width // 2), dtype=torch.uint8)
+        scales = torch.empty((rows, width // group_size), dtype=torch.float16)
+        epsilon = torch.finfo(torch.float32).eps
+        for start in range(0, rows, chunk_rows):
+            end = min(start + chunk_rows, rows)
+            groups = weight[start:end].float().view(-1, width // group_size, group_size)
+            chunk_scales = groups.abs().amax(dim=-1).div(7.0).clamp_min(epsilon)
+            codes = torch.round(groups / chunk_scales.unsqueeze(-1)).clamp(-8, 7)
+            codes = (codes.to(torch.int16) + 8).to(torch.uint8)
+            packed[start:end].copy_(pack_int4(codes.reshape(end - start, width)))
+            scales[start:end].copy_(chunk_scales.to(torch.float16))
+        return cls(
+            packed.to(device),
+            scales.to(device),
+            width,
+            group_size,
+            weight.dtype,
+        )
+
+    def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
+        packed = F.embedding(input_ids, self.qweight)
+        low = packed & 0x0F
+        high = packed >> 4
+        codes = torch.stack((low, high), dim=-1).flatten(-2)
+        group_scales = F.embedding(input_ids, self.scales)
+        selected_scales = torch.repeat_interleave(
+            group_scales, self.group_size, dim=-1
+        ).to(self.output_dtype)
+        return (codes.to(self.output_dtype) - 8.0) * selected_scales
+
+    def linear(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        from hpc101_infer.layers.int4_triton import int4_matmul
+
+        return int4_matmul(
+            hidden_states,
+            self.qweight,
+            self.scales,
+            None,
+            group_size=self.group_size,
+            out_features=self.num_embeddings,
         )

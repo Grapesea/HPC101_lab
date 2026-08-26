@@ -815,3 +815,15 @@ perf 直接定位并消除的初值阶段开销，其余差值属于整段 evolu
 还尝试按离散 interpolation window 预计算三方向 barycentric omega。162201 的 `Before Evolve` 反而
 回升到 2.959 s，插值函数在 perf 中由 13.37% 增到 16.30%。六点现算容易留在寄存器中，共享 cache
 则增加随机窗口访问和多线程 cache 竞争，故该缓存已撤回。
+
+### 30. 复测按 field 展开 advection
+
+根据 22 节的短测数据，field 展开曾把 advection kernel 时间从约 1062 ms 降到 710 ms，但当时完整
+运行没有保持收益。为排除 launcher 恢复 group 路径后长期未复测的影响，正式 launcher 现在重新使用
+`rhs_advection_interior_field_kernel` 和 `rhs_advection_boundary_field_kernel`。Host 侧按原四组
+调用的顺序构造 24 个 field 与 RHS 指针，两次 192-byte async H2D copy 后分别启动 interior 与
+boundary kernel；二者与 RHS 使用同一个 CUDA stream，因此保持原有数据依赖和写回顺序。
+
+本次容器没有 `nvcc`，不能在本地编译或运行；该修改只完成静态映射检查，不能视为新的完整成绩。
+需要在 A100/MIG 环境先跑 `t=1` smoke 和 Nsys，对比 advection 两个 kernel 总时间，再跑完整
+`t=100` checker。只有 `FINAL: PASS` 且 `Program Cost` 显著低于 329.928 s 时才保留该结果。

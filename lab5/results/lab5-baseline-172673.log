@@ -1,0 +1,16 @@
+Using Python 3.13.5 environment at: /opt/lab5-venv
+Resolved 1 package in 2ms
+   Building lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+      Built lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+Prepared 1 package in 2.13s
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 2ms
+ + lab5==0.1.0 (from file:///home/h3240104505/HPC101_lab/lab5)
+int4_triton rows=1: max_abs=0.007812, mean_abs=0.001290
+int4_triton rows=17: max_abs=0.015625, mean_abs=0.001207
+quantized 328 Linear modules into /results/quantized-gemma-4-v2
+Reusing existing quality result: results/gptq-public-quality.json
+generation:   0%|          | 0/10 [00:00<?, ?request/s]generation:  40%|████      | 4/10 [00:36<00:54,  9.11s/request]generation:  80%|████████  | 8/10 [01:03<00:15,  7.69s/request]generation: 100%|██████████| 10/10 [01:14<00:00,  7.15s/request]generation: 100%|██████████| 10/10 [01:14<00:00,  7.49s/request]
+{"requests": 10, "generated_tokens": 320, "elapsed_s": 74.9211213659728, "requests_per_s": 0.1334737096519452, "generated_tokens_per_s": 4.271158708862246, "batch_size": 4}

@@ -11,7 +11,7 @@ import torch
 from safetensors import safe_open
 from torch import nn
 
-from hpc101_infer.layers.linear import QuantizedLinearFactory
+from hpc101_infer.layers.linear import QuantizedLinearFactory, QuantizedTiedEmbedding
 from hpc101_infer.layers.rotary import RotaryEmbedding
 from hpc101_infer.models.config import Gemma4TextConfig
 from hpc101_infer.models.gemma4 import Gemma4ForCausalLM
@@ -98,16 +98,18 @@ def load_gemma4(
         config = replace(config, max_position_embeddings=max_position_embeddings)
 
     is_quantized = (model_path / "quantization_config.json").is_file()
-    if linear_backend not in {"bf16", "int4_reference"}:
+    if linear_backend not in {"bf16", "int4_reference", "int4_triton"}:
         raise ValueError(f"unsupported linear backend: {linear_backend}")
-    if linear_backend == "int4_reference" and not is_quantized:
-        raise ValueError("int4_reference requires a quantized checkpoint")
+    if linear_backend.startswith("int4_") and not is_quantized:
+        raise ValueError(f"{linear_backend} requires a quantized checkpoint")
 
     if is_quantized:
         source = QuantizedCheckpointSource(model_path)
         scale_dtype = SCALE_DTYPES[source.quantization_config.scale_dtype]
         linear_factory = QuantizedLinearFactory(
-            source.manifest, scale_dtype=scale_dtype
+            source.manifest,
+            scale_dtype=scale_dtype,
+            backend=linear_backend,
         )
         source_to_local = _quantized_key_map(source)
         prefix = ""
@@ -140,6 +142,18 @@ def load_gemma4(
             unexpected.add(local_key)
             continue
         checkpoint_tensor = source.load_tensor(checkpoint_key)
+        if (
+            is_quantized
+            and linear_backend == "int4_triton"
+            and local_key == "embed_tokens.weight"
+        ):
+            model.embed_tokens = QuantizedTiedEmbedding.from_float_weight(
+                checkpoint_tensor,
+                device,
+            )
+            loaded.add(local_key)
+            del checkpoint_tensor
+            continue
         _materialize_tensor(
             model,
             local_key,

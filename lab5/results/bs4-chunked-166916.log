@@ -1,0 +1,60 @@
+generation:   0%|          | 0/10 [00:00<?, ?request/s][W826 05:30:43.342315491 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 247463936 bytes (free: 27262976, total: 10468982784).
+[W826 05:30:43.467017519 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 247463936 bytes (free: 226492416, total: 10468982784).
+[W826 05:30:43.467107603 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 247463936 bytes (free: 226492416, total: 10468982784).
+generation:   0%|          | 0/10 [00:01<?, ?request/s]
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/run_generation_queue.py", line 319, in <module>
+    main()
+    ~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/run_generation_queue.py", line 281, in main
+    outputs = runner.run(
+        iter_requests(
+    ...<3 lines>...
+        on_completed=progress.update,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/runner.py", line 129, in run
+    self.drain(on_completed=on_completed)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/runner.py", line 99, in drain
+    completed_batch = self.step()
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/runner.py", line 76, in step
+    outputs = self.engine.generate([item.request for item in batch])
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/engine.py", line 240, in generate
+    prefill_output = self.prefill(
+        input_ids, batch_max_length=prefill_schedule.batch_max_length
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/engine.py", line 114, in prefill
+    logits = self.model(
+        model_input,
+        self.cache,
+        logits_to_keep=sequence_lengths - 1,
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/gemma4.py", line 187, in forward
+    hidden_states = layer(
+        hidden_states, position_ids, sequence_lengths, max_seq_len, kv_cache
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/gemma4.py", line 128, in forward
+    hidden_states = self.mlp(self.pre_feedforward_layernorm(hidden_states))
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/gemma4.py", line 52, in forward
+    F.gelu(self.gate_proj(hidden_states), approximate="tanh")
+    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: NVML_SUCCESS == r INTERNAL ASSERT FAILED at "/__w/pytorch/pytorch/c10/cuda/CUDACachingAllocator.cpp":1407, please report a bug to PyTorch. 

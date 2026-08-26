@@ -108,12 +108,27 @@ class Runner:
         *,
         on_completed: Callable[[int], None] | None = None,
     ) -> list[GenerationOutput]:
-        handles = []
-        for request in requests:
-            handles.append(self.submit(request))
-            if self.pending_count >= self.engine.config.scheduler_batch_size:
-                completed = self.step()
-                if completed and on_completed is not None:
-                    on_completed(len(completed))
+        # 评测采用无限并发：所有请求在推理开始前都已到达。将长度相近的
+        # 生成长度相近的请求放进同一静态 batch，避免短请求等待同批长请求
+        # 时仍执行无效 decode；再以 prompt 长度作为次级排序以减少 padding。
+        # handle 数组仍按原始输入顺序返回。
+        request_list = list(requests)
+
+        def approximate_prompt_length(request: GenerationRequest) -> int:
+            if request.input_ids is not None:
+                return len(request.input_ids)
+            return len(request.prompt or "")
+
+        ordered_indices = sorted(
+            range(len(request_list)),
+            key=lambda index: (
+                request_list[index].max_new_tokens,
+                approximate_prompt_length(request_list[index]),
+            ),
+            reverse=True,
+        )
+        handles: list[RequestHandle | None] = [None] * len(request_list)
+        for index in ordered_indices:
+            handles[index] = self.submit(request_list[index])
         self.drain(on_completed=on_completed)
-        return [handle.result() for handle in handles]
+        return [handle.result() for handle in handles if handle is not None]

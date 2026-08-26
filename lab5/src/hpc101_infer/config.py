@@ -148,7 +148,9 @@ class EngineConfig:
             raise ValueError("max_sequence_length must be positive")
         if self.attention_backend != "eager":
             raise ValueError("only the eager attention backend is implemented")
-        if self.linear_backend not in {"bf16", "int4_reference"}:
-            raise ValueError("linear_backend must be bf16 or int4_reference")
+        if self.linear_backend not in {"bf16", "int4_reference", "int4_triton"}:
+            raise ValueError(
+                "linear_backend must be bf16, int4_reference, or int4_triton"
+            )
         if self.scheduler_backend != "static_batch":
             raise ValueError("only the static_batch scheduler is implemented")

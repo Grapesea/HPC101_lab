@@ -1,0 +1,2 @@
+generation:   0%|          | 0/10 [00:00<?, ?request/s]generation:  40%|████      | 4/10 [00:42<01:03, 10.53s/request]generation:  80%|████████  | 8/10 [01:16<00:18,  9.40s/request]generation: 100%|██████████| 10/10 [01:44<00:00, 10.75s/request]generation: 100%|██████████| 10/10 [01:44<00:00, 10.45s/request]
+{"requests": 10, "generated_tokens": 320, "elapsed_s": 104.5054010580061, "requests_per_s": 0.09568883424933668, "generated_tokens_per_s": 3.0620426959787737, "batch_size": 4}

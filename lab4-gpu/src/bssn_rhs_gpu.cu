@@ -1607,42 +1607,39 @@ void gpu_compute_rhs_bssn_launch( // launch kernel with device pointers
     }
 #undef AMSS_RHS_ARGS
 
-    rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
-        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
-        d_dxx, d_gxx_rhs, d_gxy, d_gxy_rhs, d_gxz, d_gxz_rhs,
-        d_dyy, d_gyy_rhs, d_gyz, d_gyz_rhs, d_dzz, d_gzz_rhs, eps);
-    rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
-        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
-        d_Axx, d_Axx_rhs, d_Axy, d_Axy_rhs, d_Axz, d_Axz_rhs,
-        d_Ayy, d_Ayy_rhs, d_Ayz, d_Ayz_rhs, d_Azz, d_Azz_rhs, eps);
-    rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
-        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
-        d_chi, d_chi_rhs, d_trK, d_trK_rhs, d_Gamx, d_Gamx_rhs,
-        d_Gamy, d_Gamy_rhs, d_Gamz, d_Gamz_rhs, d_Lap, d_Lap_rhs, eps);
-    rhs_advection_interior_group_kernel<<<advection_grid, advection_block, 0, stream>>>(
-        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
-        d_betax, d_betax_rhs, d_betay, d_betay_rhs, d_betaz, d_betaz_rhs,
-        d_dtSfx, d_dtSfx_rhs, d_dtSfy, d_dtSfy_rhs, d_dtSfz, d_dtSfz_rhs, eps);
+    double* adv_fields[24] = {
+        d_dxx, d_gxy, d_gxz, d_dyy, d_gyz, d_dzz,
+        d_Axx, d_Axy, d_Axz, d_Ayy, d_Ayz, d_Azz,
+        d_chi, d_trK, d_Gamx, d_Gamy, d_Gamz, d_Lap,
+        d_betax, d_betay, d_betaz, d_dtSfx, d_dtSfy, d_dtSfz
+    };
+    double* adv_rhs[24] = {
+        d_gxx_rhs, d_gxy_rhs, d_gxz_rhs, d_gyy_rhs, d_gyz_rhs, d_gzz_rhs,
+        d_Axx_rhs, d_Axy_rhs, d_Axz_rhs, d_Ayy_rhs, d_Ayz_rhs, d_Azz_rhs,
+        d_chi_rhs, d_trK_rhs, d_Gamx_rhs, d_Gamy_rhs, d_Gamz_rhs, d_Lap_rhs,
+        d_betax_rhs, d_betay_rhs, d_betaz_rhs,
+        d_dtSfx_rhs, d_dtSfy_rhs, d_dtSfz_rhs
+    };
+    CUDA_CHECK(cudaMemcpyAsync(d_adv_fields, adv_fields, sizeof(adv_fields),
+                               cudaMemcpyHostToDevice, stream));
+    CUDA_CHECK(cudaMemcpyAsync(d_adv_rhs, adv_rhs, sizeof(adv_rhs),
+                               cudaMemcpyHostToDevice, stream));
 
     const int interior_points = (ex[0] > 6 && ex[1] > 6 && ex[2] > 6)
         ? (ex[0] - 6) * (ex[1] - 6) * (ex[2] - 6) : 0;
+    dim3 field_block(128);
+    dim3 interior_field_grid(
+        (interior_points + field_block.x - 1) / field_block.x, 24
+    );
+    rhs_advection_interior_field_kernel<<<interior_field_grid, field_block, 0, stream>>>(
+        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
+        d_adv_fields, d_adv_rhs, eps);
+
     const int boundary_points = ex[0] * ex[1] * ex[2] - interior_points;
-    dim3 boundary_block(128);
-    dim3 boundary_grid((boundary_points + boundary_block.x - 1) / boundary_block.x);
-    rhs_advection_boundary_group_kernel<0><<<boundary_grid, boundary_block, 0, stream>>>(
+    dim3 boundary_field_grid(
+        (boundary_points + field_block.x - 1) / field_block.x, 24
+    );
+    rhs_advection_boundary_field_kernel<<<boundary_field_grid, field_block, 0, stream>>>(
         ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
-        d_dxx, d_gxx_rhs, d_gxy, d_gxy_rhs, d_gxz, d_gxz_rhs,
-        d_dyy, d_gyy_rhs, d_gyz, d_gyz_rhs, d_dzz, d_gzz_rhs, symmetry, eps);
-    rhs_advection_boundary_group_kernel<1><<<boundary_grid, boundary_block, 0, stream>>>(
-        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
-        d_Axx, d_Axx_rhs, d_Axy, d_Axy_rhs, d_Axz, d_Axz_rhs,
-        d_Ayy, d_Ayy_rhs, d_Ayz, d_Ayz_rhs, d_Azz, d_Azz_rhs, symmetry, eps);
-    rhs_advection_boundary_group_kernel<2><<<boundary_grid, boundary_block, 0, stream>>>(
-        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
-        d_chi, d_chi_rhs, d_trK, d_trK_rhs, d_Gamx, d_Gamx_rhs,
-        d_Gamy, d_Gamy_rhs, d_Gamz, d_Gamz_rhs, d_Lap, d_Lap_rhs, symmetry, eps);
-    rhs_advection_boundary_group_kernel<3><<<boundary_grid, boundary_block, 0, stream>>>(
-        ex[0], ex[1], ex[2], d_X, d_Y, d_Z, d_betax, d_betay, d_betaz,
-        d_betax, d_betax_rhs, d_betay, d_betay_rhs, d_betaz, d_betaz_rhs,
-        d_dtSfx, d_dtSfx_rhs, d_dtSfy, d_dtSfy_rhs, d_dtSfz, d_dtSfz_rhs, symmetry, eps);
+        d_adv_fields, d_adv_rhs, symmetry, eps);
 }

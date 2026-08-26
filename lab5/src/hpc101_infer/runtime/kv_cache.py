@@ -21,6 +21,7 @@ class LayerKVCache:
     lengths: torch.Tensor
     max_batch_size: int
     max_sequence_length: int
+    sliding_window: int | None = None
     batch_size: int = 0
 
     def reset(self, batch_size: int) -> None:
@@ -38,6 +39,7 @@ class LayerKVCache:
         positions: torch.Tensor,
         key: torch.Tensor,
         value: torch.Tensor,
+        sequence_lengths: torch.Tensor,
     ) -> None:
         """按绝对 token 位置写入当前层新计算出的 K/V。"""
         batch_size, query_length = positions.shape
@@ -49,15 +51,48 @@ class LayerKVCache:
                 f"{expected_prefix + expected_suffix}"
             )
         for batch_idx in range(batch_size):
+            source_key = key[batch_idx]
+            source_value = value[batch_idx]
             target = positions[batch_idx]
-            self.key[batch_idx].index_copy_(1, target, key[batch_idx])
-            self.value[batch_idx].index_copy_(1, target, value[batch_idx])
+            valid = target < sequence_lengths[batch_idx]
+            target = target[valid]
+            source_key = source_key[:, valid]
+            source_value = source_value[:, valid]
+            if self.sliding_window is not None:
+                # A long prefill can contain repeated modulo slots. Keep only the
+                # last window so every physical index is written exactly once.
+                if target.numel() > self.sliding_window:
+                    target = target[-self.sliding_window :]
+                    source_key = source_key[:, -self.sliding_window :]
+                    source_value = source_value[:, -self.sliding_window :]
+                target = target.remainder(self.sliding_window)
+            self.key[batch_idx].index_copy_(1, target, source_key)
+            self.value[batch_idx].index_copy_(1, target, source_value)
 
-    def view(self, max_length: int) -> "LayerKVView":
+    def view(
+        self,
+        max_length: int,
+        sequence_lengths: torch.Tensor | None = None,
+    ) -> "LayerKVView":
         """只暴露当前 batch 在 ``max_length`` 以内的连续 cache 前缀。"""
+        if self.sliding_window is None or max_length <= self.sliding_window:
+            return LayerKVView(
+                key=self.key[: self.batch_size, :, :max_length, :],
+                value=self.value[: self.batch_size, :, :max_length, :],
+            )
+        if sequence_lengths is None:
+            raise ValueError("ring cache view requires sequence lengths")
+        logical_offset = torch.arange(self.sliding_window, device=self.key.device)
+        starts = (sequence_lengths[: self.batch_size] - self.sliding_window).clamp_min(0)
+        logical = starts[:, None] + logical_offset[None, :]
+        physical = logical.remainder(self.sliding_window)
+        gather_index = physical[:, None, :, None].expand(
+            -1, self.key.shape[1], -1, self.key.shape[3]
+        )
         return LayerKVView(
-            key=self.key[: self.batch_size, :, :max_length, :],
-            value=self.value[: self.batch_size, :, :max_length, :],
+            key=self.key[: self.batch_size].gather(2, gather_index),
+            value=self.value[: self.batch_size].gather(2, gather_index),
+            key_positions=logical,
         )
 
     def commit(self, sequence_lengths: torch.Tensor) -> None:
@@ -69,6 +104,7 @@ class LayerKVCache:
 class LayerKVView:
     key: torch.Tensor
     value: torch.Tensor
+    key_positions: torch.Tensor | None = None
 
 
 class KVCache:
@@ -102,12 +138,16 @@ class KVCache:
             if layer_type == "full_attention":
                 kv_heads = config.num_global_key_value_heads
                 head_dim = config.global_head_dim
+                cache_length = max_sequence_length
+                sliding_window = None
             elif layer_type == "sliding_attention":
                 kv_heads = config.num_key_value_heads
                 head_dim = config.head_dim
+                cache_length = min(max_sequence_length, config.sliding_window)
+                sliding_window = config.sliding_window
             else:
                 raise ValueError(f"unsupported attention type: {layer_type!r}")
-            shape = (max_batch_size, kv_heads, max_sequence_length, head_dim)
+            shape = (max_batch_size, kv_heads, cache_length, head_dim)
             layers.append(
                 LayerKVCache(
                     key=torch.empty(shape, dtype=dtype, device=device),
@@ -117,6 +157,7 @@ class KVCache:
                     ),
                     max_batch_size=max_batch_size,
                     max_sequence_length=max_sequence_length,
+                    sliding_window=sliding_window,
                 )
             )
         return cls(layers, max_batch_size, max_sequence_length)
@@ -147,11 +188,17 @@ class KVCache:
         positions: torch.Tensor,
         key: torch.Tensor,
         value: torch.Tensor,
+        sequence_lengths: torch.Tensor,
     ) -> None:
-        self.layers[layer_id].write(positions, key, value)
+        self.layers[layer_id].write(positions, key, value, sequence_lengths)
 
-    def view(self, layer_id: int, max_length: int) -> LayerKVView:
-        return self.layers[layer_id].view(max_length)
+    def view(
+        self,
+        layer_id: int,
+        max_length: int,
+        sequence_lengths: torch.Tensor | None = None,
+    ) -> LayerKVView:
+        return self.layers[layer_id].view(max_length, sequence_lengths)
 
     def commit(self, sequence_lengths: torch.Tensor) -> None:
         for layer in self.layers:

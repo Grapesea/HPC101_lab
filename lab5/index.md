@@ -839,6 +839,16 @@ $$
 S = 0.4 S_1 + 0.6 S_2 + 0.1 S_{Bonus}
 $$
 
+## 我的实验修正记录
+
+详细的推导和完整优化记录见 [`docs/math.md`](docs/math.md)。
+
+- **运行时分派**：量化 Linear 在小 `M` decode 时使用 fused INT4 Triton GEMM，大 `M` prefill 时临时反量化并调用 cuBLAS。
+- **注意力显存**：eager attention 按 query 维分块物化分数，降低长 prompt 的峰值显存。
+- **滑窗 KV**：滑动窗口层使用 ring cache，只保留最近 $W$ 个 KV slot；全局层保持完整 cache。
+- **请求调度**：无限并发评测下先按生成长度和 prompt 长度重排请求，再组静态 batch。
+- **正确性修正**：修正量化 embedding 的 `uint8` 低/高半字节交错逻辑，并修复 embedding 缩放的提前引用；当前性能结果仍是修正前生成，需重新评测刷新。
+
 ## 思考题
 
 1. 根据 Gemma4-12B 的结构，推导在 W4A16 量化下，全量加载模型权重占用的显存大小，以及 KV Cache 占用的显存大小与 batch_size、max_seq_len 的关系式，与实际测量的显存占用进行对比，分析差异原因。

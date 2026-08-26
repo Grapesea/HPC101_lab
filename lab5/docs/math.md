@@ -224,3 +224,62 @@ Linear forward 临时反量化为输入 dtype，再调用 `F.linear`；注意力
 实现；KV Cache 按最大 batch 和最大序列长度静态连续分配；请求按静态 batch
 执行。它不追求高性能，但保持模型语义完整，可作为后续融合 kernel、paged
 KV cache 和 continuous batching 的正确性与性能参照。
+
+## 9. 本轮优化与修正记录
+
+本轮保留 GPTQ checkpoint 的语义，同时把运行时从“每次 Linear 反量化”改
+为按负载分派：
+
+- **Decode / 小 `M`**：走 `int4_triton` 融合 kernel，直接读取 packed
+  INT4 权重和 group scale，避免物化完整 BF16 权重。
+- **Prefill / 大 `M`**：反量化一次权重后交给 cuBLAS GEMM，让反量化成本
+  被更多 token 摊薄。
+- **分块注意力**：按 query 维 512 分块物化分数，降低长 prefill 的峰值
+  显存；该实现仍会计算窗口外分数，是显存优化而非 Flash Attention。
+- **滑窗 ring KV cache**：滑窗层只分配
+  $\min(S,W)$ 个 KV slot，全局层仍分配完整 $S$；decode 时按逻辑位置
+  gather 最近窗口。
+- **静态 batch 重排**：无限并发评测下按生成长度、prompt 长度排序组批，
+  减少同一 batch 中短请求等待长请求的无效 decode 和 padding。
+
+### INT4 嵌入修正
+
+为共享 embedding 与 LM head 的存储，实验中加入了在线量化后的
+`QuantizedTiedEmbedding`。该实现曾将 packed `uint8` 拆成：
+
+```text
+codes[..., 0::2] = packed & 0x0F   # 错误：uint8 没有 uint4
+codes[..., 1::2] = packed >> 4
+```
+
+在 PyTorch 中这不是宽度感知赋值：偶数列会先接收低位结果，随后右移值也被
+写入同一片内存。修正为：
+
+```python
+low = packed & 0x0F
+high = packed >> 4
+codes = torch.stack((low, high), dim=-1).flatten(-2)
+```
+
+再与每 group scale 相乘。该修正解释并消除此前输出中大量 `token_id=0` 的
+现象；修正后需要重新运行公开质量与性能评测来刷新提交结果。
+
+随后发现模型入口的 embedding 缩放链式赋值在赋值前引用了
+`hidden_states`，导致 `UnboundLocalError`；已拆成两步赋值修复。
+
+### 实验现象
+
+公开质量评测中，GPTQ 的全局
+$\Delta\mathrm{NLL}=0.0861$，小于 0.1 的满分线，且各长度桶均通过 0.16
+约束。公开性能测试在 A100 MIG 10GB 环境下，batch size 1 的参考路径约
+248.1s；启用 INT4 kernel、分块注意力和滑窗 KV 后的完整路径约 74.5s。
+中间实验显示：仅 batching 约 86.1s，增加 kernel 后在 74.5s–104.5s 区间
+波动，说明剩余瓶颈仍在注意力实现、同步和调优空间中。
+
+### 已知限制
+
+- `QuantizedTiedEmbedding` 采用在线 RTN 量化，尚未纳入 GPTQ 校准流程；
+  精度需以当前公开质量结果为准。
+- Triton kernel 的 tile 参数仍为固定启发式，未针对不同 `N,K,M` 自动调优。
+- eager attention 的 mask/softmax 仍是主要显存和带宽来源，长序列风险高。
+- 当前结果是单次运行，重复运行可能受 MIG 邻居负载影响。

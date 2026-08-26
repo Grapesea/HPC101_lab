@@ -1,0 +1,62 @@
+generation:   0%|          | 0/10 [00:00<?, ?request/s]generation:  20%|██        | 2/10 [00:30<02:00, 15.06s/request]generation:  40%|████      | 4/10 [01:02<01:34, 15.76s/request][W826 05:26:26.229005302 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 130023424 bytes (free: 90177536, total: 10468982784).
+generation:  60%|██████    | 6/10 [01:35<01:04, 16.10s/request][W826 05:26:57.174978285 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 144703488 bytes (free: 52428800, total: 10468982784).
+[W826 05:26:57.247415871 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 289406976 bytes (free: 188743680, total: 10468982784).
+[W826 05:26:57.260421507 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 289406976 bytes (free: 44040192, total: 10468982784).
+[W826 05:26:57.260523851 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 289406976 bytes (free: 44040192, total: 10468982784).
+generation:  60%|██████    | 6/10 [01:35<01:03, 15.96s/request]
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/run_generation_queue.py", line 319, in <module>
+    main()
+    ~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/run_generation_queue.py", line 281, in main
+    outputs = runner.run(
+        iter_requests(
+    ...<3 lines>...
+        on_completed=progress.update,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/runner.py", line 115, in run
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/runner.py", line 76, in step
+    outputs = self.engine.generate([item.request for item in batch])
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/engine.py", line 240, in generate
+    prefill_output = self.prefill(
+        input_ids, batch_max_length=prefill_schedule.batch_max_length
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/engine.py", line 114, in prefill
+    logits = self.model(
+        model_input,
+        self.cache,
+        logits_to_keep=sequence_lengths - 1,
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/gemma4.py", line 182, in forward
+    hidden_states = layer(
+        hidden_states, position_ids, sequence_lengths, max_seq_len, kv_cache
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/gemma4.py", line 114, in forward
+    hidden_states = self.self_attn(
+        self.input_layernorm(hidden_states),
+    ...<4 lines>...
+        kv_cache,
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/layers/attention.py", line 271, in forward
+    prob = torch.softmax(scores, dim=-1, dtype=torch.float32).to(query.dtype)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: NVML_SUCCESS == r INTERNAL ASSERT FAILED at "/__w/pytorch/pytorch/c10/cuda/CUDACachingAllocator.cpp":1407, please report a bug to PyTorch. 

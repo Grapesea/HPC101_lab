@@ -1,0 +1,2 @@
+int4_triton rows=1: max_abs=0.007812, mean_abs=0.000993
+int4_triton rows=17: max_abs=0.015625, mean_abs=0.001012

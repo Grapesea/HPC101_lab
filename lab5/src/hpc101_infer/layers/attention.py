@@ -37,14 +37,21 @@ def make_attention_mask(
     layer_type: str,
     dtype: torch.dtype,
     sliding_window: int = -1,
+    key_position_offset: int = 0,
+    key_positions: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """同时屏蔽未来 token、padding token 和滑动窗口外的历史 token。"""
-    key_positions = torch.arange(key_length, device=positions.device)
+    if key_positions is None:
+        key_positions = torch.arange(
+            key_position_offset,
+            key_position_offset + key_length,
+            device=positions.device,
+        ).unsqueeze(0)
     query_valid = positions < sequence_lengths[:, None]
-    allowed = key_positions[None, None, :] <= positions[:, :, None]
-    allowed &= key_positions[None, None, :] < sequence_lengths[:, None, None]
+    allowed = key_positions[:, None, :] <= positions[:, :, None]
+    allowed &= key_positions[:, None, :] < sequence_lengths[:, None, None]
     if layer_type == "sliding_attention":
-        allowed &= key_positions[None, None, :] > (
+        allowed &= key_positions[:, None, :] > (
             positions[:, :, None] - sliding_window
         )
     allowed &= query_valid[:, :, None]
@@ -68,6 +75,42 @@ def repeat_kv(hidden_states: torch.Tensor, repeats: int) -> torch.Tensor:
     return expanded.reshape(batch, heads * repeats, seq_len, head_dim)
 
 
+def chunked_attention(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    positions: torch.Tensor,
+    sequence_lengths: torch.Tensor,
+    layer_type: str,
+    *,
+    sliding_window: int = -1,
+    key_position_offset: int = 0,
+    key_positions: torch.Tensor | None = None,
+    query_chunk_size: int = 512,
+) -> torch.Tensor:
+    outputs = []
+    key_transposed = key.transpose(2, 3)
+    for start in range(0, query.shape[2], query_chunk_size):
+        end = min(start + query_chunk_size, query.shape[2])
+        scores = torch.matmul(query[:, :, start:end], key_transposed)
+        mask, query_valid = make_attention_mask(
+            positions[:, start:end],
+            sequence_lengths,
+            key.shape[2],
+            layer_type,
+            scores.dtype,
+            sliding_window,
+            key_position_offset,
+            key_positions,
+        )
+        scores.add_(mask)
+        probability = torch.softmax(scores, dim=-1, dtype=torch.float32).to(query.dtype)
+        chunk = torch.matmul(probability, value)
+        chunk.mul_(query_valid[:, None, :, None])
+        outputs.append(chunk)
+    return torch.cat(outputs, dim=2)
+
+
 class AttentionLayer(nn.Module):
     def __init__(
         self,
@@ -87,6 +130,7 @@ class AttentionLayer(nn.Module):
         self.head_dim = head_dim
         self.num_kv_heads = num_kv_heads
         self.num_kv_groups = num_qo_heads // self.num_kv_heads
+        self.value_is_key = attention_k_eq_v
         self.q_proj = factory.create(
             f"{module_prefix}.q_proj", hidden_size, num_qo_heads * self.head_dim, False
         )
@@ -140,7 +184,7 @@ class AttentionLayer(nn.Module):
         )
         value = (
             key
-            if self.v_proj is None
+            if self.value_is_key
             else self.v_proj(hidden_states).view(
                 batch, seq_len, self.num_kv_heads, self.head_dim
             )
@@ -152,23 +196,14 @@ class AttentionLayer(nn.Module):
         key = key.transpose(1, 2)
         value = self.v_norm(value).transpose(1, 2)
         if kv_cache is not None:
-            kv_cache.write(layer_id, position_ids, key, value)
+            kv_cache.write(layer_id, position_ids, key, value, sequence_lengths)
             cached = kv_cache.view(layer_id, max_seq_len)
             key, value = cached.key, cached.value
         key = repeat_kv(key, self.num_kv_groups)
         value = repeat_kv(value, self.num_kv_groups)
-        scores = torch.matmul(query, key.transpose(2, 3))
-        mask, query_valid = make_attention_mask(
-            positions=position_ids,
-            sequence_lengths=sequence_lengths,
-            key_length=key.shape[2],
-            layer_type="full_attention",
-            dtype=scores.dtype,
-        )
-        scores = scores + mask
-        prob = torch.softmax(scores, dim=-1, dtype=torch.float32).to(query.dtype)
-        output = torch.matmul(prob, value).transpose(1, 2).reshape(batch, seq_len, -1)
-        output = output * query_valid.unsqueeze(-1)
+        output = chunked_attention(
+            query, key, value, position_ids, sequence_lengths, "full_attention"
+        ).transpose(1, 2).reshape(batch, seq_len, -1)
         return self.o_proj(output)
 
 
@@ -239,12 +274,8 @@ class SlidingAttentionLayer(nn.Module):
         key = self.k_proj(hidden_states).view(
             batch, seq_len, self.num_kv_heads, self.head_dim
         )
-        value = (
-            key
-            if self.v_proj is None
-            else self.v_proj(hidden_states).view(
-                batch, seq_len, self.num_kv_heads, self.head_dim
-            )
+        value = self.v_proj(hidden_states).view(
+            batch, seq_len, self.num_kv_heads, self.head_dim
         )
         query = self.q_norm(query)
         key = self.k_norm(key)
@@ -252,23 +283,28 @@ class SlidingAttentionLayer(nn.Module):
         query = query.transpose(1, 2)
         key = key.transpose(1, 2)
         value = self.v_norm(value).transpose(1, 2)
+        key_positions = None
         if kv_cache is not None:
-            kv_cache.write(layer_id, position_ids, key, value)
-            cached = kv_cache.view(layer_id, max_seq_len)
-            key, value = cached.key, cached.value
+            kv_cache.write(layer_id, position_ids, key, value, sequence_lengths)
+            # A generation prefill starts at absolute position zero and already
+            # has all prompt K/V in this forward, so using the current tensors
+            # avoids losing early queries when the prompt exceeds the ring.
+            # Chunked quality scoring also has seq_len > 1, but chunks after the
+            # first start at a non-zero position and must include cached history.
+            if seq_len == 1 or position_ids[0, 0].item() != 0:
+                cached = kv_cache.view(layer_id, max_seq_len, sequence_lengths)
+                key, value = cached.key, cached.value
+                key_positions = cached.key_positions
         key = repeat_kv(key, self.num_kv_groups)
         value = repeat_kv(value, self.num_kv_groups)
-        scores = torch.matmul(query, key.transpose(2, 3))
-        mask, query_valid = make_attention_mask(
-            positions=position_ids,
-            sequence_lengths=sequence_lengths,
-            key_length=key.shape[2],
-            layer_type="sliding_attention",
-            dtype=scores.dtype,
+        output = chunked_attention(
+            query,
+            key,
+            value,
+            position_ids,
+            sequence_lengths,
+            "sliding_attention",
             sliding_window=self.sliding_window,
-        )
-        scores = scores + mask
-        prob = torch.softmax(scores, dim=-1, dtype=torch.float32).to(query.dtype)
-        output = torch.matmul(prob, value).transpose(1, 2).reshape(batch, seq_len, -1)
-        output = output * query_valid.unsqueeze(-1)
+            key_positions=key_positions,
+        ).transpose(1, 2).reshape(batch, seq_len, -1)
         return self.o_proj(output)

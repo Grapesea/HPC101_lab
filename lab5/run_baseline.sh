@@ -27,6 +27,8 @@ else
     python3 -m pip install -e . --no-deps
 fi
 
+python3 scripts/check_int4_triton.py
+
 if [[ -f "$QUANT_DIR_ARG/manifest.json" && \
       -f "$QUANT_DIR_ARG/quantization_config.json" ]]; then
     echo "Reusing complete quantized checkpoint: $QUANT_DIR_ARG"
@@ -61,7 +63,7 @@ python3 scripts/run_generation_queue.py \
     --output results/gptq-public-performance.jsonl \
     --summary-output results/gptq-public-summary.json \
     --device cuda \
-    --linear-backend int4_reference \
-    --batch-size 1 \
-    --max-batch-size 1 \
+    --linear-backend int4_triton \
+    --batch-size 4 \
+    --max-batch-size 4 \
     --max-sequence-length 2048

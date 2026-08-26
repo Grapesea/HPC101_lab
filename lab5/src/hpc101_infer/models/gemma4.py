@@ -7,7 +7,11 @@ from torch import nn
 from torch.nn import functional as F
 
 from hpc101_infer.layers.attention import AttentionLayer, SlidingAttentionLayer
-from hpc101_infer.layers.linear import BF16LinearFactory, LinearFactory
+from hpc101_infer.layers.linear import (
+    BF16LinearFactory,
+    LinearFactory,
+    QuantizedTiedEmbedding,
+)
 from hpc101_infer.layers.norm import RMSNorm
 from hpc101_infer.models.config import Gemma4TextConfig
 from hpc101_infer.runtime.batch import Batch
@@ -173,10 +177,11 @@ class Gemma4ForCausalLM(nn.Module):
             position_ids = model_input.positions
             sequence_lengths = model_input.sequence_lengths
             max_seq_len = model_input.curr_max_seq_len
-        hidden_states = self.embed_tokens(input_ids) * torch.tensor(
+        hidden_states = self.embed_tokens(input_ids)
+        hidden_states = hidden_states * torch.tensor(
             self.embed_scale,
             device=input_ids.device,
-            dtype=self.embed_tokens.weight.dtype,
+            dtype=hidden_states.dtype,
         )
         for layer in self.layers:
             hidden_states = layer(
@@ -194,7 +199,10 @@ class Gemma4ForCausalLM(nn.Module):
             ].unsqueeze(1)
         elif logits_to_keep:
             hidden_states = hidden_states[:, -logits_to_keep:]
-        logits = F.linear(hidden_states, self.embed_tokens.weight)
+        if isinstance(self.embed_tokens, QuantizedTiedEmbedding):
+            logits = self.embed_tokens.linear(hidden_states)
+        else:
+            logits = F.linear(hidden_states, self.embed_tokens.weight)
         if self.config.final_logit_softcapping is not None:
             cap = self.config.final_logit_softcapping
             logits = torch.tanh(logits / cap) * cap
