@@ -1,0 +1,100 @@
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4120:- func: _convert_weight_to_int4pack(Tensor self, int innerKTiles) -> Tensor
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4122:    CUDA: _convert_weight_to_int4pack_cuda
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4123:    MPS: _convert_weight_to_int4pack_mps
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4125:- func: _weight_int4pack_mm(Tensor self, Tensor mat2, int qGroupSize, Tensor qScaleAndZeros) -> Tensor
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4127:    MPS: _weight_int4pack_mm_mps
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4128:    CUDA: _weight_int4pack_mm_cuda
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4130:- func: _weight_int4pack_mm_with_scales_and_zeros(Tensor self, Tensor mat2, int qGroupSize, Tensor qScale, Tensor qZeros) -> Tensor
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4132:    XPU: _weight_int4pack_mm_xpu
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4136:- func: _convert_weight_to_int4pack_for_cpu(Tensor self, int innerKTiles) -> Tensor
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4138:    CPU: _convert_weight_to_int4pack_cpu
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4140:- func: _weight_int4pack_mm_for_cpu(Tensor self, Tensor mat2, int qGroupSize, Tensor qScaleAndZeros) -> Tensor
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/packaged/ATen/native/native_functions.yaml:4142:    CPU: _weight_int4pack_mm_cpu
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/aoti/fallback_ops.py:92:    "aten._weight_int4pack_mm.default": {},
+/opt/lab5-venv/lib/python3.13/site-packages/torchgen/aoti/fallback_ops.py:214:    "aten._weight_int4pack_mm_with_scales_and_zeros.default": {},
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4045:@register_meta([aten._convert_weight_to_int4pack])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4046:def meta__convert_weight_to_int4pack(w, inner_k_tiles):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4065:@register_meta([aten._convert_weight_to_int4pack_for_cpu])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4066:def meta__convert_weight_to_int4pack_for_cpu(w, inner_k_tiles):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4080:@register_meta([aten._weight_int4pack_mm])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4081:def meta__weight_int4pack_mm(x, w, q_group_size, q_scale_and_zeros):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4097:@register_meta([aten._weight_int4pack_mm_for_cpu])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4098:def meta__weight_int4pack_mm_for_cpu(x, w, q_group_size, q_scale_and_zeros):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4112:@register_meta([aten._weight_int4pack_mm_with_scales_and_zeros])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4113:def _weight_int4pack_mm_with_scales_and_zeros(x, w, q_group_size, qScale, qZeros):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/fx_passes/quantization.py:3732:    computation_op = torch.ops.aten._weight_int4pack_mm_for_cpu.default
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/fx_passes/quantization.py:3780:                torch.ops.aten._weight_int4pack_mm_for_cpu(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/fx_passes/quantization.py:3791:        repack_w = torch.ops.aten._convert_weight_to_int4pack_for_cpu(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/fx_passes/quantization.py:3798:    computation_op = torch.ops.aten._weight_int4pack_mm_for_cpu.default
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/codegen/cpp_gemm_template.py:1830:                    # int4 values are converted to [-7, 8] in the _weight_int4pack_mm_for_cpu kernel:
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/codegen/cpp_gemm_template.py:1839:                    unpacked_w = torch.ops.aten._weight_int4pack_mm_for_cpu(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:27:aten__weight_int4pack_mm_cpu = ExternKernelChoice(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:29:    "at::native::_weight_int4pack_mm_cpu_tensor",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:98:    @register_lowering(aten._weight_int4pack_mm_for_cpu, type_promotion_kind=None)  # type: ignore[misc]
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:122:                aten__weight_int4pack_mm_cpu.bind(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:162:            "_weight_int4pack_mm_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/mkldnn_ir.py:1329:            cpp_kernel_name=("aoti_torch_cpu__weight_int4pack_mm_cpu_tensor"),
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1505:        "torch._convert_weight_to_int4pack",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1506:        "torch._convert_weight_to_int4pack_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1773:        "torch._weight_int4pack_mm",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1774:        "torch._weight_int4pack_mm_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1775:        "torch._weight_int4pack_mm_with_scales_and_zeros",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:71:    "_convert_weight_to_int4pack",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:72:    "_convert_weight_to_int4pack_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:386:    "_weight_int4pack_mm",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:387:    "_weight_int4pack_mm_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:388:    "_weight_int4pack_mm_with_scales_and_zeros",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:1204:def _convert_weight_to_int4pack(input: Tensor, innerKTiles: _int) -> Tensor: ...
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:1205:def _convert_weight_to_int4pack_for_cpu(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:3609:def _weight_int4pack_mm(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:3615:def _weight_int4pack_mm_for_cpu(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:3621:def _weight_int4pack_mm_with_scales_and_zeros(
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:2724:torch/include/ATen/ops/_convert_weight_to_int4pack.h,sha256=clAs63Ym8Z6fS3RV8yWCkVEK8mDwiMObipkHT7vMPkI,1026
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:2725:torch/include/ATen/ops/_convert_weight_to_int4pack_cuda_dispatch.h,sha256=gJmUQtj4btzKA71uQALoSxcB5SwejJG2Q3xO52a-ckI,1018
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:2726:torch/include/ATen/ops/_convert_weight_to_int4pack_for_cpu.h,sha256=PJ2yIS77nZIuJqeA3BcjL34HWF4ysq_Y6tGAPuF9rQ0,1058
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:2727:torch/include/ATen/ops/_convert_weight_to_int4pack_for_cpu_cpu_dispatch.h,sha256=crWsYSxqmoCOgj5VOWoUkp0BrW78R2p415tGkKKqbNw,1024
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:2728:torch/include/ATen/ops/_convert_weight_to_int4pack_for_cpu_native.h,sha256=fofPdIl8fBJmdddCQzyaWX5VdRTwHnmRwubMte4H8Iw,776
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:2729:torch/include/ATen/ops/_convert_weight_to_int4pack_for_cpu_ops.h,sha256=Gxq8mfMMczVVXCyf6VqX4ZQRSXQkW7gHRRc66fxleME,1366
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:2730:torch/include/ATen/ops/_convert_weight_to_int4pack_native.h,sha256=sHaYxqPr2SWJb74zbpqL2ECuKgYS8DM0duAQvoOZoQ4,777
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:2731:torch/include/ATen/ops/_convert_weight_to_int4pack_ops.h,sha256=Y2bhIULr9GBS96v9m3HKWvZ2pVT1--siycwbmwVLJsc,1342
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4423:torch/include/ATen/ops/_weight_int4pack_mm.h,sha256=d_A5j_NLmHnTjOdrms94oL8u0ZmL7jCu_YnsOjC-TA8,1109
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4424:torch/include/ATen/ops/_weight_int4pack_mm_cuda_dispatch.h,sha256=rq1R-KrOuyzeYOgNK785Up7aocrOoD2XN3bJtzgki2c,1069
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4425:torch/include/ATen/ops/_weight_int4pack_mm_for_cpu.h,sha256=mpPE3zMiTIFstbHvw5CSTf3LcEQrycU4CiyoDeDqhrM,1141
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4426:torch/include/ATen/ops/_weight_int4pack_mm_for_cpu_cpu_dispatch.h,sha256=bPXPjUFsE-0wQjKNlVj7bCDbV6rCSqM2QhKo3H5BVvA,1075
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4427:torch/include/ATen/ops/_weight_int4pack_mm_for_cpu_native.h,sha256=DspzQu0zLyAFgMSlI25j86NPkvHlbw6pnQkZ5u8FdiU,827
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4428:torch/include/ATen/ops/_weight_int4pack_mm_for_cpu_ops.h,sha256=zk_5TdC4rAjBtS6w8pAJBcX8Py_6gppYg1dbVtHZjIc,1535
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4429:torch/include/ATen/ops/_weight_int4pack_mm_native.h,sha256=zzeyLnTm-SVLwjo76XijeXR6p0Kos6tLtudEKLt2ZrA,828
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4430:torch/include/ATen/ops/_weight_int4pack_mm_ops.h,sha256=9gMEf6DWByJoj2Ig2k8bYDgeXeX9MabhviaTykwwGHY,1511
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4431:torch/include/ATen/ops/_weight_int4pack_mm_with_scales_and_zeros.h,sha256=J6Zbv4lrP2njY1W7JrVFAkw9Lc8ihp720tjgkUc7wC8,1223
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4432:torch/include/ATen/ops/_weight_int4pack_mm_with_scales_and_zeros_native.h,sha256=0SAoE4aPf5nZIVqujS9jFASmof4GFAJst2Lcyq_eobA,676
+/opt/lab5-venv/lib/python3.13/site-packages/torch-2.13.0+cu132.dist-info/RECORD:4433:torch/include/ATen/ops/_weight_int4pack_mm_with_scales_and_zeros_ops.h,sha256=ZM2T5f15r7-ZOq090mOZBErf2FvBmym0qEv9w0h-Y_U,1642
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4045:@register_meta([aten._convert_weight_to_int4pack])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4046:def meta__convert_weight_to_int4pack(w, inner_k_tiles):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4065:@register_meta([aten._convert_weight_to_int4pack_for_cpu])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4066:def meta__convert_weight_to_int4pack_for_cpu(w, inner_k_tiles):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4080:@register_meta([aten._weight_int4pack_mm])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4081:def meta__weight_int4pack_mm(x, w, q_group_size, q_scale_and_zeros):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4097:@register_meta([aten._weight_int4pack_mm_for_cpu])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4098:def meta__weight_int4pack_mm_for_cpu(x, w, q_group_size, q_scale_and_zeros):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4112:@register_meta([aten._weight_int4pack_mm_with_scales_and_zeros])
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_meta_registrations.py:4113:def _weight_int4pack_mm_with_scales_and_zeros(x, w, q_group_size, qScale, qZeros):
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/fx_passes/quantization.py:3732:    computation_op = torch.ops.aten._weight_int4pack_mm_for_cpu.default
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/fx_passes/quantization.py:3780:                torch.ops.aten._weight_int4pack_mm_for_cpu(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/fx_passes/quantization.py:3791:        repack_w = torch.ops.aten._convert_weight_to_int4pack_for_cpu(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/fx_passes/quantization.py:3798:    computation_op = torch.ops.aten._weight_int4pack_mm_for_cpu.default
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/codegen/cpp_gemm_template.py:1830:                    # int4 values are converted to [-7, 8] in the _weight_int4pack_mm_for_cpu kernel:
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/codegen/cpp_gemm_template.py:1839:                    unpacked_w = torch.ops.aten._weight_int4pack_mm_for_cpu(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:27:aten__weight_int4pack_mm_cpu = ExternKernelChoice(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:29:    "at::native::_weight_int4pack_mm_cpu_tensor",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:98:    @register_lowering(aten._weight_int4pack_mm_for_cpu, type_promotion_kind=None)  # type: ignore[misc]
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:122:                aten__weight_int4pack_mm_cpu.bind(
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/quantized_lowerings.py:162:            "_weight_int4pack_mm_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_inductor/mkldnn_ir.py:1329:            cpp_kernel_name=("aoti_torch_cpu__weight_int4pack_mm_cpu_tensor"),
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1505:        "torch._convert_weight_to_int4pack",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1506:        "torch._convert_weight_to_int4pack_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1773:        "torch._weight_int4pack_mm",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1774:        "torch._weight_int4pack_mm_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_dynamo/trace_rules.py:1775:        "torch._weight_int4pack_mm_with_scales_and_zeros",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:71:    "_convert_weight_to_int4pack",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:72:    "_convert_weight_to_int4pack_for_cpu",
+/opt/lab5-venv/lib/python3.13/site-packages/torch/_C/_VariableFunctions.pyi:386:    "_weight_int4pack_mm",

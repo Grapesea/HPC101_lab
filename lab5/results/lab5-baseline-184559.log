@@ -1,0 +1,84 @@
+Using Python 3.13.5 environment at: /opt/lab5-venv
+Resolved 1 package in 2ms
+   Building lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+      Built lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+Prepared 1 package in 883ms
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 3ms
+ + lab5==0.1.0 (from file:///home/h3240104505/HPC101_lab/lab5)
+int4_triton rows=1: max_abs=0.007812, mean_abs=0.001290
+int4_triton rows=17: max_abs=0.015625, mean_abs=0.001207
+Reusing complete quantized checkpoint: /home/h3240104505/HPC101_lab/lab5/results/quantized-tinygemm-cache
+Reusing existing quality result: results/gptq-public-quality.json
+generation:   0%|          | 0/10 [00:00<?, ?request/s][W827 23:33:39.474941150 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 329252864 bytes (free: 92274688, total: 10468982784).
+[W827 23:33:39.485936898 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 329252864 bytes (free: 33554432, total: 10468982784).
+[W827 23:33:39.486022130 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 329252864 bytes (free: 33554432, total: 10468982784).
+generation:   0%|          | 0/10 [00:00<?, ?request/s]
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/run_generation_queue.py", line 319, in <module>
+    main()
+    ~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/run_generation_queue.py", line 281, in main
+    outputs = runner.run(
+        iter_requests(
+    ...<3 lines>...
+        on_completed=progress.update,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/runner.py", line 141, in run
+    self.drain(on_completed=on_completed)
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/runner.py", line 106, in drain
+    completed_batch = self.step()
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/runner.py", line 76, in step
+    outputs = self.engine.generate([item.request for item in batch])
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/engine.py", line 240, in generate
+    prefill_output = self.prefill(
+        input_ids, batch_max_length=prefill_schedule.batch_max_length
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/engine.py", line 114, in prefill
+    logits = self.model(
+        model_input,
+        self.cache,
+        logits_to_keep=sequence_lengths - 1,
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/gemma4.py", line 187, in forward
+    hidden_states = layer(
+        hidden_states, position_ids, sequence_lengths, max_seq_len, kv_cache
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/gemma4.py", line 118, in forward
+    hidden_states = self.self_attn(
+        self.input_layernorm(hidden_states),
+    ...<4 lines>...
+        kv_cache,
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/layers/attention.py", line 443, in forward
+    output = chunked_attention(
+        query,
+    ...<6 lines>...
+        key_positions=key_positions,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/layers/attention.py", line 114, in chunked_attention
+    probability = torch.softmax(scores, dim=-1, dtype=torch.float32).to(query.dtype)
+                  ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: NVML_SUCCESS == r INTERNAL ASSERT FAILED at "/__w/pytorch/pytorch/c10/cuda/CUDACachingAllocator.cpp":1407, please report a bug to PyTorch. 

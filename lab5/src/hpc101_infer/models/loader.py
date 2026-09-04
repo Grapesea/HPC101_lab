@@ -11,7 +11,11 @@ import torch
 from safetensors import safe_open
 from torch import nn
 
-from hpc101_infer.layers.linear import QuantizedLinearFactory, QuantizedTiedEmbedding
+from hpc101_infer.layers.linear import (
+    QuantizedLinear,
+    QuantizedLinearFactory,
+    QuantizedTiedEmbedding,
+)
 from hpc101_infer.layers.rotary import RotaryEmbedding
 from hpc101_infer.models.config import Gemma4TextConfig
 from hpc101_infer.models.gemma4 import Gemma4ForCausalLM
@@ -176,4 +180,13 @@ def load_gemma4(
     for module in model.modules():
         if isinstance(module, RotaryEmbedding):
             module.materialize(device)
+        elif isinstance(module, QuantizedLinear):
+            module.prepare_tinygemm()
+        elif isinstance(module, QuantizedTiedEmbedding):
+            module.prepare_tinygemm()
+    # Repacking temporarily allocates a nibble-swapped tensor per Linear.
+    # Release those cached blocks so long-prompt prefill has a contiguous
+    # workspace instead of entering generation with a fragmented allocator.
+    if device.type == "cuda" and linear_backend == "int4_triton":
+        torch.cuda.empty_cache()
     return model.eval()

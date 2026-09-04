@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/run_generation_queue.py", line 319, in <module>
+    main()
+    ~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/run_generation_queue.py", line 266, in main
+    engine = InferenceEngine.from_pretrained(args.model, config)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/engine.py", line 64, in from_pretrained
+    model = load_gemma4(
+        model_path,
+    ...<3 lines>...
+        linear_backend=config.linear_backend,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/loader.py", line 96, in load_gemma4
+    config = Gemma4TextConfig.from_pretrained(model_path)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/config.py", line 45, in from_pretrained
+    raw = json.loads((Path(model_path) / "config.json").read_text())
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/root/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 546, in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python3.13/pathlib/_abc.py", line 632, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/.local/share/uv/python/cpython-3.13.5-linux-x86_64-gnu/lib/python3.13/pathlib/_local.py", line 537, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'results/quantized-tinygemm-cache/config.json'

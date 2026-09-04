@@ -1,0 +1,20 @@
+Using Python 3.13.5 environment at: /opt/lab5-venv
+Resolved 1 package in 2ms
+   Building lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+      Built lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+Prepared 1 package in 835ms
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 3ms
+ + lab5==0.1.0 (from file:///home/h3240104505/HPC101_lab/lab5)
+int4_triton rows=1: max_abs=0.007812, mean_abs=0.001290
+int4_triton rows=17: max_abs=0.015625, mean_abs=0.001207
+Reusing complete quantized checkpoint: /home/h3240104505/HPC101_lab/lab5/results/quantized-tinygemm-cache
+Reusing existing quality result: results/gptq-public-quality.json
+generation:   0%|          | 0/10 [00:00<?, ?request/s][W827 23:35:20.313907922 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 308281344 bytes (free: 134217728, total: 10468982784).
+[W827 23:35:21.496868788 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 329252864 bytes (free: 150994944, total: 10468982784).
+generation:  50%|█████     | 5/10 [00:24<00:24,  4.88s/request][W827 23:35:44.474413422 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 308281344 bytes (free: 92274688, total: 10468982784).
+[W827 23:35:45.647279441 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 329252864 bytes (free: 142606336, total: 10468982784).
+generation: 100%|██████████| 10/10 [00:45<00:00,  4.46s/request]generation: 100%|██████████| 10/10 [00:45<00:00,  4.52s/request]
+{"requests": 10, "generated_tokens": 320, "elapsed_s": 45.20975035702577, "requests_per_s": 0.2211912235973221, "generated_tokens_per_s": 7.078119155114307, "batch_size": 5}

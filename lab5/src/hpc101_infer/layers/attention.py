@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 from hpc101_infer.layers.linear import BF16LinearFactory, LinearFactory
 from hpc101_infer.layers.norm import RMSNorm
@@ -65,7 +66,13 @@ def make_attention_mask(
 
 
 def repeat_kv(hidden_states: torch.Tensor, repeats: int) -> torch.Tensor:
-    """将较少的 KV heads 逻辑扩展到 query heads，实现 grouped-query attention。"""
+    """Expand KV heads to query heads (kept for compatibility/debugging).
+
+    The single-token runtime path keeps K/V heads grouped; callers that rely
+    on the original helper can still use it for reference comparisons.
+    """
+    if repeats <= 0:
+        raise ValueError("repeats must be positive")
     if repeats == 1:
         return hidden_states
     batch, heads, seq_len, head_dim = hidden_states.shape
@@ -86,7 +93,7 @@ def chunked_attention(
     sliding_window: int = -1,
     key_position_offset: int = 0,
     key_positions: torch.Tensor | None = None,
-    query_chunk_size: int = 512,
+    query_chunk_size: int = 384,
 ) -> torch.Tensor:
     outputs = []
     key_transposed = key.transpose(2, 3)
@@ -104,11 +111,103 @@ def chunked_attention(
             key_positions,
         )
         scores.add_(mask)
-        probability = torch.softmax(scores, dim=-1, dtype=torch.float32).to(query.dtype)
+        probability = torch.softmax(scores, dim=-1)
         chunk = torch.matmul(probability, value)
         chunk.mul_(query_valid[:, None, :, None])
         outputs.append(chunk)
     return torch.cat(outputs, dim=2)
+
+
+def gqa_decode_attention(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    positions: torch.Tensor,
+    sequence_lengths: torch.Tensor,
+    layer_type: str,
+    *,
+    num_query_heads: int,
+    num_kv_heads: int,
+    sliding_window: int = -1,
+    key_positions: torch.Tensor | None = None,
+    use_sdpa: bool = True,
+) -> torch.Tensor:
+    """Single-token GQA path that keeps K/V heads unmaterialized."""
+    if num_query_heads % num_kv_heads:
+        raise ValueError("num_query_heads must be divisible by num_kv_heads")
+    repeats = num_query_heads // num_kv_heads
+    mask, query_valid = make_attention_mask(
+        positions,
+        sequence_lengths,
+        key.shape[2],
+        layer_type,
+        query.dtype,
+        sliding_window,
+        key_positions=key_positions,
+    )
+    if use_sdpa:
+        # PyTorch's fused SDPA kernel supports GQA directly and is
+        # substantially faster than materializing 5-D score/probability
+        # tensors for decode.
+        output = F.scaled_dot_product_attention(
+            query,
+            key,
+            value,
+            attn_mask=torch.isfinite(mask),
+            dropout_p=0.0,
+            is_causal=False,
+            scale=1.0,
+            enable_gqa=True,
+        )
+    else:
+        query_groups = query.reshape(
+            query.shape[0], num_kv_heads, repeats, query.shape[2], query.shape[3]
+        )
+        key_groups = key[:, :, None, :, :]
+        value_groups = value[:, :, None, :, :]
+        scores = torch.matmul(query_groups, key_groups.transpose(3, 4))
+        scores.add_(mask[:, None])
+        probability = torch.softmax(scores, dim=-1, dtype=torch.float32).to(query.dtype)
+        output = torch.matmul(probability, value_groups).reshape(
+            query.shape[0], num_query_heads, query.shape[2], value.shape[3]
+        )
+    output.mul_(query_valid[:, None, :, None])
+    return output
+
+
+def sdpa_prefill_attention(
+    query: torch.Tensor,
+    key: torch.Tensor,
+    value: torch.Tensor,
+    positions: torch.Tensor,
+    sequence_lengths: torch.Tensor,
+    layer_type: str,
+    *,
+    sliding_window: int = -1,
+    key_positions: torch.Tensor | None = None,
+) -> torch.Tensor:
+    """Memory-efficient multi-token attention using fused SDPA."""
+    mask, query_valid = make_attention_mask(
+        positions,
+        sequence_lengths,
+        key.shape[2],
+        layer_type,
+        query.dtype,
+        sliding_window,
+        key_positions=key_positions,
+    )
+    output = F.scaled_dot_product_attention(
+        query,
+        key,
+        value,
+        attn_mask=torch.isfinite(mask),
+        dropout_p=0.0,
+        is_causal=False,
+        scale=1.0,
+        enable_gqa=query.shape[1] != key.shape[1],
+    )
+    output.mul_(query_valid[:, None, :, None])
+    return output
 
 
 class AttentionLayer(nn.Module):
@@ -128,6 +227,7 @@ class AttentionLayer(nn.Module):
         super().__init__()
         factory = linear_factory or BF16LinearFactory()
         self.head_dim = head_dim
+        self.num_qo_heads = num_qo_heads
         self.num_kv_heads = num_kv_heads
         self.num_kv_groups = num_qo_heads // self.num_kv_heads
         self.value_is_key = attention_k_eq_v
@@ -199,11 +299,39 @@ class AttentionLayer(nn.Module):
             kv_cache.write(layer_id, position_ids, key, value, sequence_lengths)
             cached = kv_cache.view(layer_id, max_seq_len)
             key, value = cached.key, cached.value
-        key = repeat_kv(key, self.num_kv_groups)
-        value = repeat_kv(value, self.num_kv_groups)
-        output = chunked_attention(
-            query, key, value, position_ids, sequence_lengths, "full_attention"
-        ).transpose(1, 2).reshape(batch, seq_len, -1)
+        # Global Gemma attention has a single KV head.  ``torch.matmul``
+        # broadcasts that head across the query-head dimension directly, so
+        # avoid materializing a 16x copy of every cached K/V tensor on every
+        # decode step.  Multi-KV layers still use the reference expansion.
+        if seq_len == 1 and self.num_kv_heads != self.num_qo_heads:
+            output = gqa_decode_attention(
+                query,
+                key,
+                value,
+                position_ids,
+                sequence_lengths,
+                "full_attention",
+                num_query_heads=self.num_qo_heads,
+                num_kv_heads=self.num_kv_heads,
+                use_sdpa=False,
+            )
+        else:
+            if self.num_kv_heads != 1:
+                key = repeat_kv(key, self.num_kv_groups)
+                value = repeat_kv(value, self.num_kv_groups)
+            # CUDA SDPA's GQA fallback may materialize sixteen copies of the
+            # single global KV head and request ~770 MiB for long batch-3
+            # prompts. Query chunking preserves KV-head broadcasting and caps
+            # the score workspace while the eight global layers prefill.
+            output = chunked_attention(
+                query,
+                key,
+                value,
+                position_ids,
+                sequence_lengths,
+                "full_attention",
+            )
+        output = output.transpose(1, 2).reshape(batch, seq_len, -1)
         return self.o_proj(output)
 
 
@@ -224,6 +352,7 @@ class SlidingAttentionLayer(nn.Module):
         super().__init__()
         factory = linear_factory or BF16LinearFactory()
         self.head_dim = head_dim
+        self.num_qo_heads = num_qo_heads
         self.num_kv_heads = num_kv_heads
         self.num_kv_groups = num_qo_heads // self.num_kv_heads
         self.sliding_window = sliding_window
@@ -295,16 +424,31 @@ class SlidingAttentionLayer(nn.Module):
                 cached = kv_cache.view(layer_id, max_seq_len, sequence_lengths)
                 key, value = cached.key, cached.value
                 key_positions = cached.key_positions
-        key = repeat_kv(key, self.num_kv_groups)
-        value = repeat_kv(value, self.num_kv_groups)
-        output = chunked_attention(
-            query,
-            key,
-            value,
-            position_ids,
-            sequence_lengths,
-            "sliding_attention",
-            sliding_window=self.sliding_window,
-            key_positions=key_positions,
-        ).transpose(1, 2).reshape(batch, seq_len, -1)
+        if seq_len == 1:
+            output = gqa_decode_attention(
+                query,
+                key,
+                value,
+                position_ids,
+                sequence_lengths,
+                "sliding_attention",
+                num_query_heads=self.num_qo_heads,
+                num_kv_heads=self.num_kv_heads,
+                sliding_window=self.sliding_window,
+                key_positions=key_positions,
+            )
+        else:
+            key = repeat_kv(key, self.num_kv_groups)
+            value = repeat_kv(value, self.num_kv_groups)
+            output = chunked_attention(
+                query,
+                key,
+                value,
+                position_ids,
+                sequence_lengths,
+                "sliding_attention",
+                sliding_window=self.sliding_window,
+                key_positions=key_positions,
+            )
+        output = output.transpose(1, 2).reshape(batch, seq_len, -1)
         return self.o_proj(output)

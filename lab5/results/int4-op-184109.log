@@ -1,0 +1,5 @@
+2.13.0+cu132
+_convert_weight_to_int4pack <built-in method _convert_weight_to_int4pack of type object at 0x7f27cb359dc0> None
+_weight_int4pack_mm <built-in method _weight_int4pack_mm of type object at 0x7f27cb359dc0> None
+aten::_weight_int4pack_mm(Tensor self, Tensor mat2, int qGroupSize, Tensor qScaleAndZeros) -> Tensor
+aten::_convert_weight_to_int4pack(Tensor self, int innerKTiles) -> Tensor

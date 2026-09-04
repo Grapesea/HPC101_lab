@@ -845,9 +845,10 @@ $$
 
 - **运行时分派**：量化 Linear 在小 `M` decode 时使用 fused INT4 Triton GEMM，大 `M` prefill 时临时反量化并调用 cuBLAS。
 - **注意力显存**：eager attention 按 query 维分块物化分数，降低长 prompt 的峰值显存。
+- **GQA 优化**：decode 使用 fused SDPA 的原生 GQA 支持，避免物化重复 K/V heads，并减少逐 head 的 kernel 发射；prefill 保留分块 eager 路径。
 - **滑窗 KV**：滑动窗口层使用 ring cache，只保留最近 $W$ 个 KV slot；全局层保持完整 cache。
 - **请求调度**：无限并发评测下先按生成长度和 prompt 长度重排请求，再组静态 batch。
-- **正确性修正**：修正量化 embedding 的 `uint8` 低/高半字节交错逻辑，并修复 embedding 缩放的提前引用；当前性能结果仍是修正前生成，需重新评测刷新。
+- **正确性修正**：修正量化 embedding 的 `uint8` 低/高半字节交错逻辑，并修复 embedding 缩放的提前引用；另修复滑窗层遗漏的 `num_qo_heads`、KV head 广播维度和 query chunk mask。
 
 ## 思考题
 

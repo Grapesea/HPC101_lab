@@ -1,0 +1,75 @@
+Using Python 3.13.5 environment at: /opt/lab5-venv
+Resolved 1 package in 2ms
+   Building lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+      Built lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+Prepared 1 package in 2.14s
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 3ms
+ + lab5==0.1.0 (from file:///home/h3240104505/HPC101_lab/lab5)
+int4_triton rows=1: max_abs=0.007812, mean_abs=0.001290
+int4_triton rows=17: max_abs=0.015625, mean_abs=0.001207
+Traceback (most recent call last):
+  File "/home/h3240104505/HPC101_lab/lab5/scripts/quantize.py", line 9, in <module>
+    main()
+    ~~~~^^
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/cli.py", line 302, in main
+    manifest = quantize_checkpoint(
+        args.model,
+    ...<7 lines>...
+        print_layer_loss=args.verbose,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/__init__.py", line 13, in quantize_checkpoint
+    return run(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/pipeline.py", line 599, in quantize_checkpoint
+    ).run()
+      ~~~^^
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/pipeline.py", line 180, in run
+    calibration_store = self._quantize_layer(
+        writer,
+    ...<2 lines>...
+        calibration_store,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/pipeline.py", line 402, in _quantize_layer
+    next_store = self._replay_layer(
+        layer,
+    ...<3 lines>...
+        capture=capture,
+    )
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/quantization/pipeline.py", line 301, in _replay_layer
+    output = layer(
+        hidden_states,
+    ...<3 lines>...
+        kv_cache=None,
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/models/gemma4.py", line 118, in forward
+    hidden_states = self.self_attn(
+        self.input_layernorm(hidden_states),
+    ...<4 lines>...
+        kv_cache,
+    )
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1778, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/opt/lab5-venv/lib/python3.13/site-packages/torch/nn/modules/module.py", line 1789, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/layers/attention.py", line 377, in forward
+    output = grouped_attention(
+             ~~~~~~~~~~~~~~~~~^
+        query,
+        ^^^^^^
+    ...<8 lines>...
+        key_positions=key_positions,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).transpose(1, 2).reshape(batch, seq_len, -1)
+    ^
+  File "/home/h3240104505/HPC101_lab/lab5/src/hpc101_infer/layers/attention.py", line 112, in grouped_attention
+    allowed = causal_allowed & query_valid[:, :, None] & key_valid[:, None, :]
+              ~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~
+RuntimeError: The size of tensor a (598) must match the size of tensor b (512) at non-singleton dimension 1

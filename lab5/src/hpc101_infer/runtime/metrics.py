@@ -22,7 +22,7 @@ class OperationMetrics:
 @contextmanager
 def measure_operation(device: torch.device, synchronize_cuda: bool):
     synchronize(device, synchronize_cuda)
-    if device.type == "cuda":
+    if device.type == "cuda" and synchronize_cuda:
         torch.cuda.reset_peak_memory_stats(device)
     start = perf_counter()
     metrics = OperationMetrics()
@@ -30,7 +30,7 @@ def measure_operation(device: torch.device, synchronize_cuda: bool):
         yield metrics
     finally:
         metrics.latency_s = perf_counter() - start
-        if device.type == "cuda":
+        if device.type == "cuda" and synchronize_cuda:
             metrics.peak_allocated_bytes = torch.cuda.max_memory_allocated(device)
             metrics.peak_reserved_bytes = torch.cuda.max_memory_reserved(device)
         else:

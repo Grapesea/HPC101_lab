@@ -15,6 +15,7 @@ lab3.*
 lab4.*
 lab4/
 lab5.*
+lab5/results/quantized-tinygemm-cache/
 report.pdf
 node_modules/
 *.json

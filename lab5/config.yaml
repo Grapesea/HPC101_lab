@@ -1,14 +1,14 @@
 engine:
   dtype: bfloat16
   device: cuda
-  max_batch_size: 4
-  scheduler_batch_size: 4
+  max_batch_size: 5
+  scheduler_batch_size: 5
   max_sequence_length: 2048
   # 融合 INT4 反量化与 GEMM，避免物化完整 BF16 权重。
   linear_backend: int4_triton
   scheduler_backend: static_batch
   seed: 42
-  synchronize_metrics: true
+  synchronize_metrics: false
 
 quantization:
   algorithm: gptq

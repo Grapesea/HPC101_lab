@@ -1,0 +1,17 @@
+Using Python 3.13.5 environment at: /opt/lab5-venv
+Resolved 1 package in 1ms
+   Building lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+      Built lab5 @ file:///home/h3240104505/HPC101_lab/lab5
+Prepared 1 package in 2.10s
+warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+         If the cache and target directories are on different filesystems, hardlinking may not be supported.
+         If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+Installed 1 package in 3ms
+ + lab5==0.1.0 (from file:///home/h3240104505/HPC101_lab/lab5)
+int4_triton rows=1: max_abs=0.007812, mean_abs=0.001290
+int4_triton rows=17: max_abs=0.015625, mean_abs=0.001207
+Reusing complete quantized checkpoint: /home/h3240104505/HPC101_lab/lab5/results/quantized-tinygemm-cache
+Reusing existing quality result: results/gptq-public-quality.json
+[W827 23:39:55.546095650 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 308281344 bytes (free: 134217728, total: 10468982784).
+[W827 23:39:56.611764416 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 329252864 bytes (free: 130023424, total: 10468982784).
+{"requests": 10, "generated_tokens": 320, "elapsed_s": 36.39420748403063, "requests_per_s": 0.2747690001049724, "generated_tokens_per_s": 8.792608003359117, "batch_size": 5}

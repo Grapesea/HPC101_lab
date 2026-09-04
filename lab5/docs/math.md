@@ -241,6 +241,11 @@ KV cache 和 continuous batching 的正确性与性能参照。
   gather 最近窗口。
 - **静态 batch 重排**：无限并发评测下按生成长度、prompt 长度排序组批，
   减少同一 batch 中短请求等待长请求的无效 decode 和 padding。
+- **GQA 广播计算**：不再物化重复的 K/V heads；按 KV head 对应的
+  Query head 组直接执行矩阵乘，降低 decode 带宽和中间显存。
+  decode 的单 token 路径进一步使用 PyTorch fused SDPA 的原生 GQA 支持，
+  避免 materialize 5-D score/probability 张量；prefill 仍使用分块 eager 路径
+  以控制峰值显存。
 
 ### INT4 嵌入修正
 
@@ -267,6 +272,18 @@ codes = torch.stack((low, high), dim=-1).flatten(-2)
 随后发现模型入口的 embedding 缩放链式赋值在赋值前引用了
 `hidden_states`，导致 `UnboundLocalError`；已拆成两步赋值修复。
 
+GQA 广播实现还遗漏了滑窗层的 `num_qo_heads` 属性，导致量化阶段在
+`SlidingAttentionLayer` 上触发 `AttributeError`；已为全局层和滑窗层统一
+保存该属性修复。
+
+后续还发现 KV head 切片被误写成索引，移除了广播必需的 singleton 维度，
+导致 Query head 数和 head dimension 形状冲突；已恢复
+`[:, head : head + 1]` 切片。
+
+五维 batched GEMM 的 mask 构造同样需要使用当前 query chunk 的
+`position_chunk`，否则长于 512 的校准序列会触发 598 与 512 的形状错配；
+已将 causal/sliding mask 的 query 位置改为分块切片。
+
 ### 实验现象
 
 公开质量评测中，GPTQ 的全局
@@ -283,3 +300,84 @@ $\Delta\mathrm{NLL}=0.0861$，小于 0.1 的满分线，且各长度桶均通过
 - Triton kernel 的 tile 参数仍为固定启发式，未针对不同 `N,K,M` 自动调优。
 - eager attention 的 mask/softmax 仍是主要显存和带宽来源，长序列风险高。
 - 当前结果是单次运行，重复运行可能受 MIG 邻居负载影响。
+
+## 10. 最终双满分版本（本节取代第 9 节的中间性能数据）
+
+第 9 节记录的是优化过程中的 74.5 秒版本。本轮继续优化后，任务一与任务二
+均进入 100 分区间；最终实现与参数以本节为准。
+
+### 10.1 ATen INT4 Tensor Core decode
+
+加载量化 checkpoint 时，将 low-nibble-first 权重一次性转换为 PyTorch ATen
+INT4 pack，decode 的小矩阵乘调用 `_weight_int4pack_mm`。代表性 MLP 投影
+`M=4, K=3840, N=15360` 从自写 Triton kernel 的 1.73 ms 降至 0.235 ms，
+约快 7.4 倍。环境不支持该 CUDA 算子时，原 Triton 路径仍作为回退。
+
+checkpoint 中较早的 K 元素位于低半字节，而 ATen pack 要求其位于高半字节：
+
+```python
+swapped = (qweight << 4) | (qweight >> 4)
+packed = torch._convert_weight_to_int4pack(swapped.contiguous(), 8)
+```
+
+ATen GEMM 的量化参数布局为 `[num_groups, out_features, 2]`，最后一维是
+`(scale, additive_offset)`。对称量化 offset 为零；非对称量化使用
+$(8-z)s$，因为 kernel 内部已把 unsigned INT4 code 以 8 为中心。
+
+### 10.2 CPU/GPU 混合 prefill
+
+ATen INT4 对 decode 很快，但对大 `M` prefill 反而较慢。因此原 checkpoint
+布局的 packed 权重保存在 CPU；每层 prefill 只把当前层搬到 GPU，反量化一次
+后交给 cuBLAS。这样既保留大矩阵乘效率，也不会让两套 packed 权重同时常驻
+10 GiB GPU。
+
+共享 embedding 的 lookup 源权重同样保存在 CPU，262144 词表 LM head 使用
+ATen INT4 pack。这消除了每轮输出投影的主要热点，同时避免在 GPU 上额外保留
+约 0.5 GiB lookup 权重。
+
+### 10.3 注意力与显存
+
+全局层和滑窗层的 prefill 均按 query 维 384 分块，softmax 使用模型的 BF16
+精度。相比 PyTorch SDPA 的 GQA fallback，该路径不会临时展开 16 份全局 KV
+head；在 batch 5 长 prompt 下避免了约 770 MiB 的单次工作区申请。
+
+调优中验证了以下反例：
+
+- ATen INT4 不适合本模型的大 `M` prefill；
+- batch 5 配合 FP32 softmax 会 OOM；
+- SDPA GQA fallback 可能物化重复 KV；
+- query chunk 过小虽节省显存，却会因 kernel 数增加而降低性能。
+
+最终 query chunk 384 是吞吐量与 10 GiB 峰值显存共同约束下的折中。该实现
+仍会物化分块 score/probability，并不等价于真正的 Flash Attention。
+
+### 10.4 调度与计时
+
+最终配置使用 batch size 5，并优先按 prompt 长度、再按生成长度排序请求，
+在 padding、decode 步数和峰值显存之间折中。正式性能配置关闭逐 token CUDA
+同步和峰值显存统计；`run_baseline.sh` 使用 `--no-progress`，避免终端刷新进入
+端到端计时。
+
+### 10.5 最终验证结果
+
+在 Lab5 10 GiB GPU 环境中完整运行 62 条质量样本与 10 条性能请求：
+
+| 指标 | 最终结果 | 满分阈值 |
+|---|---:|---:|
+| 全局 $\Delta\mathrm{NLL}$ | 0.0680567 | $<0.1$ |
+| 性能集请求数 | 10 | 10 |
+| 生成 token 数 | 320 | 320 |
+| `elapsed_s` | 35.6799 s | $<36$ s |
+| 生成吞吐量 | 8.9686 token/s | — |
+
+因此任务一、任务二均达到 100 分。相对 248.1 秒参考路径，端到端时间缩短约
+85.6%；相对上一版 76.70 秒 batch-4 Triton 路径缩短约 53.5%。
+
+验证记录：
+
+- 性能：`results/lab5-baseline-184599.log`；
+- 质量：`results/quality-final-184607.log`（完整重算，未复用旧 JSON）。
+
+需要注意，`_convert_weight_to_int4pack` 和 `_weight_int4pack_mm` 是 PyTorch
+私有接口，升级 PyTorch 后应重新验证。35.6799 秒距离 36 秒阈值约 0.32 秒，
+MIG 邻居负载可能造成波动，正式提交前建议重复运行并取中位数。

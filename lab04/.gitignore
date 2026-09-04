@@ -23,3 +23,8 @@ results/
 *.ncu-rep
 perf.data
 full-inner.log
+!GW250118/
+!GW250118/AMSS_NCKU_output/
+!GW250118/AMSS_NCKU_output/*.log
+
+!GW250118/AMSS_NCKU_output/bssn_BH.dat

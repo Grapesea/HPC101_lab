@@ -114,6 +114,50 @@ class QuantizedLinear(nn.Module):
             self.bias = nn.Parameter(torch.empty(out_features, device=device))
         else:
             self.register_parameter("bias", None)
+        self.register_buffer("int4pack", None, persistent=False)
+        self.register_buffer("scale_and_zero", None, persistent=False)
+        self._prefill_qweight: torch.Tensor | None = None
+
+    @torch.no_grad()
+    def prepare_tinygemm(self, inner_k_tiles: int = 8) -> None:
+        """Repack checkpoint weights for PyTorch's CUDA INT4 Tensor Core GEMM.
+
+        Checkpoints store the earlier K element in the low nibble, while the
+        ATen packing operator expects it in the high nibble.  Repacking is done
+        once while loading the model, before generation is timed.  The packed
+        tensor occupies exactly the same number of bytes as ``qweight``; drop
+        the checkpoint-layout buffers afterwards to avoid increasing VRAM.
+        """
+        if self.backend != "int4_triton" or self.int4pack is not None:
+            return
+        if not self.qweight.is_cuda or not hasattr(torch, "_convert_weight_to_int4pack"):
+            return
+        # Large-M prefill is faster through dequantize + cuBLAS.  Keep its
+        # checkpoint-layout source in host memory so it does not consume the
+        # tight 10 GiB device budget between prefill calls.
+        host_qweight = self.qweight.to(device="cpu")
+        # Prefill streams every Linear from host memory. Page-lock it once
+        # during model loading so H2D uses DMA bandwidth without pageable
+        # staging copies in the measured generation region.
+        try:
+            host_qweight = host_qweight.pin_memory()
+        except RuntimeError:
+            # CPU/reference environments may not provide a CUDA pin allocator.
+            pass
+        self._prefill_qweight = host_qweight
+        swapped = ((self.qweight << 4) | (self.qweight >> 4)).contiguous()
+        self.int4pack = torch._convert_weight_to_int4pack(swapped, inner_k_tiles)
+        if self.zeros is None:
+            offsets = torch.zeros_like(self.scales)
+        else:
+            # ATen internally centers unsigned INT4 at 8.  Its second affine
+            # parameter is an additive real-valued offset.
+            offsets = (8 - self.zeros.to(torch.int16)).to(self.scales.dtype)
+            offsets.mul_(self.scales)
+        self.scale_and_zero = torch.stack((self.scales, offsets), dim=-1).transpose(0, 1).contiguous()
+        self.qweight = None
+        self.scales = None
+        self.zeros = None
 
     @classmethod
     def from_quantized_weight(
@@ -153,6 +197,52 @@ class QuantizedLinear(nn.Module):
 
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         rows = inputs.numel() // inputs.shape[-1]
+        use_packed_mm = self.int4pack is not None and rows <= 64
+        if (
+            self.int4pack is not None
+            and self._prefill_qweight is not None
+            and inputs.is_cuda
+            and not use_packed_mm
+        ):
+            # The hybrid prefill path temporarily materializes a BF16 weight.
+            # On the 10-GiB judge GPU the two largest projections otherwise
+            # force the caching allocator through an expensive failed-allocation
+            # retry on every batch.  TinyGEMM needs no such workspace; select it
+            # before asking CUDA for an allocation that cannot fit in currently
+            # free device memory.
+            bf16_weight_bytes = self.out_features * self.padded_in_features * 2
+            # Only giant projections have exhibited this problem. Avoid a
+            # driver query for the many smaller Linear calls in every prefill.
+            if bf16_weight_bytes >= 256 * 1024 * 1024:
+                free_bytes, _ = torch.cuda.mem_get_info(inputs.device)
+                use_packed_mm = free_bytes < bf16_weight_bytes
+        if use_packed_mm:
+            matrix = inputs.reshape(rows, inputs.shape[-1]).contiguous()
+            output = torch._weight_int4pack_mm(
+                matrix, self.int4pack, self.group_size, self.scale_and_zero
+            )
+            if self.bias is not None:
+                output.add_(self.bias)
+            return output.reshape(*inputs.shape[:-1], self.out_features)
+        if self.int4pack is not None and self._prefill_qweight is not None:
+            qweight = self._prefill_qweight.to(
+                device=inputs.device,
+                non_blocking=self._prefill_qweight.is_pinned(),
+            )
+            scales = self.scale_and_zero[:, :, 0].transpose(0, 1)
+            quantized = QuantizedWeight(
+                qweight=qweight,
+                scales=scales,
+                zeros=None,
+                original_shape=(self.out_features, self.in_features),
+                padded_shape=(self.out_features, self.padded_in_features),
+                bits=4,
+                group_size=self.group_size,
+                symmetric=True,
+                packing="uint8_little_nibble",
+            )
+            weight = dequantize_weight(quantized, dtype=inputs.dtype)
+            return F.linear(inputs, weight, self.bias)
         if self.backend == "int4_triton" and rows <= 64:
             from hpc101_infer.layers.int4_triton import int4_matmul
 
@@ -239,6 +329,30 @@ class QuantizedTiedEmbedding(nn.Module):
         self.output_dtype = output_dtype
         self.register_buffer("qweight", qweight)
         self.register_buffer("scales", scales)
+        self.register_buffer("int4pack", None, persistent=False)
+        self.register_buffer("scale_and_zero", None, persistent=False)
+        self._lookup_qweight: torch.Tensor | None = None
+        self._lookup_scales: torch.Tensor | None = None
+
+    @torch.no_grad()
+    def prepare_tinygemm(self) -> None:
+        if not self.qweight.is_cuda:
+            return
+        lookup_qweight = self.qweight.to(device="cpu")
+        lookup_scales = self.scales.to(device="cpu")
+        try:
+            lookup_qweight = lookup_qweight.pin_memory()
+            lookup_scales = lookup_scales.pin_memory()
+        except RuntimeError:
+            pass
+        self._lookup_qweight = lookup_qweight
+        self._lookup_scales = lookup_scales
+        swapped = ((self.qweight << 4) | (self.qweight >> 4)).contiguous()
+        self.int4pack = torch._convert_weight_to_int4pack(swapped, 8)
+        zeros = torch.zeros_like(self.scales)
+        self.scale_and_zero = torch.stack((self.scales, zeros), dim=-1).transpose(0, 1).contiguous()
+        self.qweight = None
+        self.scales = None
 
     @classmethod
     def from_float_weight(
@@ -272,17 +386,32 @@ class QuantizedTiedEmbedding(nn.Module):
         )
 
     def forward(self, input_ids: torch.Tensor) -> torch.Tensor:
-        packed = F.embedding(input_ids, self.qweight)
+        if self._lookup_qweight is not None:
+            cpu_ids = input_ids.to(device="cpu")
+            packed = F.embedding(cpu_ids, self._lookup_qweight).to(
+                input_ids.device, non_blocking=True
+            )
+            group_scales = F.embedding(cpu_ids, self._lookup_scales).to(
+                input_ids.device, non_blocking=True
+            )
+        else:
+            packed = F.embedding(input_ids, self.qweight)
+            group_scales = F.embedding(input_ids, self.scales)
         low = packed & 0x0F
         high = packed >> 4
         codes = torch.stack((low, high), dim=-1).flatten(-2)
-        group_scales = F.embedding(input_ids, self.scales)
         selected_scales = torch.repeat_interleave(
             group_scales, self.group_size, dim=-1
         ).to(self.output_dtype)
         return (codes.to(self.output_dtype) - 8.0) * selected_scales
 
     def linear(self, hidden_states: torch.Tensor) -> torch.Tensor:
+        if self.int4pack is not None:
+            matrix = hidden_states.reshape(-1, hidden_states.shape[-1]).contiguous()
+            output = torch._weight_int4pack_mm(
+                matrix, self.int4pack, self.group_size, self.scale_and_zero
+            )
+            return output.reshape(*hidden_states.shape[:-1], self.num_embeddings)
         from hpc101_infer.layers.int4_triton import int4_matmul
 
         return int4_matmul(

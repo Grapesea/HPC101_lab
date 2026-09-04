@@ -114,7 +114,8 @@ class Runner:
         # handle 数组仍按原始输入顺序返回。
         request_list = list(requests)
 
-        def approximate_prompt_length(request: GenerationRequest) -> int:
+        def prompt_size(index: int) -> int:
+            request = request_list[index]
             if request.input_ids is not None:
                 return len(request.input_ids)
             return len(request.prompt or "")
@@ -122,8 +123,8 @@ class Runner:
         ordered_indices = sorted(
             range(len(request_list)),
             key=lambda index: (
+                prompt_size(index),
                 request_list[index].max_new_tokens,
-                approximate_prompt_length(request_list[index]),
             ),
             reverse=True,
         )

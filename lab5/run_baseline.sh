@@ -64,6 +64,7 @@ python3 scripts/run_generation_queue.py \
     --summary-output results/gptq-public-summary.json \
     --device cuda \
     --linear-backend int4_triton \
-    --batch-size 4 \
-    --max-batch-size 4 \
+    --no-progress \
+    --batch-size 5 \
+    --max-batch-size 5 \
     --max-sequence-length 2048
